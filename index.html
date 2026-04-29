@@ -30,6 +30,83 @@
         --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
+      /* 浅色主题 */
+      [data-theme="light"] {
+        --ink-950: #f5f0e8;
+        --ink-900: #ffffff;
+        --ink-850: #f0ede5;
+        --ink-800: #e8e5dd;
+        --ink-700: #d5d0c8;
+        --ink-500: #8a8a95;
+        --ink-300: #5a5a65;
+        --cream: #2a2a2a;
+        --gold: #b8942e;
+        --gold-light: #c9a040;
+        --gold-pale: #f5eed8;
+        --rose: #c0392b;
+        --rose-light: #d98880;
+        --sage: #5d8a63;
+        --sage-light: #7eaa85;
+      }
+
+      [data-theme="light"] body {
+        background-image:
+          radial-gradient(
+            ellipse at 50% 0%,
+            rgba(184, 148, 46, 0.06) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse at 85% 100%,
+            rgba(93, 138, 99, 0.03) 0%,
+            transparent 50%
+          ),
+          url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+        color: #2a2a2a;
+      }
+
+      [data-theme="light"] .editor-wrap {
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+      }
+
+      [data-theme="light"] .preview-wrap {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+      }
+
+      [data-theme="light"] .form-group input[type="date"] {
+        color-scheme: light;
+      }
+
+      [data-theme="light"]
+        .form-group
+        input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.3);
+      }
+
+      [data-theme="light"] .toggle input[type="checkbox"] {
+        background: #d0ccc5;
+      }
+
+      [data-theme="light"] .toggle input[type="checkbox"]::after {
+        background: #fff;
+      }
+
+      [data-theme="light"] .items-table-wrap {
+        border-color: #d5d0c8;
+      }
+
+      [data-theme="light"] .section {
+        border-color: #e0dcd5;
+      }
+
+      [data-theme="light"] .preview-separator .sep-line {
+        background: #d5d0c8;
+      }
+
+      [data-theme="light"] .preview-separator .sep-label {
+        color: #9a9a9a;
+      }
+
       * {
         margin: 0;
         padding: 0;
@@ -106,6 +183,59 @@
         letter-spacing: 2px;
         text-transform: uppercase;
         font-weight: 500;
+      }
+
+      .theme-toggle {
+        position: fixed;
+        top: 20px;
+        right: 24px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--ink-850);
+        border: 1px solid var(--ink-700);
+        color: var(--cream);
+        font-size: 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition);
+        padding: 0;
+        z-index: 100;
+      }
+
+      .theme-toggle:hover {
+        background: var(--gold);
+        color: var(--ink-950);
+        border-color: var(--gold);
+      }
+
+      .github-link {
+        position: fixed;
+        top: 20px;
+        right: 66px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--ink-850);
+        border: 1px solid var(--ink-700);
+        color: var(--cream);
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition);
+        padding: 0;
+        z-index: 100;
+        text-decoration: none;
+      }
+
+      .github-link:hover {
+        background: var(--gold);
+        color: var(--ink-950);
+        border-color: var(--gold);
       }
 
       /* ========== 编辑区域 ========== */
@@ -275,13 +405,8 @@
 
       .items-table input[type="number"] {
         -moz-appearance: textfield;
-      }
-
-      .btn-row {
-        display: flex;
-        gap: 10px;
-        margin-top: 14px;
-        flex-wrap: wrap;
+        -webkit-appearance: none;
+        appearance: none;
       }
 
       button {
@@ -562,10 +687,8 @@
 
       /* ========== 切换开关 ========== */
       .toggles-section {
-        background: var(--ink-850);
-        border-radius: 8px;
-        padding: 14px 18px;
-        margin-bottom: 14px;
+        padding: 0;
+        margin-bottom: 0;
       }
 
       .toggle-row {
@@ -584,8 +707,8 @@
       }
 
       .toggle input[type="checkbox"] {
-        appearance: none;
         -webkit-appearance: none;
+        appearance: none;
         width: 40px;
         height: 22px;
         background: var(--ink-700);
@@ -642,9 +765,25 @@
         min-height: 0;
       }
 
+      .editor-column {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+      }
+
       .main-layout .editor-wrap {
+        flex: 1;
         margin: 0;
         overflow-y: auto;
+        min-height: 0;
+      }
+
+      .editor-actions {
+        flex-shrink: 0;
+        display: flex;
+        gap: 10px;
+        padding-top: 14px;
       }
 
       .main-layout .preview-wrap {
@@ -675,10 +814,15 @@
           padding-bottom: 0;
         }
 
+        .editor-column {
+          overflow: visible;
+          margin-bottom: 18px;
+        }
+
         .main-layout .editor-wrap {
           max-width: 900px;
           overflow-y: visible;
-          margin-bottom: 18px;
+          flex: none;
         }
 
         .main-layout .preview-separator {
@@ -772,178 +916,202 @@
         <span class="brand-name">快贝智单</span>
         <span class="brand-sub">QuickBillMate</span>
       </div>
+      <a
+        class="github-link no-print"
+        href="https://github.com/explore42/QuickBillMate"
+        target="_blank"
+        title="GitHub 开源地址"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+          />
+        </svg>
+      </a>
+      <button
+        class="theme-toggle no-print"
+        onclick="toggleTheme()"
+        title="切换深浅色"
+      >
+        ☀
+      </button>
     </div>
 
     <div class="main-layout">
-      <!-- 编辑区域 -->
-      <div class="editor-wrap no-print">
-        <!-- 1. 客户信息 -->
-        <div class="section">
-          <h2>客户信息</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>客户名称</label>
-              <input type="text" id="customerName" oninput="render()" />
-            </div>
-            <div class="form-group">
-              <label>客户电话</label>
-              <input type="text" id="customerPhone" oninput="render()" />
+      <!-- 编辑列 -->
+      <div class="editor-column">
+        <!-- 编辑区域 -->
+        <div class="editor-wrap no-print">
+          <!-- 1. 客户信息 -->
+          <div class="section">
+            <h2>客户信息</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>客户名称</label>
+                <input type="text" id="customerName" oninput="render()" />
+              </div>
+              <div class="form-group">
+                <label>客户电话</label>
+                <input type="text" id="customerPhone" oninput="render()" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- 2. 公司信息 -->
-        <div class="section">
-          <h2>公司信息</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>公司名称</label>
-              <input
-                type="text"
-                id="companyName"
-                value="示例建材公司"
-                oninput="render()"
-              />
-            </div>
-            <div class="form-group">
-              <label>联系电话</label>
-              <input
-                type="text"
-                id="contactPhone"
-                value=""
-                placeholder="显示在底部说明中"
-                oninput="render()"
-              />
-            </div>
-            <div class="form-group">
-              <label>业务经理</label>
-              <input
-                type="text"
-                id="salesManager"
-                value=""
-                oninput="render()"
-              />
+          <!-- 2. 公司信息 -->
+          <div class="section">
+            <h2>公司信息</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>公司名称</label>
+                <input
+                  type="text"
+                  id="companyName"
+                  value="示例建材公司"
+                  oninput="render()"
+                />
+              </div>
+              <div class="form-group">
+                <label>联系电话</label>
+                <input
+                  type="text"
+                  id="contactPhone"
+                  value=""
+                  placeholder="显示在底部说明中"
+                  oninput="render()"
+                />
+              </div>
+              <div class="form-group">
+                <label>业务经理</label>
+                <input
+                  type="text"
+                  id="salesManager"
+                  value=""
+                  oninput="render()"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- 3. 客单信息 -->
-        <div class="section">
-          <h2>客单信息</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>编号代码</label>
-              <input type="text" id="docCode" value="XS" oninput="render()" />
+          <!-- 3. 客单信息 -->
+          <div class="section">
+            <h2>客单信息</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>编号代码</label>
+                <input type="text" id="docCode" value="XS" oninput="render()" />
+              </div>
+              <div class="form-group">
+                <label>流水号</label>
+                <input
+                  type="text"
+                  id="docSerial"
+                  value="001"
+                  oninput="render()"
+                />
+              </div>
+              <div class="form-group">
+                <label>单据日期</label>
+                <input type="date" id="docDate" oninput="render()" />
+              </div>
+              <div class="form-group">
+                <label>优惠金额</label>
+                <input
+                  type="number"
+                  id="discount"
+                  value="0"
+                  step="0.01"
+                  oninput="render()"
+                />
+              </div>
             </div>
-            <div class="form-group">
-              <label>流水号</label>
-              <input
-                type="text"
-                id="docSerial"
-                value="001"
-                oninput="render()"
-              />
-            </div>
-            <div class="form-group">
-              <label>单据日期</label>
-              <input type="date" id="docDate" oninput="render()" />
-            </div>
-            <div class="form-group">
-              <label>优惠金额</label>
-              <input
-                type="number"
-                id="discount"
-                value="0"
-                step="0.01"
-                oninput="render()"
-              />
+            <div class="form-row">
+              <div class="form-group">
+                <label>备注</label>
+                <input type="text" id="remark" value="" oninput="render()" />
+              </div>
+              <div class="form-group">
+                <label>清单标题后缀</label>
+                <input
+                  type="text"
+                  id="titleSuffix"
+                  value="销售清单"
+                  oninput="render()"
+                />
+              </div>
+              <div class="form-group">
+                <label>底部说明文案</label>
+                <input
+                  type="text"
+                  id="disclaimer"
+                  value="收到货物当日点清，如有问题请在2日内联系："
+                  oninput="render()"
+                />
+              </div>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>备注</label>
-              <input type="text" id="remark" value="" oninput="render()" />
-            </div>
-            <div class="form-group">
-              <label>清单标题后缀</label>
-              <input
-                type="text"
-                id="titleSuffix"
-                value="销售清单"
-                oninput="render()"
-              />
-            </div>
-            <div class="form-group">
-              <label>底部说明文案</label>
-              <input
-                type="text"
-                id="disclaimer"
-                value="收到货物当日点清，如有问题请在2日内联系："
-                oninput="render()"
-              />
-            </div>
-          </div>
-        </div>
 
-        <!-- 4. 商品信息 -->
-        <div class="section">
-          <h2>商品信息</h2>
-          <div class="items-table-wrap">
-            <table class="items-table" id="itemsTable">
-              <thead>
-                <tr>
-                  <th>商品名称</th>
-                  <th>规格型号</th>
-                  <th>单位</th>
-                  <th>数量</th>
-                  <th>单价</th>
-                  <th>包装规格</th>
-                  <th>备注信息</th>
-                  <th style="width: 40px"></th>
-                </tr>
-              </thead>
-              <tbody id="itemsBody"></tbody>
-            </table>
+          <!-- 4. 商品信息 -->
+          <div class="section">
+            <h2>商品信息</h2>
+            <div class="items-table-wrap">
+              <table class="items-table" id="itemsTable">
+                <thead>
+                  <tr>
+                    <th>商品名称</th>
+                    <th>规格型号</th>
+                    <th>单位</th>
+                    <th>数量</th>
+                    <th>单价</th>
+                    <th>包装规格</th>
+                    <th>备注信息</th>
+                    <th style="width: 40px"></th>
+                  </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+              </table>
+            </div>
+            <button class="btn-add-row" onclick="addRow()">
+              ＋ 添加商品行
+            </button>
           </div>
-          <button class="btn-add-row" onclick="addRow()">＋ 添加商品行</button>
-        </div>
 
-        <!-- 5. 显示选项 -->
-        <div class="section toggles-section">
-          <h2>显示选项</h2>
-          <div class="toggle-row">
-            <label class="toggle">
-              <input
-                type="checkbox"
-                id="showManager"
-                checked
-                onchange="render()"
-              />
-              <span class="toggle-label">显示业务经理</span>
-            </label>
-            <label class="toggle">
-              <input
-                type="checkbox"
-                id="showRemark"
-                checked
-                onchange="render()"
-              />
-              <span class="toggle-label">显示备注</span>
-            </label>
-            <label class="toggle">
-              <input
-                type="checkbox"
-                id="showWatermark"
-                checked
-                onchange="render()"
-              />
-              <span class="toggle-label">显示快贝智单水印</span>
-            </label>
+          <!-- 5. 显示选项 -->
+          <div class="section toggles-section">
+            <h2>显示选项</h2>
+            <div class="toggle-row">
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  id="showManager"
+                  checked
+                  onchange="render()"
+                />
+                <span class="toggle-label">显示业务经理</span>
+              </label>
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  id="showRemark"
+                  checked
+                  onchange="render()"
+                />
+                <span class="toggle-label">显示备注</span>
+              </label>
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  id="showWatermark"
+                  checked
+                  onchange="render()"
+                />
+                <span class="toggle-label">显示快贝智单水印</span>
+              </label>
+            </div>
           </div>
         </div>
 
         <!-- 操作按钮 -->
-        <div class="btn-row">
+        <div class="editor-actions no-print">
           <button class="btn-success" onclick="window.print()">打印清单</button>
           <button class="btn-secondary" onclick="loadSample()">
             加载示例数据
@@ -951,6 +1119,7 @@
           <button class="btn-danger" onclick="clearAll()">清空</button>
         </div>
       </div>
+      <!-- /editor-column -->
 
       <!-- 清单预览分隔 -->
       <div class="preview-separator no-print">
@@ -1398,6 +1567,30 @@
 
       renderEditor();
       render();
+
+      // ========== 深浅主题切换 ==========
+      function toggleTheme() {
+        const html = document.documentElement;
+        const current = html.getAttribute("data-theme");
+        const next = current === "light" ? "" : "light";
+        html.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        updateThemeIcon();
+      }
+
+      function updateThemeIcon() {
+        const btn = document.querySelector(".theme-toggle");
+        if (!btn) return;
+        const isLight =
+          document.documentElement.getAttribute("data-theme") === "light";
+        btn.textContent = isLight ? "☾" : "☀";
+      }
+
+      (function () {
+        const saved = localStorage.getItem("theme");
+        if (saved) document.documentElement.setAttribute("data-theme", saved);
+        updateThemeIcon();
+      })();
     </script>
   </body>
 </html>
