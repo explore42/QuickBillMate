@@ -1,0 +1,1403 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>快贝智单（QuickBillMate）- 在线开源销售清单生成系统</title>
+    <style>
+      /* ============================================
+         QuickBillMate — Evening Print Studio
+         ============================================ */
+      :root {
+        --ink-950: #14141a;
+        --ink-900: #1a1a22;
+        --ink-850: #22222c;
+        --ink-800: #2a2a36;
+        --ink-700: #3a3a48;
+        --ink-500: #6b6b7a;
+        --ink-300: #a0a0ad;
+        --cream: #f5f0e8;
+        --paper: #faf7f2;
+        --gold: #c9a96e;
+        --gold-light: #d4bc8a;
+        --gold-pale: #f4ecd8;
+        --rose: #c47a6b;
+        --rose-light: #e8a99d;
+        --sage: #7a9a7e;
+        --sage-light: #a3c0a7;
+        --header-bg: #e8e8e8;
+        --total-bg: #e8e8e8;
+        --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        background: var(--ink-950);
+        background-image:
+          radial-gradient(
+            ellipse at 50% 0%,
+            rgba(201, 169, 110, 0.06) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse at 85% 100%,
+            rgba(122, 154, 126, 0.04) 0%,
+            transparent 50%
+          ),
+          url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        padding: 20px 0 0;
+        color: #e8e0d5;
+      }
+
+      /* ========== 页眉 ========== */
+      .page-header {
+        max-width: 1600px;
+        margin: 0 auto 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 24px;
+        flex-shrink: 0;
+      }
+
+      .page-header .logo-mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--gold), var(--gold-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--ink-950);
+        font-family: "Georgia", "Noto Serif SC", "Songti SC", serif;
+        flex-shrink: 0;
+      }
+
+      .page-header .brand-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .page-header .brand-name {
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        font-family: "Georgia", "Noto Serif SC", "Songti SC", serif;
+        color: var(--cream);
+      }
+
+      .page-header .brand-sub {
+        font-size: 10px;
+        color: var(--ink-500);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+
+      /* ========== 编辑区域 ========== */
+      .editor-wrap {
+        background: var(--ink-900);
+        border: 1px solid var(--ink-700);
+        border-radius: 14px;
+        padding: 22px 28px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .editor-wrap::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
+        pointer-events: none;
+        border-radius: 16px;
+      }
+
+      .editor-wrap::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--gold-light),
+          transparent
+        );
+        opacity: 0.4;
+      }
+
+      .editor-wrap > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 14px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .form-group {
+        flex: 1;
+        min-width: 180px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: var(--ink-300);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        transition: color var(--transition);
+      }
+
+      .form-group:focus-within label {
+        color: var(--gold-light);
+      }
+
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 7px 11px;
+        border: 1px solid var(--ink-700);
+        border-radius: 7px;
+        font-size: 13px;
+        font-family: inherit;
+        background: var(--ink-850);
+        color: var(--cream);
+        transition:
+          border-color var(--transition),
+          box-shadow var(--transition),
+          background var(--transition);
+        outline: none;
+      }
+
+      .form-group input:hover,
+      .form-group textarea:hover {
+        border-color: var(--ink-500);
+        background: var(--ink-800);
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.12);
+        background: var(--ink-800);
+      }
+
+      .form-group input[type="date"] {
+        color-scheme: dark;
+      }
+
+      .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.8);
+        cursor: pointer;
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 40px;
+      }
+
+      /* 商品表格编辑 */
+      .items-table-wrap {
+        overflow-x: auto;
+        margin: 12px 0;
+        border-radius: 8px;
+        border: 1px solid var(--ink-700);
+      }
+
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .items-table th {
+        background: var(--ink-850);
+        color: var(--ink-300);
+        padding: 7px 6px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--ink-700);
+      }
+
+      .items-table td {
+        padding: 2px;
+        border: 1px solid var(--ink-800);
+        transition: border-color var(--transition);
+      }
+
+      .items-table tr:hover td {
+        border-color: var(--ink-700);
+      }
+
+      .items-table input {
+        width: 100%;
+        border: none;
+        padding: 5px 6px;
+        font-size: 13px;
+        font-family: inherit;
+        background: transparent;
+        color: var(--cream);
+        outline: none;
+        border-radius: 4px;
+        transition: all var(--transition);
+      }
+
+      .items-table input:focus {
+        background: rgba(201, 169, 110, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(201, 169, 110, 0.3);
+      }
+
+      .items-table input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        transition: all var(--transition);
+        position: relative;
+        overflow: hidden;
+      }
+
+      button::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.08) 0%,
+          transparent 50%
+        );
+        pointer-events: none;
+      }
+
+      button:active {
+        transform: scale(0.97);
+      }
+
+      .btn-primary {
+        background: var(--gold);
+        color: var(--ink-950);
+      }
+      .btn-primary:hover {
+        background: var(--gold-light);
+        box-shadow: 0 4px 16px rgba(201, 169, 110, 0.25);
+      }
+      .btn-secondary {
+        background: var(--ink-700);
+        color: var(--cream);
+      }
+      .btn-secondary:hover {
+        background: var(--ink-500);
+      }
+      .btn-danger {
+        background: rgba(196, 122, 107, 0.15);
+        color: var(--rose-light);
+        border: 1px solid rgba(196, 122, 107, 0.25);
+      }
+      .btn-danger:hover {
+        background: rgba(196, 122, 107, 0.25);
+        border-color: rgba(196, 122, 107, 0.4);
+      }
+      .btn-success {
+        background: rgba(122, 154, 126, 0.2);
+        color: var(--sage-light);
+        border: 1px solid rgba(122, 154, 126, 0.3);
+      }
+      .btn-success:hover {
+        background: rgba(122, 154, 126, 0.3);
+        border-color: rgba(122, 154, 126, 0.45);
+      }
+
+      .btn-add-row {
+        background: transparent;
+        color: var(--gold);
+        border: 1px dashed rgba(201, 169, 110, 0.35);
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        border-radius: 7px;
+        margin-top: 0;
+        transition: all var(--transition);
+      }
+
+      .btn-add-row:hover {
+        background: rgba(201, 169, 110, 0.08);
+        border-color: var(--gold);
+        border-style: solid;
+      }
+
+      /* ========== 清单预览 ========== */
+      .preview-separator {
+        max-width: 800px;
+        margin: 18px auto 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 4px;
+      }
+
+      .preview-separator .sep-line {
+        flex: 1;
+        height: 1px;
+        background: var(--ink-700);
+      }
+
+      .preview-separator .sep-label {
+        font-size: 11px;
+        color: var(--ink-500);
+        letter-spacing: 2px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .preview-wrap {
+        background: #fff;
+        padding: 28px;
+        box-shadow:
+          0 8px 40px rgba(0, 0, 0, 0.4),
+          0 1px 3px rgba(0, 0, 0, 0.3);
+        color: #000;
+        font-family: "SimSun", "Songti SC", serif;
+        border-radius: 2px;
+      }
+
+      .invoice-header {
+        text-align: center;
+        margin-bottom: 14px;
+      }
+
+      .invoice-header h1 {
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 3px;
+      }
+
+      .invoice-info {
+        margin-bottom: 10px;
+      }
+
+      .doc-no-line {
+        text-align: right;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+
+      .info-bottom {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+      }
+
+      .info-bottom span {
+        flex: 1;
+      }
+
+      .invoice-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      .invoice-table th,
+      .invoice-table td {
+        border: 1px solid #000;
+        padding: 4px 6px;
+      }
+
+      .invoice-table th {
+        background: var(--header-bg);
+        font-weight: bold;
+        text-align: center;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .invoice-table td {
+        vertical-align: middle;
+      }
+
+      .invoice-table .col-num {
+        text-align: center;
+        width: 40px;
+      }
+      .invoice-table .col-center {
+        text-align: center;
+      }
+      .invoice-table .col-right {
+        text-align: right;
+      }
+
+      .invoice-table .total-row {
+        background: var(--total-bg);
+        font-weight: bold;
+      }
+
+      .total-row .merged-cell {
+        font-size: 13px;
+        letter-spacing: 1px;
+      }
+
+      .invoice-footer {
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .footer-row {
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .contact-note {
+        font-size: 12px;
+        color: #333;
+      }
+
+      .project-footer {
+        text-align: center;
+        margin-top: 10px;
+        font-size: 11px;
+        color: #666;
+        letter-spacing: 2px;
+      }
+
+      .info-fields {
+        flex: 1;
+      }
+
+      .field-line {
+        display: flex;
+        align-items: baseline;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+
+      .field-label {
+        font-weight: bold;
+        white-space: nowrap;
+        min-width: 90px;
+      }
+
+      .field-value {
+        border-bottom: 1px dotted #666;
+        padding: 0 4px;
+        min-width: 120px;
+      }
+
+      /* ========== 编辑分区 ========== */
+      .section {
+        margin-bottom: 18px;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+
+      .section:last-of-type {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+
+      .section h2 {
+        font-size: 13px;
+        margin-bottom: 10px;
+        color: var(--cream);
+        font-weight: 600;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .section h2::before {
+        content: "";
+        display: inline-block;
+        width: 3px;
+        height: 16px;
+        background: var(--gold);
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      /* ========== 切换开关 ========== */
+      .toggles-section {
+        background: var(--ink-850);
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 14px;
+      }
+
+      .toggle-row {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .toggle input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 40px;
+        height: 22px;
+        background: var(--ink-700);
+        border-radius: 11px;
+        position: relative;
+        cursor: pointer;
+        transition: background var(--transition);
+        flex-shrink: 0;
+      }
+
+      .toggle input[type="checkbox"]::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        background: var(--cream);
+        border-radius: 50%;
+        transition:
+          transform var(--transition),
+          background var(--transition);
+      }
+
+      .toggle input[type="checkbox"]:checked {
+        background: var(--gold);
+      }
+
+      .toggle input[type="checkbox"]:checked::after {
+        transform: translateX(18px);
+        background: var(--ink-950);
+      }
+
+      .toggle-label {
+        font-size: 13px;
+        color: var(--ink-300);
+        font-weight: 500;
+        transition: color var(--transition);
+      }
+
+      .toggle input[type="checkbox"]:checked + .toggle-label {
+        color: var(--cream);
+      }
+
+      /* ========== 响应式布局 ========== */
+      .main-layout {
+        max-width: 1600px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 32px;
+        padding: 0 24px 24px;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .main-layout .editor-wrap {
+        margin: 0;
+        overflow-y: auto;
+      }
+
+      .main-layout .preview-wrap {
+        min-width: 0;
+        max-width: none;
+        margin: 0;
+        overflow-y: auto;
+      }
+
+      .main-layout .preview-separator {
+        display: none;
+      }
+
+      @media (max-width: 1024px) {
+        body {
+          height: auto;
+          overflow: auto;
+          padding: 20px 0 40px;
+        }
+
+        .main-layout {
+          display: flex;
+          flex-direction: column;
+          max-width: 900px;
+          gap: 0;
+          flex: none;
+          min-height: auto;
+          padding-bottom: 0;
+        }
+
+        .main-layout .editor-wrap {
+          max-width: 900px;
+          overflow-y: visible;
+          margin-bottom: 18px;
+        }
+
+        .main-layout .preview-separator {
+          display: flex;
+          max-width: 900px;
+          margin: 18px auto 14px;
+        }
+
+        .main-layout .preview-wrap {
+          max-width: 800px;
+          margin: 0 auto 20px;
+          overflow-y: visible;
+        }
+      }
+
+      /* ========== 滚动条 ========== */
+      .editor-wrap::-webkit-scrollbar,
+      .preview-wrap::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .editor-wrap::-webkit-scrollbar-track,
+      .preview-wrap::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .editor-wrap::-webkit-scrollbar-thumb {
+        background: var(--ink-700);
+        border-radius: 3px;
+      }
+
+      .editor-wrap::-webkit-scrollbar-thumb:hover {
+        background: var(--gold);
+      }
+
+      .preview-wrap::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 3px;
+      }
+
+      .preview-wrap::-webkit-scrollbar-thumb:hover {
+        background: #999;
+      }
+
+      /* Firefox */
+      .editor-wrap {
+        scrollbar-width: thin;
+        scrollbar-color: var(--ink-700) transparent;
+      }
+
+      .preview-wrap {
+        scrollbar-width: thin;
+        scrollbar-color: #ccc transparent;
+      }
+
+      /* ========== 打印 ========== */
+      @media print {
+        body {
+          background: none;
+          padding: 0;
+          height: auto;
+          overflow: auto;
+          display: block;
+        }
+        .main-layout {
+          max-width: none;
+          padding: 0;
+          display: block;
+        }
+        .page-header,
+        .editor-wrap,
+        .preview-separator,
+        .no-print {
+          display: none !important;
+        }
+        .preview-wrap {
+          box-shadow: none;
+          padding: 16px;
+          max-width: 100%;
+          border-radius: 0;
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 页眉 -->
+    <div class="page-header no-print">
+      <div class="logo-mark">贝</div>
+      <div class="brand-text">
+        <span class="brand-name">快贝智单</span>
+        <span class="brand-sub">QuickBillMate</span>
+      </div>
+    </div>
+
+    <div class="main-layout">
+      <!-- 编辑区域 -->
+      <div class="editor-wrap no-print">
+        <!-- 1. 客户信息 -->
+        <div class="section">
+          <h2>客户信息</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>客户名称</label>
+              <input type="text" id="customerName" oninput="render()" />
+            </div>
+            <div class="form-group">
+              <label>客户电话</label>
+              <input type="text" id="customerPhone" oninput="render()" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 公司信息 -->
+        <div class="section">
+          <h2>公司信息</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>公司名称</label>
+              <input
+                type="text"
+                id="companyName"
+                value="示例建材公司"
+                oninput="render()"
+              />
+            </div>
+            <div class="form-group">
+              <label>联系电话</label>
+              <input
+                type="text"
+                id="contactPhone"
+                value=""
+                placeholder="显示在底部说明中"
+                oninput="render()"
+              />
+            </div>
+            <div class="form-group">
+              <label>业务经理</label>
+              <input
+                type="text"
+                id="salesManager"
+                value=""
+                oninput="render()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 客单信息 -->
+        <div class="section">
+          <h2>客单信息</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>编号代码</label>
+              <input type="text" id="docCode" value="XS" oninput="render()" />
+            </div>
+            <div class="form-group">
+              <label>流水号</label>
+              <input
+                type="text"
+                id="docSerial"
+                value="001"
+                oninput="render()"
+              />
+            </div>
+            <div class="form-group">
+              <label>单据日期</label>
+              <input type="date" id="docDate" oninput="render()" />
+            </div>
+            <div class="form-group">
+              <label>优惠金额</label>
+              <input
+                type="number"
+                id="discount"
+                value="0"
+                step="0.01"
+                oninput="render()"
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>备注</label>
+              <input type="text" id="remark" value="" oninput="render()" />
+            </div>
+            <div class="form-group">
+              <label>清单标题后缀</label>
+              <input
+                type="text"
+                id="titleSuffix"
+                value="销售清单"
+                oninput="render()"
+              />
+            </div>
+            <div class="form-group">
+              <label>底部说明文案</label>
+              <input
+                type="text"
+                id="disclaimer"
+                value="收到货物当日点清，如有问题请在2日内联系："
+                oninput="render()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 商品信息 -->
+        <div class="section">
+          <h2>商品信息</h2>
+          <div class="items-table-wrap">
+            <table class="items-table" id="itemsTable">
+              <thead>
+                <tr>
+                  <th>商品名称</th>
+                  <th>规格型号</th>
+                  <th>单位</th>
+                  <th>数量</th>
+                  <th>单价</th>
+                  <th>包装规格</th>
+                  <th>备注信息</th>
+                  <th style="width: 40px"></th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-add-row" onclick="addRow()">＋ 添加商品行</button>
+        </div>
+
+        <!-- 5. 显示选项 -->
+        <div class="section toggles-section">
+          <h2>显示选项</h2>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                id="showManager"
+                checked
+                onchange="render()"
+              />
+              <span class="toggle-label">显示业务经理</span>
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                id="showRemark"
+                checked
+                onchange="render()"
+              />
+              <span class="toggle-label">显示备注</span>
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                id="showWatermark"
+                checked
+                onchange="render()"
+              />
+              <span class="toggle-label">显示快贝智单水印</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="btn-row">
+          <button class="btn-success" onclick="window.print()">打印清单</button>
+          <button class="btn-secondary" onclick="loadSample()">
+            加载示例数据
+          </button>
+          <button class="btn-danger" onclick="clearAll()">清空</button>
+        </div>
+      </div>
+
+      <!-- 清单预览分隔 -->
+      <div class="preview-separator no-print">
+        <span class="sep-line"></span>
+        <span class="sep-label">打印预览</span>
+        <span class="sep-line"></span>
+      </div>
+
+      <!-- 清单预览 -->
+      <div class="preview-wrap" id="preview">
+        <!-- 动态渲染 -->
+      </div>
+    </div>
+    <!-- /main-layout -->
+
+    <script>
+      // ========== 数据 ==========
+      let items = [
+        {
+          name: "",
+          spec: "",
+          unit: "桶",
+          qty: 1,
+          price: 0,
+          pack: "",
+          note: "",
+        },
+      ];
+
+      function addRow(data) {
+        items.push(
+          data || {
+            name: "",
+            spec: "",
+            unit: "桶",
+            qty: 1,
+            price: 0,
+            pack: "",
+            note: "",
+          },
+        );
+        renderEditor();
+        render();
+      }
+
+      function removeRow(i) {
+        if (items.length <= 1) return;
+        items.splice(i, 1);
+        renderEditor();
+        render();
+      }
+
+      function syncItem(i, field, val) {
+        if (field === "qty") items[i].qty = parseFloat(val) || 0;
+        else if (field === "price") items[i].price = parseFloat(val) || 0;
+        else items[i][field] = val;
+        render();
+      }
+
+      function renderEditor() {
+        const tbody = document.getElementById("itemsBody");
+        tbody.innerHTML = items
+          .map(
+            (it, i) => `<tr>
+    <td><input value="${esc(it.name)}" oninput="syncItem(${i},'name',this.value)" placeholder="商品名称"></td>
+    <td><input value="${esc(it.spec)}" oninput="syncItem(${i},'spec',this.value)" placeholder="规格型号"></td>
+    <td><input value="${esc(it.unit)}" oninput="syncItem(${i},'unit',this.value)" placeholder="单位" style="width:50px"></td>
+    <td><input type="number" value="${it.qty}" oninput="syncItem(${i},'qty',this.value)" style="width:70px"></td>
+    <td><input type="number" value="${it.price}" step="0.01" oninput="syncItem(${i},'price',this.value)" style="width:90px"></td>
+    <td><input value="${esc(it.pack)}" oninput="syncItem(${i},'pack',this.value)" placeholder="包装规格"></td>
+    <td><input value="${esc(it.note)}" oninput="syncItem(${i},'note',this.value)" placeholder="备注"></td>
+    <td><button class="btn-danger" style="padding:2px 8px;font-size:12px" onclick="removeRow(${i})">×</button></td>
+  </tr>`,
+          )
+          .join("");
+      }
+
+      function esc(s) {
+        return (s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // ========== 金额大写 ==========
+      function toChineseAmount(n) {
+        const digits = [
+          "零",
+          "壹",
+          "贰",
+          "叁",
+          "肆",
+          "伍",
+          "陆",
+          "柒",
+          "捌",
+          "玖",
+        ];
+        const units = ["", "拾", "佰", "仟"];
+        const bigUnits = ["", "万", "亿"];
+        if (n === 0) return "零元整";
+
+        // 处理到分（保留2位小数用于大写）
+        let str = parseFloat(n).toFixed(2);
+        // 取2位小数做整数运算
+        let totalFen = Math.round(parseFloat(n) * 100);
+        if (totalFen === 0) return "零元整";
+
+        let yuan = Math.floor(totalFen / 100);
+        let jiao = Math.floor((totalFen % 100) / 10);
+        let fen = totalFen % 10;
+
+        let result = "";
+
+        // 元部分
+        if (yuan > 0) {
+          let yuanStr = String(yuan);
+          let len = yuanStr.length;
+          let zeroFlag = false;
+
+          for (let i = 0; i < len; i++) {
+            let d = parseInt(yuanStr[i]);
+            let pos = len - 1 - i;
+            let unitIdx = pos % 4;
+            let bigIdx = Math.floor(pos / 4);
+
+            if (d === 0) {
+              zeroFlag = true;
+              if (unitIdx === 0 && bigIdx > 0) {
+                result += bigUnits[bigIdx];
+              }
+            } else {
+              if (zeroFlag) {
+                result += "零";
+                zeroFlag = false;
+              }
+              result += digits[d] + units[unitIdx];
+              if (unitIdx === 0 && bigIdx > 0) {
+                result += bigUnits[bigIdx];
+              }
+            }
+          }
+          result += "元";
+        } else {
+          // 没有元，但有角/分
+        }
+
+        if (jiao === 0 && fen === 0) {
+          result += "整";
+        } else {
+          if (jiao > 0) result += digits[jiao] + "角";
+          else if (yuan > 0) result += "零";
+          if (fen > 0) result += digits[fen] + "分";
+        }
+
+        return result;
+      }
+
+      // ========== 渲染清单 ==========
+      function render() {
+        const company =
+          document.getElementById("companyName").value || "公司名称";
+        const docCode = document.getElementById("docCode").value || "XS";
+        const docSerial = document.getElementById("docSerial").value || "001";
+        const docDate = document.getElementById("docDate").value || "—";
+        const dateStr = docDate !== "—" ? docDate.replace(/-/g, "") : "";
+        const docNo = docCode + dateStr + docSerial;
+        const custName = document.getElementById("customerName").value || "—";
+        const custPhone = document.getElementById("customerPhone").value || "—";
+        const manager = document.getElementById("salesManager").value || "";
+        const discount =
+          parseFloat(document.getElementById("discount").value) || 0;
+        const remark = document.getElementById("remark").value || "";
+        const contactPhone =
+          document.getElementById("contactPhone").value || "";
+        const titleSuffix =
+          document.getElementById("titleSuffix").value || "销售清单";
+        const disclaimer = document.getElementById("disclaimer").value || "";
+
+        const showManager = document.getElementById("showManager").checked;
+        const showRemark = document.getElementById("showRemark").checked;
+        const showWatermark = document.getElementById("showWatermark").checked;
+
+        let totalQty = 0,
+          totalAmount = 0;
+        const rows = items
+          .map((it, i) => {
+            const amount = (it.qty || 0) * (it.price || 0);
+            totalQty += it.qty || 0;
+            totalAmount += amount;
+            return `<tr>
+      <td class="col-num">${i + 1}</td>
+      <td>${esc(it.name)}</td>
+      <td>${esc(it.spec)}</td>
+      <td class="col-center">${esc(it.unit)}</td>
+      <td class="col-center">${it.qty || 0}</td>
+      <td class="col-right">${(it.price || 0).toFixed(2)}</td>
+      <td class="col-right">${amount.toFixed(2)}</td>
+      <td>${esc(it.pack)}</td>
+      <td>${esc(it.note)}</td>
+    </tr>`;
+          })
+          .join("");
+
+        const receivable = totalAmount - discount;
+        const chineseAmount = toChineseAmount(totalAmount);
+
+        const managerLine = showManager
+          ? `<div class="footer-row"><span></span><span>业务经理：${esc(manager)}</span></div>`
+          : "";
+
+        const remarkLine = showRemark
+          ? `<div>备&nbsp;&nbsp;&nbsp;&nbsp;注：${esc(remark)}</div>`
+          : "";
+
+        const watermarkLine = showWatermark
+          ? `<div class="project-footer">— 快贝智单 QuickBillMate —</div>`
+          : "";
+
+        const disclaimerLine = disclaimer
+          ? `${esc(disclaimer)}${contactPhone ? esc(contactPhone) : ""}${contactPhone ? "（微信同号）" : ""}`
+          : "";
+
+        const preview = document.getElementById("preview");
+
+        preview.innerHTML = `
+    <div class="invoice-header">
+      <h1>${esc(company)}${esc(titleSuffix)}</h1>
+    </div>
+
+    <div class="invoice-info">
+      <div class="info-fields">
+        <div class="field-line">
+          <span class="field-label">客&nbsp;&nbsp;&nbsp;&nbsp;户：</span>
+          <span class="field-value">${esc(custName)}</span>
+        </div>
+        <div class="field-line">
+          <span class="field-label">客户电话：</span>
+          <span class="field-value">${esc(custPhone)}</span>
+        </div>
+        <div class="field-line">
+          <span class="field-label">单据编号：</span>
+          <span class="field-value">${esc(docNo)}</span>
+        </div>
+        <div class="field-line">
+          <span class="field-label">单据日期：</span>
+          <span class="field-value">${esc(docDate)}</span>
+        </div>
+      </div>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th class="col-num">序号</th>
+          <th>商品名称</th>
+          <th>规格型号</th>
+          <th>单位</th>
+          <th>数量</th>
+          <th>单价</th>
+          <th>金额</th>
+          <th>包装规格</th>
+          <th>备注信息</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row">
+          <td class="col-num">合计</td>
+          <td class="merged-cell" colspan="4">大写金额：${chineseAmount}</td>
+          <td class="col-center"></td>
+          <td class="col-right">¥${totalAmount.toFixed(2)}</td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="invoice-footer">
+      <div class="footer-row">
+        <span>优惠金额：${discount.toFixed(2)}</span>
+        <span>应收金额：${receivable.toFixed(2)}</span>
+        <span>合计实收：0.00</span>
+      </div>
+      ${remarkLine}
+      <div class="contact-note">${disclaimerLine}</div>
+      ${managerLine}
+      ${watermarkLine}
+    </div>
+  `;
+      }
+      function loadSample() {
+        document.getElementById("companyName").value = "示例建材公司";
+        document.getElementById("docCode").value = "XS";
+        document.getElementById("docSerial").value = "001";
+        document.getElementById("docDate").value = "2025-11-21";
+        document.getElementById("customerName").value = "示例客户";
+        document.getElementById("customerPhone").value = "";
+        document.getElementById("salesManager").value = "张三";
+        document.getElementById("discount").value = "0";
+        document.getElementById("remark").value = "含运费代收";
+        document.getElementById("contactPhone").value = "";
+        document.getElementById("titleSuffix").value = "销售清单";
+        document.getElementById("disclaimer").value =
+          "收到货物当日点清，如有问题请在2日内联系：";
+        document.getElementById("showManager").checked = true;
+        document.getElementById("showRemark").checked = true;
+        document.getElementById("showWatermark").checked = true;
+
+        items = [
+          {
+            name: "腻子粉",
+            spec: "YGP800 20kg",
+            unit: "袋",
+            qty: 20,
+            price: 35.0,
+            pack: "20袋/托",
+            note: "",
+          },
+          {
+            name: "墙衬",
+            spec: "YGP400 20kg",
+            unit: "袋",
+            qty: 15,
+            price: 28.0,
+            pack: "20袋/托",
+            note: "",
+          },
+          {
+            name: "底层腻子",
+            spec: "YN600 20kg",
+            unit: "袋",
+            qty: 10,
+            price: 25.0,
+            pack: "20袋/托",
+            note: "",
+          },
+          {
+            name: "嵌缝石膏",
+            spec: "QN600 2.5kg",
+            unit: "袋",
+            qty: 30,
+            price: 18.0,
+            pack: "24袋/箱",
+            note: "",
+          },
+          {
+            name: "墙锢",
+            spec: "QG500 18kg",
+            unit: "桶",
+            qty: 8,
+            price: 65.0,
+            pack: "4桶/箱",
+            note: "",
+          },
+          {
+            name: "墙尼",
+            spec: "QN500 20kg",
+            unit: "袋",
+            qty: 12,
+            price: 22.0,
+            pack: "20袋/托",
+            note: "",
+          },
+          {
+            name: "界面剂",
+            spec: "通用型 18kg",
+            unit: "桶",
+            qty: 5,
+            price: 78.0,
+            pack: "4桶/箱",
+            note: "",
+          },
+          {
+            name: "网格布",
+            spec: "80g 1m×50m",
+            unit: "卷",
+            qty: 10,
+            price: 42.0,
+            pack: "10卷/包",
+            note: "",
+          },
+          {
+            name: "阴阳角条",
+            spec: "PVC 2.5m",
+            unit: "根",
+            qty: 48,
+            price: 1.5,
+            pack: "100根/包",
+            note: "",
+          },
+        ];
+
+        renderEditor();
+        render();
+      }
+
+      function clearAll() {
+        document
+          .querySelectorAll(
+            ".editor-wrap input[type=text], .editor-wrap input[type=date]",
+          )
+          .forEach((el) => {
+            el.value = "";
+          });
+        document
+          .querySelectorAll(".editor-wrap input[type=number]")
+          .forEach((el) => {
+            el.value = "0";
+          });
+        document.getElementById("companyName").value = "示例建材公司";
+        document.getElementById("docCode").value = "XS";
+        document.getElementById("docSerial").value = "001";
+        document.getElementById("docDate").value = new Date()
+          .toISOString()
+          .split("T")[0];
+        document.getElementById("titleSuffix").value = "销售清单";
+        document.getElementById("disclaimer").value =
+          "收到货物当日点清，如有问题请在2日内联系：";
+        document.getElementById("showManager").checked = true;
+        document.getElementById("showRemark").checked = true;
+        document.getElementById("showWatermark").checked = true;
+        items = [
+          {
+            name: "",
+            spec: "",
+            unit: "桶",
+            qty: 1,
+            price: 0,
+            pack: "",
+            note: "",
+          },
+        ];
+        renderEditor();
+        render();
+      }
+
+      // ========== 初始化 ==========
+      // 设置今天日期
+      document.getElementById("docDate").value = new Date()
+        .toISOString()
+        .split("T")[0];
+
+      renderEditor();
+      render();
+    </script>
+  </body>
+</html>
