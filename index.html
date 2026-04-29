@@ -790,7 +790,9 @@
         min-width: 0;
         max-width: none;
         margin: 0;
+        align-self: start;
         overflow-y: auto;
+        max-height: 100%;
       }
 
       .main-layout .preview-separator {
@@ -1112,6 +1114,12 @@
 
         <!-- 操作按钮 -->
         <div class="editor-actions no-print">
+          <button class="btn-primary" id="exportBtn" onclick="exportImage()">
+            导出图片
+          </button>
+          <button class="btn-primary" id="copyBtn" onclick="copyImage()">
+            复制图片
+          </button>
           <button class="btn-success" onclick="window.print()">打印清单</button>
           <button class="btn-secondary" onclick="loadSample()">
             加载示例数据
@@ -1591,6 +1599,137 @@
         if (saved) document.documentElement.setAttribute("data-theme", saved);
         updateThemeIcon();
       })();
+
+      // ========== 导出/复制图片 ==========
+      let html2canvasLoaded = false;
+
+      function loadHtml2canvas() {
+        return new Promise((resolve, reject) => {
+          if (html2canvasLoaded && typeof html2canvas !== "undefined") {
+            resolve();
+            return;
+          }
+          const script = document.createElement("script");
+          script.src =
+            "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js";
+          script.onload = () => {
+            html2canvasLoaded = true;
+            resolve();
+          };
+          script.onerror = () =>
+            reject(new Error("加载 html2canvas 失败，请检查网络连接"));
+          document.head.appendChild(script);
+        });
+      }
+
+      async function captureInvoice() {
+        const preview = document.getElementById("preview");
+
+        // 克隆到离屏容器，脱离 Grid 拉伸约束，获得自然内容高度
+        const clone = preview.cloneNode(true);
+        clone.style.position = "fixed";
+        clone.style.left = "-9999px";
+        clone.style.top = "0";
+        clone.style.width = preview.offsetWidth + "px";
+        clone.style.height = "auto";
+        clone.style.maxHeight = "none";
+        clone.style.overflow = "visible";
+        clone.style.margin = "0";
+        clone.style.flex = "none";
+        clone.style.alignSelf = "start";
+        document.body.appendChild(clone);
+
+        const canvas = await html2canvas(clone, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        document.body.removeChild(clone);
+        return canvas;
+      }
+
+      function getInvoiceFilename() {
+        const docCode = document.getElementById("docCode").value || "XS";
+        const docDate =
+          document.getElementById("docDate").value.replace(/-/g, "") || "";
+        const docSerial = document.getElementById("docSerial").value || "001";
+        return `销售清单_${docCode}${docDate}${docSerial}.png`;
+      }
+
+      async function exportImage() {
+        const btn = document.getElementById("exportBtn");
+        const origText = btn.textContent;
+
+        try {
+          btn.textContent = "导出中...";
+          btn.disabled = true;
+          await loadHtml2canvas();
+
+          const canvas = await captureInvoice();
+          const filename = getInvoiceFilename();
+
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          });
+        } catch (err) {
+          alert("导出失败：" + err.message);
+        } finally {
+          btn.textContent = origText;
+          btn.disabled = false;
+        }
+      }
+
+      async function copyImage() {
+        const btn = document.getElementById("copyBtn");
+        const origText = btn.textContent;
+
+        try {
+          btn.textContent = "生成中...";
+          btn.disabled = true;
+          await loadHtml2canvas();
+
+          const canvas = await captureInvoice();
+
+          btn.textContent = "复制中...";
+
+          canvas.toBlob(async (blob) => {
+            try {
+              await navigator.clipboard.write([
+                new ClipboardItem({ "image/png": blob }),
+              ]);
+              btn.textContent = "已复制";
+            } catch (clipErr) {
+              // 降级：下载文件
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = getInvoiceFilename();
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              btn.textContent = "已下载";
+            }
+            setTimeout(() => {
+              btn.textContent = origText;
+              btn.disabled = false;
+            }, 1500);
+          });
+        } catch (err) {
+          alert("操作失败：" + err.message);
+          btn.textContent = origText;
+          btn.disabled = false;
+        }
+      }
     </script>
   </body>
 </html>
