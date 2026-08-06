@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "products": [
+    {
+      "name": "腻子粉",
+      "spec": "YGP800 20kg",
+      "unit": "袋",
+      "price": 35,
+      "pack": "20袋/托",
+      "note": ""
+    },
+    {
+      "name": "墙衬",
+      "spec": "YGP400 20kg",
+      "unit": "袋",
+      "price": 28,
+      "pack": "20袋/托",
+      "note": ""
+    },
+    {
+      "name": "底层腻子",
+      "spec": "YN600 20kg",
+      "unit": "袋",
+      "price": 25,
+      "pack": "20袋/托",
+      "note": ""
+    },
+    {
+      "name": "嵌缝石膏",
+      "spec": "QN600 2.5kg",
+      "unit": "袋",
+      "price": 18,
+      "pack": "24袋/箱",
+      "note": ""
+    },
+    {
+      "name": "墙锢",
+      "spec": "QG500 18kg",
+      "unit": "桶",
+      "price": 65,
+      "pack": "4桶/箱",
+      "note": ""
+    },
+    {
+      "name": "墙尼",
+      "spec": "QN500 20kg",
+      "unit": "袋",
+      "price": 22,
+      "pack": "20袋/托",
+      "note": ""
+    },
+    {
+      "name": "界面剂",
+      "spec": "通用型 18kg",
+      "unit": "桶",
+      "price": 78,
+      "pack": "4桶/箱",
+      "note": ""
+    },
+    {
+      "name": "网格布",
+      "spec": "80g 1m×50m",
+      "unit": "卷",
+      "price": 42,
+      "pack": "10卷/包",
+      "note": ""
+    },
+    {
+      "name": "阴阳角条",
+      "spec": "PVC 2.5m",
+      "unit": "根",
+      "price": 1.5,
+      "pack": "100根/包",
+      "note": ""
+    }
+  ]
+}
