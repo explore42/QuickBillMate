@@ -1,10 +1,9 @@
 package com.example.quickbillmate.navigation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.RowScope
@@ -46,6 +45,11 @@ import com.example.quickbillmate.ui.settings.SettingsScreen
 import com.example.quickbillmate.ui.view.BillViewScreen
 
 private const val SLIDE_DURATION_MS = 320
+private const val TAB_SLIDE_DURATION_MS = 240
+private const val TAB_FADE_DURATION_MS = 150
+
+/** 底部导航标签页之间切换时使用轻量动画，二级页面保持全屏滑动。 */
+private fun isTabRoute(route: String?): Boolean = route in Routes.tabRoutes
 
 @Composable
 fun QuickBillMateAppNavHost(
@@ -99,16 +103,27 @@ fun QuickBillMateAppNavHost(
             startDestination = Routes.HOME,
             modifier = Modifier.padding(padding),
             enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
+                if (isTabRoute(initialState.destination.route) && isTabRoute(targetState.destination.route)) {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 3 },
+                        animationSpec = tween(TAB_SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                } else {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                }
             },
             exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
+                if (isTabRoute(initialState.destination.route) && isTabRoute(targetState.destination.route)) {
+                    fadeOut(animationSpec = tween(TAB_FADE_DURATION_MS))
+                } else {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                }
             },
             popEnterTransition = {
                 slideInHorizontally(
@@ -224,10 +239,7 @@ private fun RowScope.TabItem(
     // 选中项图标轻微放大
     val iconScale by animateFloatAsState(
         targetValue = if (selected) 1.18f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
         label = "navIconScale",
     )
     NavigationBarItem(

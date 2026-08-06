@@ -7,13 +7,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.data.repository.AppRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class CustomersViewModel(private val repo: AppRepository) : ViewModel() {
     private val query = MutableStateFlow("")
 
@@ -21,6 +26,8 @@ class CustomersViewModel(private val repo: AppRepository) : ViewModel() {
         private set
 
     val customers: StateFlow<List<Customer>> = query
+        .debounce(300)
+        .distinctUntilChanged()
         .flatMapLatest { repo.observeCustomers(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

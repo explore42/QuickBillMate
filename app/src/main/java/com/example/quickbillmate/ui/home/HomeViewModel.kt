@@ -7,12 +7,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Bill
+import com.example.quickbillmate.data.db.BillItem
 import com.example.quickbillmate.data.repository.AppRepository
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -27,6 +31,23 @@ data class HomeBill(
 
     val receivableText: String
         get() = Money.format(receivable)
+}
+
+/** 把单据与全部商品行映射为首页展示数据（纯函数，便于单元测试）。 */
+fun buildHomeBills(bills: List<Bill>, items: List<BillItem>): List<HomeBill> {
+    val itemsByBill = items.groupBy { it.billId }
+    return bills.map { bill ->
+        val billItems = itemsByBill[bill.id].orEmpty()
+        val total = billItems.sumOf {
+            if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
+        }
+        HomeBill(
+            bill = bill,
+            itemCount = billItems.size,
+            receivable = Math.max(0.0, Money.round2(total - bill.discount)),
+            itemNames = billItems.map { it.name },
+        )
+    }
 }
 
 class HomeViewModel(
@@ -54,21 +75,15 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            repo.observeRecentBills().collect { list ->
-                allBills = list.map { bill ->
-                    val items = repo.getItems(bill.id)
-                    val total = items.sumOf {
-                        if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
-                    }
-                    HomeBill(
-                        bill = bill,
-                        itemCount = items.size,
-                        receivable = Math.max(0.0, Money.round2(total - bill.discount)),
-                        itemNames = items.map { it.name },
-                    )
-                }
-                applyFilter()
+            combine(repo.observeRecentBills(), repo.observeAllBillItems()) { bills, items ->
+                buildHomeBills(bills, items)
             }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+                .collect { list ->
+                    allBills = list
+                    applyFilter()
+                }
         }
     }
 

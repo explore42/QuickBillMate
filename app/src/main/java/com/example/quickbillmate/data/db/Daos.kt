@@ -39,6 +39,9 @@ interface BillItemDao {
     @Query("SELECT * FROM bill_items WHERE billId = :billId ORDER BY sortOrder ASC")
     fun observeItems(billId: Long): Flow<List<BillItem>>
 
+    @Query("SELECT * FROM bill_items")
+    fun observeAll(): Flow<List<BillItem>>
+
     @Query("SELECT * FROM bill_items WHERE billId = :billId ORDER BY sortOrder ASC")
     suspend fun getItems(billId: Long): List<BillItem>
 

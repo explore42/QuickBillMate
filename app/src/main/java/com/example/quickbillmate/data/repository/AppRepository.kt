@@ -58,6 +58,8 @@ class AppRepository(
 
     fun observeItems(billId: Long): Flow<List<BillItem>> = itemDao.observeItems(billId)
 
+    fun observeAllBillItems(): Flow<List<BillItem>> = itemDao.observeAll()
+
     suspend fun getBill(id: Long): Bill? = billDao.getBill(id)
 
     suspend fun getItems(billId: Long): List<BillItem> = itemDao.getItems(billId)

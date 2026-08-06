@@ -202,7 +202,7 @@ fun HomeContent(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(bills, key = { it.bill.id }) { homeBill ->
+                items(bills, key = { it.bill.id }, contentType = { "billCard" }) { homeBill ->
                     val bill = homeBill.bill
                     val selected = bill.id in selectedIds
                     Card(modifier = Modifier.fillMaxWidth()) {
