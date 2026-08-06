@@ -27,6 +27,18 @@ class SettingsViewModel(
         private set
     var defaultPresetKey by mutableStateOf(repo.settings.defaultPresetKey)
         private set
+    var defaultShowManager by mutableStateOf(repo.settings.defaultShowManager)
+        private set
+    var defaultShowRemark by mutableStateOf(repo.settings.defaultShowRemark)
+        private set
+    var defaultShowWatermark by mutableStateOf(repo.settings.defaultShowWatermark)
+        private set
+    var defaultDocCode by mutableStateOf(repo.settings.defaultDocCode)
+        private set
+    var defaultTitleSuffix by mutableStateOf(repo.settings.defaultTitleSuffix)
+        private set
+    var defaultDisclaimer by mutableStateOf(repo.settings.defaultDisclaimer)
+        private set
     var versionName by mutableStateOf("")
 
     val presets: StateFlow<List<StylePreset>> = repo.observePresets()
@@ -61,5 +73,23 @@ class SettingsViewModel(
     fun updateDefaultPreset(key: String) {
         defaultPresetKey = key
         repo.settings.defaultPresetKey = key
+    }
+
+    fun updateShowOptions(showManager: Boolean, showRemark: Boolean, showWatermark: Boolean) {
+        defaultShowManager = showManager
+        defaultShowRemark = showRemark
+        defaultShowWatermark = showWatermark
+        repo.settings.defaultShowManager = showManager
+        repo.settings.defaultShowRemark = showRemark
+        repo.settings.defaultShowWatermark = showWatermark
+    }
+
+    fun updateBillDefaults(docCode: String, titleSuffix: String, disclaimer: String) {
+        defaultDocCode = docCode
+        defaultTitleSuffix = titleSuffix
+        defaultDisclaimer = disclaimer
+        repo.settings.defaultDocCode = docCode
+        repo.settings.defaultTitleSuffix = titleSuffix
+        repo.settings.defaultDisclaimer = disclaimer
     }
 }

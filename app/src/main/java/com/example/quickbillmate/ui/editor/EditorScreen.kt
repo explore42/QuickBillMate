@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,9 +38,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,11 +62,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
@@ -106,17 +113,12 @@ fun EditorScreen(
         viewModel.onContactsPermission(granted)
     }
 
-    val savedTick = s.savedTick
-    LaunchedEffect(savedTick) {
-        if (savedTick > 0) {
-            android.widget.Toast.makeText(context, "已保存", android.widget.Toast.LENGTH_SHORT).show()
-        }
-    }
+
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = if (billId == 0L) "新建销售清单" else "编辑销售清单",
+                title = if (billId == 0L) "新建单据" else "编辑单据",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
@@ -143,7 +145,7 @@ fun EditorScreen(
                     Text("不保存")
                 }
                 Button(
-                    onClick = { viewModel.saveNow() },
+                    onClick = { viewModel.saveNow(onBack) },
                     modifier = Modifier.weight(1.4f),
                 ) {
                     Text("保存")
@@ -189,45 +191,19 @@ fun EditorScreen(
                     )
                 }
 
-                // 公司信息
-                SectionCard("公司信息") {
-                    LabeledField(
-                        label = "公司名称",
-                        value = s.companyName,
-                        onChange = viewModel::onCompanyNameChange,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "联系电话",
-                        value = s.contactPhone,
-                        onChange = viewModel::onContactPhoneChange,
-                        keyboardType = KeyboardType.Phone,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "业务经理",
-                        value = s.salesManager,
-                        onChange = viewModel::onManagerChange,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
                 // 客单信息
                 SectionCard("客单信息") {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LabeledField(
-                            label = "编号代码",
-                            value = s.docCode,
-                            onChange = viewModel::onDocCodeChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        LabeledField(
                             label = "流水号",
                             value = s.docSerial,
                             onChange = viewModel::onSerialChange,
-                            modifier = Modifier.weight(1f),
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { if (!it.isFocused) viewModel.validateSerial() },
+                            isError = s.serialError != null,
+                            supportingText = s.serialError,
                         )
                         IconButton(onClick = { viewModel.regenerateSerial() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "重新生成流水号")
@@ -259,20 +235,6 @@ fun EditorScreen(
                         label = "备注",
                         value = s.remark,
                         onChange = viewModel::onRemarkChange,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "清单标题后缀",
-                        value = s.titleSuffix,
-                        onChange = viewModel::onTitleSuffixChange,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "底部说明文案",
-                        value = s.disclaimer,
-                        onChange = viewModel::onDisclaimerChange,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))
@@ -316,7 +278,7 @@ fun EditorScreen(
                     }
                 }
 
-                // 清单预览
+                // 单据预览
                 PreviewCard(bitmap = s.preview)
                 Spacer(Modifier.height(8.dp))
             }
@@ -362,6 +324,9 @@ fun EditorScreen(
             company = s.companyName,
             phone = s.contactPhone,
             manager = s.salesManager,
+            docCode = s.docCode,
+            titleSuffix = s.titleSuffix,
+            disclaimer = s.disclaimer,
             presetKey = s.presetKey,
             presets = s.presets,
             onSample = { viewModel.loadSample() },
@@ -370,11 +335,12 @@ fun EditorScreen(
                 viewModel.onContactPhoneChange(phone)
                 viewModel.onManagerChange(manager)
             },
-            onSelectPreset = viewModel::selectPreset,
-            onManagePresets = {
-                showActionsDialog = false
-                onManagePresets()
+            onBillDefaultsSave = { docCode, titleSuffix, disclaimer ->
+                viewModel.onDocCodeChange(docCode)
+                viewModel.onTitleSuffixChange(titleSuffix)
+                viewModel.onDisclaimerChange(disclaimer)
             },
+            onSelectPreset = viewModel::selectPreset,
             onShowManagerChange = viewModel::onShowManagerChange,
             onShowRemarkChange = viewModel::onShowRemarkChange,
             onShowWatermarkChange = viewModel::onShowWatermarkChange,
@@ -419,13 +385,11 @@ private fun CustomerField(
     onSelect: (CustomerSuggestion) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var fieldWidth by remember { mutableStateOf(0) }
     val menuOpen = expanded && suggestions.isNotEmpty()
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        ExposedDropdownMenuBox(
-            expanded = menuOpen,
-            onExpandedChange = { expanded = it },
-        ) {
+        Box {
             OutlinedTextField(
                 value = value,
                 onValueChange = {
@@ -435,50 +399,66 @@ private fun CustomerField(
                 label = { Text("客户名称") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(
-                        type = ExposedDropdownMenuAnchorType.PrimaryEditable,
-                        enabled = true,
-                    ),
+                    .onSizeChanged { fieldWidth = it.width }
+                    .onFocusChanged { focused -> expanded = focused.isFocused },
                 singleLine = true,
                 trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuOpen)
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = if (menuOpen) "收起" else "展开",
+                        )
+                    }
                 },
             )
-            ExposedDropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { expanded = false },
-            ) {
-                suggestions.forEach { suggestion ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        suggestion.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (suggestion.fromDb) {
-                                        SuggestionTag(text = "客户库")
-                                    }
-                                }
-                                val subtitle = listOf(suggestion.type, suggestion.phone)
-                                    .filter { it.isNotBlank() }
-                                    .joinToString(" · ")
-                                if (subtitle.isNotBlank()) {
-                                    Text(
-                                        subtitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+            if (menuOpen) {
+                val popupWidth = with(LocalDensity.current) { fieldWidth.toDp() }
+                Popup(
+                    alignment = Alignment.TopStart,
+                    offset = IntOffset(0, with(LocalDensity.current) { 64.dp.roundToPx() }),
+                    onDismissRequest = { expanded = false },
+                ) {
+                    Surface(
+                        modifier = Modifier.width(popupWidth),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 8.dp,
+                    ) {
+                        LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                            items(suggestions) { suggestion ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    suggestion.name,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    modifier = Modifier.weight(1f),
+                                                )
+                                                if (suggestion.fromDb) {
+                                                    SuggestionTag(text = "客户库")
+                                                }
+                                            }
+                                            val subtitle = listOf(suggestion.type, suggestion.phone)
+                                                .filter { it.isNotBlank() }
+                                                .joinToString(" · ")
+                                            if (subtitle.isNotBlank()) {
+                                                Text(
+                                                    subtitle,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelect(suggestion)
+                                        expanded = false
+                                    },
+                                )
                             }
-                        },
-                        onClick = {
-                            onSelect(suggestion)
-                            expanded = false
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -517,18 +497,22 @@ private fun EditorActionsDialog(
     company: String,
     phone: String,
     manager: String,
+    docCode: String,
+    titleSuffix: String,
+    disclaimer: String,
     presetKey: String,
     presets: List<StylePreset>,
     onSample: () -> Unit,
     onCompanySave: (String, String, String) -> Unit,
+    onBillDefaultsSave: (String, String, String) -> Unit,
     onSelectPreset: (String) -> Unit,
-    onManagePresets: () -> Unit,
     onShowManagerChange: (Boolean) -> Unit,
     onShowRemarkChange: (Boolean) -> Unit,
     onShowWatermarkChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var companyExpanded by remember { mutableStateOf(false) }
+    var billDefaultsExpanded by remember { mutableStateOf(false) }
     var presetExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -563,9 +547,28 @@ private fun EditorActionsDialog(
                     )
                 }
 
-                ExpandableHeader("选择样式预设", presetExpanded) {
+                ExpandableHeader("客单信息", billDefaultsExpanded) {
+                    billDefaultsExpanded = !billDefaultsExpanded
+                    companyExpanded = false
+                    presetExpanded = false
+                }
+                if (billDefaultsExpanded) {
+                    BillDefaultsInlineEditor(
+                        docCode = docCode,
+                        titleSuffix = titleSuffix,
+                        disclaimer = disclaimer,
+                        onSave = { code, suffix, bottom ->
+                            onBillDefaultsSave(code, suffix, bottom)
+                            billDefaultsExpanded = false
+                        },
+                        onCancel = { billDefaultsExpanded = false },
+                    )
+                }
+
+                ExpandableHeader("选择图片样式", presetExpanded) {
                     presetExpanded = !presetExpanded
                     companyExpanded = false
+                    billDefaultsExpanded = false
                 }
                 if (presetExpanded) {
                     PresetInlineList(
@@ -575,7 +578,6 @@ private fun EditorActionsDialog(
                             onSelectPreset(key)
                             presetExpanded = false
                         },
-                        onManage = onManagePresets,
                     )
                 }
 
@@ -651,7 +653,6 @@ private fun PresetInlineList(
     currentKey: String,
     presets: List<StylePreset>,
     onSelect: (String) -> Unit,
-    onManage: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(start = 4.dp)) {
         Text("内置预设", style = MaterialTheme.typography.labelMedium)
@@ -675,7 +676,34 @@ private fun PresetInlineList(
                 )
             }
         }
-        TextButton(onClick = onManage) { Text("管理预设") }
+    }
+}
+
+@Composable
+private fun BillDefaultsInlineEditor(
+    docCode: String,
+    titleSuffix: String,
+    disclaimer: String,
+    onSave: (String, String, String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var docCodeText by remember(docCode) { mutableStateOf(docCode) }
+    var titleSuffixText by remember(titleSuffix) { mutableStateOf(titleSuffix) }
+    var disclaimerText by remember(disclaimer) { mutableStateOf(disclaimer) }
+
+    Column(modifier = Modifier.padding(start = 4.dp)) {
+        LabeledField("编号代码", docCodeText, { docCodeText = it })
+        Spacer(Modifier.height(6.dp))
+        LabeledField("标题后缀", titleSuffixText, { titleSuffixText = it })
+        Spacer(Modifier.height(6.dp))
+        LabeledField("底部说明文案", disclaimerText, { disclaimerText = it })
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onCancel) { Text("取消") }
+            TextButton(onClick = {
+                onSave(docCodeText.trim(), titleSuffixText.trim(), disclaimerText.trim())
+            }) { Text("保存") }
+        }
     }
 }
 
@@ -793,7 +821,7 @@ private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = if (expanded) "清单预览（点击折叠）" else "清单预览（点击展开）",
+                    text = if (expanded) "单据预览（点击折叠）" else "单据预览（点击展开）",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
@@ -808,7 +836,7 @@ private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
                 bitmap?.let {
                     Image(
                         bitmap = it.asImageBitmap(),
-                        contentDescription = "清单预览",
+                        contentDescription = "单据预览",
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("editor_preview"),

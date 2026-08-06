@@ -60,7 +60,7 @@ fun PresetEditorScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = if (presetId == 0L) "新建预设" else "编辑预设",
+                title = if (presetId == 0L) "新建图片样式" else "编辑图片样式",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")

@@ -13,12 +13,12 @@ data class Bill(
     val companyName: String = "",
     val contactPhone: String = "",
     val salesManager: String = "",
-    val docCode: String = "XS",
+    val docCode: String = "PH",
     val docSerial: String = "000",
     val docDate: String = "",
     val discount: Double = 0.0,
     val remark: String = "",
-    val titleSuffix: String = "销售清单",
+    val titleSuffix: String = "单据",
     val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
@@ -65,6 +65,8 @@ data class Product(
     val pack: String = "",
     val note: String = "",
     val favorite: Boolean = false,
+    val pinyinInitial: String = "#",
+    val pinyin: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 )
 
@@ -76,6 +78,8 @@ data class Customer(
     val type: String = "",
     val remark: String = "",
     val favorite: Boolean = false,
+    val pinyinInitial: String = "#",
+    val pinyin: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 )
 

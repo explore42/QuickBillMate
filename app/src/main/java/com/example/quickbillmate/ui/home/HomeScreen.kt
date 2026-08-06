@@ -138,7 +138,7 @@ fun HomeScreen(
     )
 }
 
-/** 首页纯界面层：数据与回调全部由参数传入，可在 Android Studio 中直接预览调试。 */
+/** 单据页纯界面层：数据与回调全部由参数传入，可在 Android Studio 中直接预览调试。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeContent(
@@ -227,7 +227,7 @@ fun HomeContent(
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "新建销售清单",
+                        contentDescription = "新建单据",
                     )
                 }
             }

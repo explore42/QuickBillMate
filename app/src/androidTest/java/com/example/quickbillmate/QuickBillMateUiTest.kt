@@ -33,7 +33,7 @@ class QuickBillMateUiTest {
 
     private fun waitHomeReady() {
         waitFor {
-            composeRule.onAllNodesWithContentDescription("新建销售清单").fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithContentDescription("新建单据").fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -43,7 +43,6 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
         composeRule.onNodeWithText("保存").performClick()
-        composeRule.onNodeWithContentDescription("返回").performClick()
         waitHomeReady()
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -51,11 +50,11 @@ class QuickBillMateUiTest {
     @Test
     fun homeShowsTitleNewButtonAndTabs() {
         composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("新建销售清单").assertIsDisplayed()
-        composeRule.onNodeWithText("首页").assertIsDisplayed()
-        composeRule.onNodeWithText("商品").assertIsDisplayed()
-        composeRule.onNodeWithText("客户").assertIsDisplayed()
-        composeRule.onNodeWithText("设置").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("新建单据").assertIsDisplayed()
+        composeRule.onNodeWithText("单据").assertIsDisplayed()
+        composeRule.onAllNodesWithContentDescription("商品").fetchSemanticsNodes().isNotEmpty()
+        composeRule.onAllNodesWithContentDescription("客户").fetchSemanticsNodes().isNotEmpty()
+        composeRule.onAllNodesWithContentDescription("设置").fetchSemanticsNodes().isNotEmpty()
     }
 
     @Test
@@ -76,7 +75,7 @@ class QuickBillMateUiTest {
         val productName = "测试腻子${System.currentTimeMillis() % 100000}"
 
         // 商品页：新增商品
-        composeRule.onNodeWithText("商品").performClick()
+        composeRule.onNodeWithContentDescription("商品").performClick()
         waitFor { composeRule.onAllNodesWithContentDescription("新增商品").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithContentDescription("新增商品").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
@@ -88,8 +87,8 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("保存").performClick()
         waitFor { composeRule.onAllNodesWithText(productName).fetchSemanticsNodes().isNotEmpty() }
 
-        // 首页 → 新建 → 从商品库添加
-        composeRule.onNodeWithText("首页").performClick()
+        // 单据页 → 新建 → 从商品库添加
+        composeRule.onNodeWithContentDescription("单据").performClick()
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithTag("editor_add_from_library").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("editor_add_from_library").performScrollTo().performClick()
@@ -106,8 +105,8 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
         composeRule.onNodeWithContentDescription("设置").performClick()
-        waitFor { composeRule.onAllNodesWithText("选择样式预设").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("选择样式预设").performClick()
+        waitFor { composeRule.onAllNodesWithText("选择图片样式").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("选择图片样式").performClick()
         waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("商务蓝").performClick()
         // 选中后预设列表收起
@@ -129,7 +128,7 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("放弃").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("放弃").performClick()
 
-        // 回到首页，且该草稿已删除
+        // 回到单据页，且该草稿已删除
         waitHomeReady()
         waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty() }
     }
@@ -149,7 +148,7 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("删除").fetchSemanticsNodes().size == 2 }
         composeRule.onAllNodesWithText("删除")[1].performClick()
 
-        // 单据消失，回到普通首页
+        // 单据消失，回到普通单据页
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isEmpty() }
         waitHomeReady()
     }
@@ -191,7 +190,7 @@ class QuickBillMateUiTest {
         // 退出多选而不是退出应用
         waitFor { composeRule.onAllNodesWithText("已选中").fetchSemanticsNodes().isEmpty() }
         composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("新建销售清单").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("新建单据").assertIsDisplayed()
     }
 
     @Test
@@ -203,9 +202,8 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("应用示例").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("应用示例").performClick()
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
-        // 保存后返回
+        // 保存后自动返回单据列表
         composeRule.onNodeWithText("保存").performClick()
-        composeRule.onNodeWithContentDescription("返回").performClick()
         waitHomeReady()
 
         // 点击第一条单据（最新）→ 查看页
@@ -214,17 +212,17 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("单据详情").assertIsDisplayed()
 
-        // 编辑 → 编辑页
-        composeRule.onNodeWithContentDescription("编辑").performClick()
+        // 修改 → 编辑页
+        composeRule.onNodeWithText("修改").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test
     fun settingsShowsRowsAndAboutLink() {
-        composeRule.onNodeWithText("设置").performClick()
+        composeRule.onNodeWithContentDescription("设置").performClick()
         waitFor { composeRule.onAllNodesWithText("深色模式").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("深色模式").assertIsDisplayed()
-        composeRule.onNodeWithText("默认样式预设").assertIsDisplayed()
+        composeRule.onNodeWithText("默认图片样式").assertIsDisplayed()
         composeRule.onNodeWithText("默认公司信息").assertIsDisplayed()
 
         composeRule.onNodeWithText("关于").performClick()

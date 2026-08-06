@@ -14,15 +14,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +57,7 @@ fun PresetsScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "样式预设",
+                title = "图片样式",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
@@ -64,20 +65,17 @@ fun PresetsScreen(
                 },
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNewPreset) {
+                Icon(Icons.Default.Add, contentDescription = "新建图片样式")
+            }
+        },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                Text("点击卡片可设为默认预设", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton(onClick = onNewPreset, modifier = Modifier.fillMaxWidth()) {
-                    Text("新建预设")
-                }
-            }
-
             item {
                 Text("内置预设", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             }
@@ -87,9 +85,6 @@ fun PresetsScreen(
                     tag = "内置",
                     isDefault = viewModel.defaultKey == preset.key,
                     preview = viewModel.previews[preset.key],
-                    onClick = {
-                        viewModel.setDefault(preset.key)
-                    },
                     onMenuClick = { menuFor = preset.key },
                 )
             }
@@ -106,7 +101,6 @@ fun PresetsScreen(
                         tag = "自定义",
                         isDefault = viewModel.defaultKey == key,
                         preview = viewModel.previews[key],
-                        onClick = { viewModel.setDefault(key) },
                         onMenuClick = { menuFor = key },
                     )
                 }
@@ -166,7 +160,6 @@ private fun PresetCard(
     tag: String,
     isDefault: Boolean,
     preview: android.graphics.Bitmap?,
-    onClick: () -> Unit,
     onMenuClick: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -194,11 +187,13 @@ private fun PresetCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    if (isDefault) "当前默认" else "点击设为默认",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDefault) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                )
+                if (isDefault) {
+                    Text(
+                        "当前默认",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
             IconButton(onClick = onMenuClick) {
                 Icon(Icons.Default.MoreVert, contentDescription = "更多")

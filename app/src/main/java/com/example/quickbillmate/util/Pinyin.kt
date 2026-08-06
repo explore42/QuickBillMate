@@ -31,6 +31,27 @@ object Pinyin {
         }
     }
 
+    /**
+     * 完整拼音：小写、去音标、去空格；纯 ASCII 名称直接小写；
+     * 中文经 ICU 音译；无法识别返回空串。
+     */
+    fun fullPinyin(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return ""
+        if (trimmed.all { it.code < 128 }) return trimmed.lowercase()
+        val han = hanLatin ?: return ""
+        return try {
+            var latin = han.transliterate(trimmed)
+            latinAscii?.let { latin = it.transliterate(latin) }
+            Normalizer.normalize(latin, Normalizer.Form.NFD)
+                .replace(Regex("\\p{M}+"), "")
+                .lowercase()
+                .filter { it in 'a'..'z' || it in '0'..'9' }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     /** 字母索引排序键：A-Z 按字母序，# 固定排最后。 */
     fun letterSortKey(letter: String): String = if (letter == "#") "{" else letter
 

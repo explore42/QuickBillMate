@@ -1,7 +1,10 @@
 package com.example.quickbillmate.ui.editor
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,6 +22,7 @@ import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.Pinyin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,12 +62,13 @@ data class EditorUiState(
     val companyName: String = "",
     val contactPhone: String = "",
     val salesManager: String = "",
-    val docCode: String = "XS",
+    val docCode: String = "PH",
     val docSerial: String = "",
+    val serialError: String? = null,
     val docDate: String = DateUtils.today(),
     val discountText: String = "0.00",
     val remark: String = "",
-    val titleSuffix: String = "销售清单",
+    val titleSuffix: String = "单据",
     val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
@@ -93,6 +98,10 @@ class EditorViewModel(
     private var loaded = false
     private var cachedContacts: List<ContactsImporter.Candidate>? = null
 
+    /** 客户排序缓存：收藏优先 + 拼音首字母，在后台线程计算，避免上千客户导致进入编辑页卡顿。 */
+    private data class SortedCustomer(val customer: Customer, val letter: String)
+    private var sortedCustomers: List<SortedCustomer> = emptyList()
+
     /** 进入编辑页时的原始快照，用于“不保存”时恢复；新建单据时为 null。 */
     private var originalBill: Bill? = null
     private var originalItems: List<BillItem> = emptyList()
@@ -102,7 +111,7 @@ class EditorViewModel(
         viewModelScope.launch {
             repo.observeCustomers("").collect { customers ->
                 state = state.copy(customers = customers)
-                refreshSuggestions(state.customerName)
+                rebuildSortedCustomers(customers)
             }
         }
         viewModelScope.launch {
@@ -118,11 +127,16 @@ class EditorViewModel(
         viewModelScope.launch {
             val settings = repo.settings
             val draft = repo.createDraft(
-                docCode = "XS",
+                docCode = settings.defaultDocCode,
                 docDate = DateUtils.today(),
                 companyName = settings.defaultCompany,
                 contactPhone = settings.defaultPhone,
                 salesManager = settings.defaultManager,
+                titleSuffix = settings.defaultTitleSuffix,
+                disclaimer = settings.defaultDisclaimer,
+                showManager = settings.defaultShowManager,
+                showRemark = settings.defaultShowRemark,
+                showWatermark = settings.defaultShowWatermark,
             )
             isNewDraft = true
             originalBill = draft
@@ -195,7 +209,41 @@ class EditorViewModel(
             favorite = bill.favorite,
             presetKey = bill.presetKey,
             items = items.map { it.toRow() }.ifEmpty { listOf(ItemRow()) },
+            contactsGranted = currentContactsPermission(),
         )
+        if (state.contactsGranted) loadContacts()
+    }
+
+    /** 每次进入编辑页时按系统真实授权状态刷新，避免已授权仍显示授权按钮。 */
+    private fun currentContactsPermission(): Boolean =
+        ContextCompat.checkSelfPermission(app, Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /** 在后台线程完成拼音首字母提取与排序，结果缓存后用于联想。 */
+    private fun rebuildSortedCustomers(customers: List<Customer>) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val sorted = customers.map { SortedCustomer(it, it.pinyinInitial) }
+                .sortedWith(
+                    compareByDescending<SortedCustomer> { it.customer.favorite }
+                        .thenBy { Pinyin.letterSortKey(it.letter) }
+                )
+            withContext(Dispatchers.Main) {
+                sortedCustomers = sorted
+                refreshSuggestions(state.customerName)
+            }
+        }
+    }
+
+    /** 通讯录查询放后台线程，避免进入编辑页时阻塞主线程。 */
+    private fun loadContacts() {
+        if (cachedContacts != null) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val contacts = ContactsImporter.query(app)
+            withContext(Dispatchers.Main) {
+                cachedContacts = contacts
+                refreshSuggestions(state.customerName)
+            }
+        }
     }
 
     private fun update(block: EditorUiState.() -> EditorUiState) {
@@ -216,7 +264,29 @@ class EditorViewModel(
     fun onContactPhoneChange(value: String) = update { copy(contactPhone = value) }
     fun onManagerChange(value: String) = update { copy(salesManager = value) }
     fun onDocCodeChange(value: String) = update { copy(docCode = value) }
-    fun onSerialChange(value: String) = update { copy(docSerial = value) }
+    /** 流水号：只接受 0-9 且最多三位，多余输入直接忽略。 */
+    fun onSerialChange(value: String) {
+        if (value.length <= 3 && value.all { it.isDigit() }) {
+            update { copy(docSerial = value, serialError = null) }
+        }
+    }
+
+    /** 流水号校验：仅在输入框失去焦点时触发；不合法或重复时不自动修改，标红提示。 */
+    fun validateSerial() {
+        viewModelScope.launch {
+            val s = state
+            val serial = s.docSerial.trim()
+            val error = when {
+                !serial.matches(Regex("\\d{3}")) -> "需要三位数字"
+                repo.serialConflict(s.docCode.ifBlank { "PH" }, s.docDate, serial, s.billId) ->
+                    "流水号已存在，请更换"
+                else -> null
+            }
+            if (state.serialError != error) {
+                state = state.copy(serialError = error)
+            }
+        }
+    }
     fun onDateChange(value: String) = update { copy(docDate = value) }
     fun onDiscountChange(value: String) = update { copy(discountText = value) }
     fun onRemarkChange(value: String) = update { copy(remark = value) }
@@ -230,8 +300,8 @@ class EditorViewModel(
 
     fun regenerateSerial() {
         viewModelScope.launch {
-            val serial = repo.generateUniqueSerial(state.docCode.ifBlank { "XS" }, state.docDate)
-            update { copy(docSerial = serial) }
+            val serial = repo.generateUniqueSerial(state.docCode.ifBlank { "PH" }, state.docDate)
+            update { copy(docSerial = serial, serialError = null) }
         }
     }
 
@@ -248,38 +318,34 @@ class EditorViewModel(
      */
     private fun refreshSuggestions(query: String) {
         val q = query.trim()
-        val libraryPool = state.customers.sortedWith(
-            compareByDescending<Customer> { it.favorite }
-                .thenByDescending { it.createdAt }
-        )
-
-        val fromDb = (if (q.isBlank()) libraryPool else libraryPool.filter {
-            it.name.contains(q) || it.phone.contains(q)
+        // 使用后台预排序的缓存（收藏优先 → 拼音 A-Z → #），主线程只做轻量过滤
+        val pool = sortedCustomers
+        val fromDb = (if (q.isBlank()) pool else pool.filter {
+            it.customer.name.contains(q) || it.customer.phone.contains(q)
         })
-            .take(6)
             .map {
                 CustomerSuggestion(
-                    name = it.name,
-                    phone = it.phone,
-                    type = it.type,
+                    name = it.customer.name,
+                    phone = it.customer.phone,
+                    type = it.customer.type,
                     fromDb = true,
                 )
             }
 
         val dbKeys = fromDb.map { it.name to it.phone }.toSet()
         val fromContacts = if (state.contactsGranted) {
-            val contacts = cachedContacts ?: ContactsImporter.query(app).also { cachedContacts = it }
-            contacts
-                .filter { q.isBlank() || it.name.contains(q) || it.phone.contains(q) }
-                .filterNot { (it.name to it.phone) in dbKeys }
-                .take(6 - fromDb.size)
-                .map {
+            cachedContacts
+                ?.filter { q.isBlank() || it.name.contains(q) || it.phone.contains(q) }
+                ?.filterNot { (it.name to it.phone) in dbKeys }
+                ?.take(3)
+                ?.map {
                     CustomerSuggestion(
                         name = it.name,
                         phone = it.phone,
                         fromDb = false,
                     )
                 }
+                .orEmpty()
         } else {
             emptyList()
         }
@@ -362,11 +428,11 @@ class EditorViewModel(
                 companyName = "示例建材有限公司",
                 contactPhone = "13800138000",
                 salesManager = "李经理",
-                docCode = "XS",
+                docCode = "PH",
                 docDate = DateUtils.today(),
                 discountText = "0.00",
                 remark = "客户自提",
-                titleSuffix = "销售清单",
+                titleSuffix = "单据",
                 disclaimer = "收到货物当日点清，如有问题请在2日内联系：",
                 items = sampleItems(),
             )
@@ -394,29 +460,41 @@ class EditorViewModel(
         }
     }
 
-    /** 独立“保存”按钮：立即保存并提示。 */
-    fun saveNow() {
+    /**
+     * 独立“保存”按钮：校验流水号后保存，成功后回调（返回上一页）。
+     * 校验不通过时只标红提示，不自动修改、不保存。
+     */
+    fun saveNow(onSaved: () -> Unit) {
         if (!loaded) return
         saveJob?.cancel()
         viewModelScope.launch {
-            autosave()
-            state = state.copy(savedTick = state.savedTick + 1)
+            val s = state
+            val serial = s.docSerial.trim()
+            val error = when {
+                !serial.matches(Regex("\\d{3}")) -> "需要三位数字"
+                repo.serialConflict(s.docCode.ifBlank { "PH" }, s.docDate, serial, s.billId) ->
+                    "流水号已存在，请更换"
+                else -> null
+            }
+            state = state.copy(serialError = error)
+            if (error == null && autosave()) {
+                state = state.copy(savedTick = state.savedTick + 1)
+                onSaved()
+            }
         }
     }
 
-    private suspend fun autosave() {
+    /** 自动保存草稿：流水号不合法或重复时跳过，不做任何自动修改。 */
+    private suspend fun autosave(): Boolean {
         val s = state
-        if (!s.loaded || s.billId == 0L) return
-        var serial = s.docSerial.trim()
-        if (serial.isBlank() ||
-            repo.serialConflict(s.docCode.ifBlank { "XS" }, s.docDate, serial, s.billId)
-        ) {
-            serial = repo.generateUniqueSerial(s.docCode.ifBlank { "XS" }, s.docDate)
-            state = state.copy(docSerial = serial)
-        }
+        if (!s.loaded || s.billId == 0L) return false
+        val serial = s.docSerial.trim()
+        if (!serial.matches(Regex("\\d{3}"))) return false
+        if (repo.serialConflict(s.docCode.ifBlank { "PH" }, s.docDate, serial, s.billId)) return false
         val bill = s.toBill(serial)
         val items = s.items.mapIndexed { index, row -> row.toEntity(s.billId, index) }
         repo.saveBill(bill, items)
+        return true
     }
 
     private fun schedulePreview() {
@@ -462,12 +540,12 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     companyName = companyName.trim(),
     contactPhone = contactPhone.trim(),
     salesManager = salesManager.trim(),
-    docCode = docCode.trim().ifBlank { "XS" },
+    docCode = docCode.trim().ifBlank { "PH" },
     docSerial = serial,
     docDate = docDate,
     discount = discountText.toDoubleOrNull()?.let { Money.round2(it) } ?: 0.0,
     remark = remark,
-    titleSuffix = titleSuffix.trim().ifBlank { "销售清单" },
+    titleSuffix = titleSuffix.trim().ifBlank { "单据" },
     disclaimer = disclaimer,
     showManager = showManager,
     showRemark = showRemark,

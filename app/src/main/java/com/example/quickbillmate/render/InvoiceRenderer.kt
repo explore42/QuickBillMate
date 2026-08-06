@@ -33,7 +33,7 @@ data class RenderInvoice(
     val docDate: String = "",
     val discount: Double = 0.0,
     val remark: String = "",
-    val titleSuffix: String = "销售清单",
+    val titleSuffix: String = "单据",
     val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
@@ -46,7 +46,7 @@ data class RenderInvoice(
 }
 
 /**
- * 清单画布渲染器：预览与导出共用同一逻辑。
+ * 单据画布渲染器：预览与导出共用同一逻辑。
  * 画布背景恒为白色、文字恒为黑色系，不随 APP 深浅色主题变化。
  */
 class InvoiceRenderer {

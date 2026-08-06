@@ -210,7 +210,7 @@ fun LetterIndexBar(
     )
 }
 
-/** 时间索引栏（首页单据）：窄宽度显示圆点代表月份，气泡显示 yyyy年M月。 */
+/** 时间索引栏（单据列表）：窄宽度显示圆点代表月份，气泡显示 yyyy年M月。 */
 @Composable
 fun TimeIndexBar(
     state: LazyListState,

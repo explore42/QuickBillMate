@@ -48,7 +48,7 @@ fun InvoicePreview() {
             }
             Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "清单预览",
+                contentDescription = "单据预览",
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -121,11 +121,20 @@ fun SettingsContentPreview() {
             defaultPhone = "13800138000",
             defaultManager = "李经理",
             defaultPresetKey = "classic",
+            defaultShowManager = true,
+            defaultShowRemark = true,
+            defaultShowWatermark = false,
+            defaultDocCode = "PH",
+            defaultTitleSuffix = "单据",
+            defaultDisclaimer = "收到货物当日点清，如有问题请在2日内联系：",
             versionName = "1.0",
             presets = emptyList(),
             onThemeModeChange = {},
             onCompanySave = { _, _, _ -> },
             onPresetChange = {},
+            onShowOptionsSave = { _, _, _ -> },
+            onBillDefaultsSave = { _, _, _ -> },
+            onManagePresets = {},
             onOpenUrl = {},
         )
     }

@@ -51,7 +51,7 @@ import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.SearchableTopBar
-import com.example.quickbillmate.util.Pinyin
+
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
 
@@ -88,7 +88,7 @@ fun CustomersScreen(
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
-    val letters = remember(customers) { customers.map { Pinyin.firstLetter(it.name) } }
+    val letters = remember(customers) { customers.map { it.pinyinInitial } }
     val grouped = remember(customers, letters) { groupCustomers(customers, letters) }
     val sections = remember(grouped) {
         grouped.map { section ->
@@ -115,7 +115,7 @@ fun CustomersScreen(
     Scaffold(
         topBar = {
             SearchableTopBar(
-                title = "客户",
+                title = "快贝智单",
                 searchPlaceholder = "搜索姓名/电话/类型",
                 query = viewModel.queryText,
                 onQueryChange = viewModel::setQuery,

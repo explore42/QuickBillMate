@@ -25,8 +25,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +50,7 @@ import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.LabeledField
+import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.editor.presetDisplayName
 
 private const val PROJECT_URL = "https://github.com/explore42/QuickBillMate"
@@ -55,6 +58,7 @@ private const val PROJECT_URL = "https://github.com/explore42/QuickBillMate"
 @Composable
 fun SettingsScreen(
     onThemeModeChange: (String) -> Unit,
+    onManagePresets: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val presets by viewModel.presets.collectAsState()
@@ -66,6 +70,12 @@ fun SettingsScreen(
         defaultPhone = viewModel.defaultPhone,
         defaultManager = viewModel.defaultManager,
         defaultPresetKey = viewModel.defaultPresetKey,
+        defaultShowManager = viewModel.defaultShowManager,
+        defaultShowRemark = viewModel.defaultShowRemark,
+        defaultShowWatermark = viewModel.defaultShowWatermark,
+        defaultDocCode = viewModel.defaultDocCode,
+        defaultTitleSuffix = viewModel.defaultTitleSuffix,
+        defaultDisclaimer = viewModel.defaultDisclaimer,
         versionName = viewModel.versionName,
         presets = presets,
         onThemeModeChange = { mode ->
@@ -78,6 +88,13 @@ fun SettingsScreen(
             viewModel.updateManager(manager)
         },
         onPresetChange = viewModel::updateDefaultPreset,
+        onShowOptionsSave = { manager, remark, watermark ->
+            viewModel.updateShowOptions(manager, remark, watermark)
+        },
+        onBillDefaultsSave = { docCode, titleSuffix, disclaimer ->
+            viewModel.updateBillDefaults(docCode, titleSuffix, disclaimer)
+        },
+        onManagePresets = onManagePresets,
         onOpenUrl = { url ->
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         },
@@ -92,16 +109,27 @@ fun SettingsContent(
     defaultPhone: String,
     defaultManager: String,
     defaultPresetKey: String,
+    defaultShowManager: Boolean,
+    defaultShowRemark: Boolean,
+    defaultShowWatermark: Boolean,
+    defaultDocCode: String,
+    defaultTitleSuffix: String,
+    defaultDisclaimer: String,
     versionName: String,
     presets: List<StylePreset>,
     onThemeModeChange: (String) -> Unit,
     onCompanySave: (String, String, String) -> Unit,
     onPresetChange: (String) -> Unit,
+    onShowOptionsSave: (Boolean, Boolean, Boolean) -> Unit,
+    onBillDefaultsSave: (String, String, String) -> Unit,
+    onManagePresets: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
     var showThemeMenu by remember { mutableStateOf(false) }
-    var showPresetMenu by remember { mutableStateOf(false) }
+    var showPresetPanel by remember { mutableStateOf(false) }
     var showCompanyDialog by remember { mutableStateOf(false) }
+    var showShowOptionsDialog by remember { mutableStateOf(false) }
+    var showBillDefaultsDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
     val themeLabel = when (themeMode) {
@@ -111,7 +139,7 @@ fun SettingsContent(
     }
 
     Scaffold(
-        topBar = { AppTopBar(title = "设置") },
+        topBar = { AppTopBar(title = "快贝智单") },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -148,35 +176,53 @@ fun SettingsContent(
                 }
             }
 
-            // 默认样式预设（下拉）
-            Box {
-                SettingRow(
-                    icon = { Icon(Icons.Default.Build, contentDescription = null) },
-                    title = "默认样式预设",
-                    subtitle = presetDisplayName(defaultPresetKey, presets),
-                    onClick = { showPresetMenu = true },
-                )
-                DropdownMenu(
-                    expanded = showPresetMenu,
-                    onDismissRequest = { showPresetMenu = false },
+            // 默认图片样式（展开选择默认样式，并可进入管理）
+            SettingRow(
+                icon = { Icon(Icons.Default.Build, contentDescription = null) },
+                title = "默认图片样式",
+                subtitle = presetDisplayName(defaultPresetKey, presets),
+                onClick = { showPresetPanel = !showPresetPanel },
+            )
+            if (showPresetPanel) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
-                    StylePresets.builtIns.forEach { preset ->
-                        DropdownMenuItem(
-                            text = { Text(preset.name) },
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        StylePresets.builtIns.forEach { preset ->
+                            PresetSelectRow(
+                                name = preset.name,
+                                selected = defaultPresetKey == preset.key,
+                                onClick = {
+                                    onPresetChange(preset.key)
+                                    showPresetPanel = false
+                                },
+                            )
+                        }
+                        presets.forEach { preset ->
+                            PresetSelectRow(
+                                name = preset.name,
+                                selected = defaultPresetKey == "custom:${preset.id}",
+                                onClick = {
+                                    onPresetChange("custom:${preset.id}")
+                                    showPresetPanel = false
+                                },
+                            )
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        TextButton(
                             onClick = {
-                                onPresetChange(preset.key)
-                                showPresetMenu = false
+                                showPresetPanel = false
+                                onManagePresets()
                             },
-                        )
-                    }
-                    presets.forEach { preset ->
-                        DropdownMenuItem(
-                            text = { Text(preset.name) },
-                            onClick = {
-                                onPresetChange("custom:${preset.id}")
-                                showPresetMenu = false
-                            },
-                        )
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("图片样式管理")
+                        }
                     }
                 }
             }
@@ -190,6 +236,29 @@ fun SettingsContent(
                     .joinToString(" · ")
                     .ifBlank { "未设置" },
                 onClick = { showCompanyDialog = true },
+            )
+
+            // 默认显示选项（弹窗）
+            SettingRow(
+                icon = { Text("☑", style = MaterialTheme.typography.titleMedium) },
+                title = "默认显示选项",
+                subtitle = listOf(
+                    "业务经理 ${if (defaultShowManager) "开" else "关"}",
+                    "备注 ${if (defaultShowRemark) "开" else "关"}",
+                    "水印 ${if (defaultShowWatermark) "开" else "关"}",
+                ).joinToString(" · "),
+                onClick = { showShowOptionsDialog = true },
+            )
+
+            // 默认客单信息（弹窗）
+            SettingRow(
+                icon = { Text("№", style = MaterialTheme.typography.titleMedium) },
+                title = "默认客单信息",
+                subtitle = listOf(defaultDocCode, defaultTitleSuffix)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" · ")
+                    .ifBlank { "未设置" },
+                onClick = { showBillDefaultsDialog = true },
             )
 
             // 关于
@@ -212,6 +281,32 @@ fun SettingsContent(
                 showCompanyDialog = false
             },
             onDismiss = { showCompanyDialog = false },
+        )
+    }
+
+    if (showShowOptionsDialog) {
+        ShowOptionsDialog(
+            showManager = defaultShowManager,
+            showRemark = defaultShowRemark,
+            showWatermark = defaultShowWatermark,
+            onSave = { manager, remark, watermark ->
+                onShowOptionsSave(manager, remark, watermark)
+                showShowOptionsDialog = false
+            },
+            onDismiss = { showShowOptionsDialog = false },
+        )
+    }
+
+    if (showBillDefaultsDialog) {
+        BillDefaultsDialog(
+            docCode = defaultDocCode,
+            titleSuffix = defaultTitleSuffix,
+            disclaimer = defaultDisclaimer,
+            onSave = { docCode, titleSuffix, disclaimer ->
+                onBillDefaultsSave(docCode, titleSuffix, disclaimer)
+                showBillDefaultsDialog = false
+            },
+            onDismiss = { showBillDefaultsDialog = false },
         )
     }
 
@@ -245,6 +340,97 @@ fun SettingsContent(
                 TextButton(onClick = { showAboutDialog = false }) { Text("关闭") }
             },
         )
+    }
+}
+
+@Composable
+private fun ShowOptionsDialog(
+    showManager: Boolean,
+    showRemark: Boolean,
+    showWatermark: Boolean,
+    onSave: (Boolean, Boolean, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var manager by remember { mutableStateOf(showManager) }
+    var remark by remember { mutableStateOf(showRemark) }
+    var watermark by remember { mutableStateOf(showWatermark) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("默认显示选项") },
+        text = {
+            Column {
+                LabeledSwitch("显示业务经理", manager, { manager = it })
+                LabeledSwitch("显示备注", remark, { remark = it })
+                LabeledSwitch("显示水印", watermark, { watermark = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(manager, remark, watermark) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
+
+@Composable
+private fun BillDefaultsDialog(
+    docCode: String,
+    titleSuffix: String,
+    disclaimer: String,
+    onSave: (String, String, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var docCodeText by remember { mutableStateOf(docCode) }
+    var titleSuffixText by remember { mutableStateOf(titleSuffix) }
+    var disclaimerText by remember { mutableStateOf(disclaimer) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("默认客单信息") },
+        text = {
+            Column {
+                LabeledField("默认编号代码", docCodeText, { docCodeText = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledField("默认标题后缀", titleSuffixText, { titleSuffixText = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledField("默认底部说明文案", disclaimerText, { disclaimerText = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(docCodeText.trim(), titleSuffixText.trim(), disclaimerText.trim())
+            }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
+
+@Composable
+private fun PresetSelectRow(
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Text(name, modifier = Modifier.weight(1f))
+        if (selected) {
+            Text(
+                "当前默认",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

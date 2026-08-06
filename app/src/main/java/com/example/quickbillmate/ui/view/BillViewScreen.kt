@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -98,7 +97,7 @@ fun BillViewScreen(
                 putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "分享清单"))
+            context.startActivity(Intent.createChooser(intent, "分享单据"))
             viewModel.consumeShareOutcome()
         }
     }
@@ -112,11 +111,7 @@ fun BillViewScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { onEdit(billId) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "编辑")
-                    }
-                },
+
             )
         },
         bottomBar = {
@@ -126,19 +121,26 @@ fun BillViewScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(
+                OutlinedButton(
+                    onClick = { onEdit(billId) },
+                    modifier = Modifier.weight(0.8f),
+                    enabled = !s.exporting,
+                ) {
+                    Text("修改")
+                }
+                OutlinedButton(
                     onClick = { doExport() },
-                    modifier = Modifier.weight(1.4f),
+                    modifier = Modifier.weight(1f),
                     enabled = !s.exporting,
                 ) {
                     Text(if (s.exporting) "导出中…" else "导出图片")
                 }
-                OutlinedButton(
+                Button(
                     onClick = { viewModel.shareNow() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1.3f),
                     enabled = !s.exporting,
                 ) {
-                    Text("分享")
+                    Text("分享图片")
                 }
             }
         },
@@ -163,7 +165,7 @@ fun BillViewScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Text(
-                            "清单预览",
+                            "单据预览",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -171,7 +173,7 @@ fun BillViewScreen(
                         s.preview?.let {
                             Image(
                                 bitmap = it.asImageBitmap(),
-                                contentDescription = "清单预览",
+                                contentDescription = "单据预览",
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("view_preview"),
@@ -185,12 +187,6 @@ fun BillViewScreen(
                     InfoLine("客户电话", bill.customerPhone.ifBlank { "—" })
                 }
 
-                SectionCard("公司信息") {
-                    InfoLine("公司名称", bill.companyName.ifBlank { "—" })
-                    InfoLine("联系电话", bill.contactPhone.ifBlank { "—" })
-                    InfoLine("业务经理", bill.salesManager.ifBlank { "—" })
-                }
-
                 SectionCard("客单信息") {
                     InfoLine(
                         "单据编号",
@@ -201,7 +197,7 @@ fun BillViewScreen(
                     if (bill.remark.isNotBlank()) InfoLine("备注", bill.remark)
                     InfoLine("标题后缀", bill.titleSuffix)
                     if (bill.disclaimer.isNotBlank()) InfoLine("底部说明", bill.disclaimer)
-                    InfoLine("样式预设", presetDisplayName(bill.presetKey, s.presets))
+                    InfoLine("图片样式", presetDisplayName(bill.presetKey, s.presets))
                     InfoLine("状态", bill.status)
                 }
 
@@ -273,6 +269,12 @@ fun BillViewScreen(
                     }
                 }
 
+                SectionCard("公司信息") {
+                    InfoLine("公司名称", bill.companyName.ifBlank { "—" })
+                    InfoLine("联系电话", bill.contactPhone.ifBlank { "—" })
+                    InfoLine("业务经理", bill.salesManager.ifBlank { "—" })
+                }
+
                 SectionCard("显示选项") {
                     InfoLine("显示业务经理", if (bill.showManager) "开" else "关")
                     InfoLine("显示备注", if (bill.showRemark) "开" else "关")
@@ -310,7 +312,7 @@ fun BillViewScreen(
                             putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(intent, "分享清单"))
+                        context.startActivity(Intent.createChooser(intent, "分享单据"))
                         viewModel.consumeExportOutcome()
                     }) { Text("分享") }
                 }

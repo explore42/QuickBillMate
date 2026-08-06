@@ -23,10 +23,13 @@ import com.example.quickbillmate.render.InvoiceRenderer
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StyleParams
+import com.example.quickbillmate.util.Pinyin
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -38,6 +41,20 @@ data class ContactImportOutcome(
     val inserted: Int = 0,
     val merged: Int = 0,
 )
+
+/** 计算客户拼音并写入字段（入库时调用）。 */
+internal fun Customer.withPinyin(): Customer =
+    copy(
+        pinyinInitial = Pinyin.firstLetter(name),
+        pinyin = Pinyin.fullPinyin(name),
+    )
+
+/** 计算商品拼音并写入字段（入库时调用）。 */
+internal fun Product.withPinyin(): Product =
+    copy(
+        pinyinInitial = Pinyin.firstLetter(name),
+        pinyin = Pinyin.fullPinyin(name),
+    )
 
 class AppRepository(
     private val database: AppDatabase,
@@ -84,6 +101,11 @@ class AppRepository(
         companyName: String,
         contactPhone: String,
         salesManager: String,
+        titleSuffix: String = "单据",
+        disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
+        showManager: Boolean = true,
+        showRemark: Boolean = true,
+        showWatermark: Boolean = false,
     ): Bill {
         val serial = generateUniqueSerial(docCode, docDate)
         val bill = Bill(
@@ -93,6 +115,11 @@ class AppRepository(
             docCode = docCode,
             docSerial = serial,
             docDate = docDate,
+            titleSuffix = titleSuffix,
+            disclaimer = disclaimer,
+            showManager = showManager,
+            showRemark = showRemark,
+            showWatermark = showWatermark,
             presetKey = settings.defaultPresetKey,
         )
         val id = billDao.insert(bill)
@@ -147,7 +174,18 @@ class AppRepository(
     suspend fun getProducts(): List<Product> = productDao.getAll()
 
     suspend fun saveProduct(product: Product) {
-        if (product.id == 0L) productDao.insert(product) else productDao.update(product)
+        if (product.id == 0L) {
+            productDao.insert(product.withPinyin())
+        } else {
+            val existing = productDao.getById(product.id)
+            val updated = if (existing == null || existing.name != product.name) {
+                product.withPinyin()
+            } else {
+                // 名称未变：保留库中原有拼音，避免覆盖
+                product.copy(pinyinInitial = existing.pinyinInitial, pinyin = existing.pinyin)
+            }
+            productDao.update(updated)
+        }
     }
 
     suspend fun deleteProduct(product: Product) = productDao.delete(product)
@@ -160,7 +198,18 @@ class AppRepository(
     suspend fun getCustomers(): List<Customer> = customerDao.getAll()
 
     suspend fun saveCustomer(customer: Customer) {
-        if (customer.id == 0L) customerDao.insert(customer) else customerDao.update(customer)
+        if (customer.id == 0L) {
+            customerDao.insert(customer.withPinyin())
+        } else {
+            val existing = customerDao.getById(customer.id)
+            val updated = if (existing == null || existing.name != customer.name) {
+                customer.withPinyin()
+            } else {
+                // 名称未变：保留库中原有拼音，避免覆盖
+                customer.copy(pinyinInitial = existing.pinyinInitial, pinyin = existing.pinyin)
+            }
+            customerDao.update(updated)
+        }
     }
 
     suspend fun deleteCustomer(customer: Customer) = customerDao.delete(customer)
@@ -172,6 +221,11 @@ class AppRepository(
      * - 不同名：新增客户，计入“新增”
      */
     suspend fun importContactCandidates(candidates: List<ContactsImporter.Candidate>): ContactImportOutcome {
+        // 通讯录可能很多：先在后台线程统一算好拼音，避免重复计算
+        val pinyinByKey = withContext(Dispatchers.Default) {
+            candidates.map { it.name to (Pinyin.firstLetter(it.name) to Pinyin.fullPinyin(it.name)) }
+                .toMap()
+        }
         var inserted = 0
         var merged = 0
         candidates.forEach { candidate ->
@@ -192,10 +246,13 @@ class AppRepository(
                 }
                 merged++
             } else {
+                val (initial, full) = pinyinByKey[candidate.name] ?: ("#" to "")
                 customerDao.insert(
                     Customer(
                         name = candidate.name,
                         phone = candidate.phone,
+                        pinyinInitial = initial,
+                        pinyin = full,
                     )
                 )
                 inserted++
@@ -227,7 +284,11 @@ class AppRepository(
         val existing = productDao.getAll()
         val result = ProductJsonCodec.parse(text, existing)
         if (result.imported.isNotEmpty()) {
-            productDao.insertAll(result.imported)
+            // 批量导入在后台线程统一补全拼音后写入
+            val withPinyin = withContext(Dispatchers.Default) {
+                result.imported.map { it.withPinyin() }
+            }
+            productDao.insertAll(withPinyin)
         }
         return result
     }
@@ -345,7 +406,7 @@ class AppRepository(
     }
 
     fun billFileName(bill: Bill): String =
-        "销售清单_${BillNumber.build(bill.docCode, bill.docDate, bill.docSerial)}.png"
+        "单据_${BillNumber.build(bill.docCode, bill.docDate, bill.docSerial)}.png"
 
     /** 渲染并保存单据图片到相册；成功后把单据状态置为“已导出”。 */
     suspend fun exportBillToGallery(context: Context, bill: Bill, items: List<BillItem>): Boolean {

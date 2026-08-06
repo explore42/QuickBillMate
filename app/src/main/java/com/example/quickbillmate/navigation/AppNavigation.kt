@@ -69,9 +69,9 @@ fun QuickBillMateAppNavHost(
         bottomBar = {
             if (currentRoute in Routes.tabRoutes && !(currentRoute == Routes.HOME && homeSelectionActive)) {
                 NavigationBar {
-                    TabItem(Icons.Default.Home, "首页", currentRoute == Routes.HOME) {
+                    TabItem(Icons.Default.Home, "单据", currentRoute == Routes.HOME) {
                         if (currentRoute == Routes.HOME) {
-                            // 已在首页：点击导航栏回到列表顶部
+                            // 已在单据页：点击导航栏回到列表顶部
                             homeScrollTicks++
                         } else {
                             navController.navigate(Routes.HOME) {
@@ -177,7 +177,10 @@ fun QuickBillMateAppNavHost(
             }
 
             composable(Routes.SETTINGS) {
-                SettingsScreen(onThemeModeChange = onThemeModeChange)
+                SettingsScreen(
+                    onThemeModeChange = onThemeModeChange,
+                    onManagePresets = { navController.navigate(Routes.PRESETS) },
+                )
             }
 
             composable(
@@ -272,6 +275,10 @@ private fun RowScope.TabItem(
                 modifier = Modifier.scale(iconScale),
             )
         },
-        label = { Text(label) },
+        label = if (selected) {
+            { Text(label) }
+        } else {
+            null
+        },
     )
 }

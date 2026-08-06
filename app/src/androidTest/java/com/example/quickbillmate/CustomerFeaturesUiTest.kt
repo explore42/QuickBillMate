@@ -30,7 +30,7 @@ class CustomerFeaturesUiTest {
         val nameA = "客户甲${System.currentTimeMillis() % 100000}"
         val nameB = "客户乙${System.currentTimeMillis() % 100000}"
 
-        composeRule.onNodeWithText("客户").performClick()
+        composeRule.onNodeWithContentDescription("客户").performClick()
         waitFor { composeRule.onAllNodesWithContentDescription("新增客户").fetchSemanticsNodes().isNotEmpty() }
         addCustomer(nameA)
         addCustomer(nameB)
@@ -54,12 +54,12 @@ class CustomerFeaturesUiTest {
     fun editorCustomerDropdownShowsAndSelectsLibraryCustomer() {
         val name = "客户丙${System.currentTimeMillis() % 100000}"
 
-        composeRule.onNodeWithText("客户").performClick()
+        composeRule.onNodeWithContentDescription("客户").performClick()
         waitFor { composeRule.onAllNodesWithContentDescription("新增客户").fetchSemanticsNodes().isNotEmpty() }
         addCustomer(name)
 
-        // 首页 → 新建 → 打开客户名称下拉
-        composeRule.onNodeWithText("首页").performClick()
+        // 单据页 → 新建 → 打开客户名称下拉
+        composeRule.onNodeWithContentDescription("单据").performClick()
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()

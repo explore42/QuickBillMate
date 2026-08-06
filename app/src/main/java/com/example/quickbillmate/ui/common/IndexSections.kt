@@ -1,6 +1,6 @@
 package com.example.quickbillmate.ui.common
 
-/** 首页时间索引：把单据日期 yyyy-MM-dd 转为分区键 yyyy-MM；空日期归入“其他”。 */
+/** 单据时间索引：把单据日期 yyyy-MM-dd 转为分区键 yyyy-MM；空日期归入“其他”。 */
 fun monthKey(date: String): String = if (date.isBlank()) "其他" else date.take(7)
 
 /** 分区气泡文本：yyyy-MM → “yyyy年M月”。 */
@@ -13,7 +13,7 @@ fun monthBubble(key: String): String =
         key
     }
 
-/** 首页月份分区：按单据列表中出现的顺序去重。 */
+/** 单据月份分区：按单据列表中出现的顺序去重。 */
 fun monthSections(keys: List<String>): List<IndexSection> =
     keys.distinct().map { IndexSection(it, monthBubble(it)) }
 

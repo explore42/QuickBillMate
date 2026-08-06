@@ -13,6 +13,7 @@ import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.importexport.ProductJsonException
 import com.example.quickbillmate.util.Pinyin
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -42,7 +43,7 @@ class ProductsViewModel(
         .debounce(300)
         .distinctUntilChanged()
         .flatMapLatest { repo.observeProducts(it) }
-        .map { list -> Pinyin.sortByPinyinLetter(list, { it.favorite }, { Pinyin.firstLetter(it.name) }) }
+        .map { list -> Pinyin.sortByPinyinLetter(list, { it.favorite }, { it.pinyinInitial }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     var importing by mutableStateOf(false)

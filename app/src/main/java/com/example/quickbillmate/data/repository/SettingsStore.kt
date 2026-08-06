@@ -26,6 +26,30 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_PRESET, "classic") ?: "classic"
         set(value) = prefs.edit().putString(KEY_PRESET, value).apply()
 
+    var defaultShowManager: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_MANAGER, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_MANAGER, value).apply()
+
+    var defaultShowRemark: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_REMARK, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_REMARK, value).apply()
+
+    var defaultShowWatermark: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_WATERMARK, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_WATERMARK, value).apply()
+
+    var defaultDocCode: String
+        get() = prefs.getString(KEY_DOC_CODE, "PH") ?: "PH"
+        set(value) = prefs.edit().putString(KEY_DOC_CODE, value).apply()
+
+    var defaultTitleSuffix: String
+        get() = prefs.getString(KEY_TITLE_SUFFIX, "单据") ?: "单据"
+        set(value) = prefs.edit().putString(KEY_TITLE_SUFFIX, value).apply()
+
+    var defaultDisclaimer: String
+        get() = prefs.getString(KEY_DISCLAIMER, DISCLAIMER_DEFAULT) ?: DISCLAIMER_DEFAULT
+        set(value) = prefs.edit().putString(KEY_DISCLAIMER, value).apply()
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -36,5 +60,12 @@ class SettingsStore(context: Context) {
         private const val KEY_PHONE = "default_phone"
         private const val KEY_MANAGER = "default_manager"
         private const val KEY_PRESET = "default_preset_key"
+        private const val KEY_SHOW_MANAGER = "default_show_manager"
+        private const val KEY_SHOW_REMARK = "default_show_remark"
+        private const val KEY_SHOW_WATERMARK = "default_show_watermark"
+        private const val KEY_DOC_CODE = "default_doc_code"
+        private const val KEY_TITLE_SUFFIX = "default_title_suffix"
+        private const val KEY_DISCLAIMER = "default_disclaimer"
+        private const val DISCLAIMER_DEFAULT = "收到货物当日点清，如有问题请在2日内联系："
     }
 }

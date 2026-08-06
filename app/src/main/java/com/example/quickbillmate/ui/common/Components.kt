@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -87,6 +88,8 @@ fun LabeledField(
     keyboardType: KeyboardType = KeyboardType.Text,
     placeholder: String = "",
     singleLine: Boolean = true,
+    isError: Boolean = false,
+    supportingText: String? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -94,6 +97,8 @@ fun LabeledField(
         label = { Text(label) },
         modifier = modifier,
         singleLine = singleLine,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
         placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(8.dp),
@@ -133,7 +138,7 @@ fun AppTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         navigationIcon = {
             if (navigationIcon != null) {
                 navigationIcon()
@@ -192,7 +197,7 @@ fun SearchableTopBar(
                     focusRequester = focusRequester,
                 )
             } else {
-                Text(title)
+                Text(title, fontWeight = FontWeight.Bold)
             }
         },
         navigationIcon = {
@@ -318,7 +323,7 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = { Text(text) },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(confirmText) }
@@ -339,7 +344,7 @@ fun InfoDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Info, contentDescription = null) },
-        title = { Text(title) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = { Text(text) },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(confirmText) }

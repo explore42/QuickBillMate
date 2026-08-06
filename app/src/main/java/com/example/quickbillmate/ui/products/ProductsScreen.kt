@@ -63,7 +63,7 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.util.Money
-import com.example.quickbillmate.util.Pinyin
+
 
 /** 商品分组：title 为分组标题（收藏 / 字母 / #）。 */
 internal data class ProductSection(
@@ -97,7 +97,7 @@ fun ProductsScreen(
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
-    val letters = remember(products) { products.map { Pinyin.firstLetter(it.name) } }
+    val letters = remember(products) { products.map { it.pinyinInitial } }
     val grouped = remember(products, letters) { groupProducts(products, letters) }
     val sections = remember(grouped) {
         grouped.map { section ->
@@ -147,7 +147,7 @@ fun ProductsScreen(
     Scaffold(
         topBar = {
             SearchableTopBar(
-                title = "商品",
+                title = "快贝智单",
                 searchPlaceholder = "搜索名称/规格",
                 query = viewModel.queryText,
                 onQueryChange = viewModel::setQuery,

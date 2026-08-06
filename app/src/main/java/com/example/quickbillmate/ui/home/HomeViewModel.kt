@@ -33,7 +33,7 @@ data class HomeBill(
         get() = Money.format(receivable)
 }
 
-/** 把单据与全部商品行映射为首页展示数据（纯函数，便于单元测试）。 */
+/** 把单据与全部商品行映射为单据列表展示数据（纯函数，便于单元测试）。 */
 fun buildHomeBills(bills: List<Bill>, items: List<BillItem>): List<HomeBill> {
     val itemsByBill = items.groupBy { it.billId }
     return bills.map { bill ->

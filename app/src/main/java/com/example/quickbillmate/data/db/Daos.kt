@@ -69,6 +69,9 @@ interface ProductDao {
     )
     fun observeSearch(q: String): Flow<List<Product>>
 
+    @Query("SELECT * FROM products WHERE id = :id")
+    suspend fun getById(id: Long): Product?
+
     @Insert
     suspend fun insert(product: Product): Long
 
@@ -105,6 +108,9 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE name = :name LIMIT 1")
     suspend fun findByName(name: String): Customer?
+
+    @Query("SELECT * FROM customers WHERE id = :id")
+    suspend fun getById(id: Long): Customer?
 
     @Insert
     suspend fun insert(customer: Customer): Long
