@@ -1,5 +1,6 @@
 package com.example.quickbillmate.ui.common
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -76,6 +77,7 @@ fun LabeledField(
     )
 }
 
+/** 整行可点击的开关。 */
 @Composable
 fun LabeledSwitch(
     label: String,
@@ -83,7 +85,10 @@ fun LabeledSwitch(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

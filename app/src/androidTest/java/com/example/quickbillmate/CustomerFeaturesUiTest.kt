@@ -1,0 +1,88 @@
+package com.example.quickbillmate
+
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class CustomerFeaturesUiTest {
+
+    @get:Rule
+    val composeRule = createAndroidComposeRule<MainActivity>()
+
+    private fun waitFor(timeoutMs: Long = 10000, condition: () -> Boolean) {
+        composeRule.waitUntil(timeoutMillis = timeoutMs, condition = condition)
+    }
+
+    @Test
+    fun customerFavoriteMovesToTop() {
+        val nameA = "客户甲${System.currentTimeMillis() % 100000}"
+        val nameB = "客户乙${System.currentTimeMillis() % 100000}"
+
+        composeRule.onNodeWithText("客户").performClick()
+        waitFor { composeRule.onAllNodesWithContentDescription("新增客户").fetchSemanticsNodes().isNotEmpty() }
+        addCustomer(nameA)
+        addCustomer(nameB)
+
+        // 打开 A 的编辑对话框，勾选“收藏”并保存
+        waitFor { composeRule.onAllNodes(hasText(nameA, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onAllNodes(hasText(nameA, substring = true))[0].performClick()
+        waitFor { composeRule.onAllNodesWithText("收藏").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("收藏").performClick()
+        composeRule.onNodeWithText("保存").performClick()
+
+        waitFor { composeRule.onAllNodesWithContentDescription("取消收藏").fetchSemanticsNodes().isNotEmpty() }
+        val topA = rowTop(nameA)
+        val topB = rowTop(nameB)
+        assertTrue("收藏客户应优先展示（A 应在 B 上方）", topA < topB)
+    }
+
+    @Test
+    fun editorCustomerDropdownShowsAndSelectsLibraryCustomer() {
+        val name = "客户丙${System.currentTimeMillis() % 100000}"
+
+        composeRule.onNodeWithText("客户").performClick()
+        waitFor { composeRule.onAllNodesWithContentDescription("新增客户").fetchSemanticsNodes().isNotEmpty() }
+        addCustomer(name)
+
+        // 首页 → 新建 → 打开客户名称下拉
+        composeRule.onNodeWithText("首页").performClick()
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+
+        waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText(name).performClick()
+
+        // 选中后回填到输入框
+        waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText(name).assertExists()
+    }
+
+    private fun addCustomer(name: String) {
+        composeRule.onNodeWithContentDescription("新增客户").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("姓名*").performClick()
+        composeRule.onNodeWithText("姓名*").performTextInput(name)
+        composeRule.onNodeWithText("保存").performClick()
+        waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    private fun rowTop(text: String): Float {
+        val nodes = composeRule.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes()
+        assertTrue("应能找到包含 $text 的行", nodes.isNotEmpty())
+        return nodes[0].boundsInRoot.top
+    }
+}

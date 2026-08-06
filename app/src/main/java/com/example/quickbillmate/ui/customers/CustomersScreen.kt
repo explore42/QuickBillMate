@@ -10,14 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -25,6 +26,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -47,6 +49,7 @@ import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.LabeledField
+import com.example.quickbillmate.ui.common.LabeledSwitch
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
 
@@ -94,44 +97,12 @@ fun CustomersScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(customers, key = { it.id }) { customer ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier
-                                    .combinedClickable(
-                                        onClick = { editing = customer },
-                                        onLongClick = { pendingDelete = customer },
-                                    )
-                                    .padding(14.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        customer.name,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (customer.type.isNotBlank()) {
-                                        AssistChip(
-                                            onClick = {},
-                                            label = { Text(customer.type) },
-                                        )
-                                    }
-                                    if (customer.fromContacts) {
-                                        AssistChip(
-                                            onClick = {},
-                                            label = { Text("通讯录") },
-                                        )
-                                    }
-                                }
-                                if (customer.phone.isNotBlank()) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        customer.phone,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
+                        CustomerCard(
+                            customer = customer,
+                            onEdit = { editing = customer },
+                            onDelete = { pendingDelete = customer },
+                            onToggleFavorite = { viewModel.toggleFavorite(customer) },
+                        )
                     }
                 }
             }
@@ -174,6 +145,64 @@ fun CustomersScreen(
 }
 
 @Composable
+private fun CustomerCard(
+    customer: Customer,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleFavorite: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .combinedClickable(
+                        onClick = onEdit,
+                        onLongClick = onDelete,
+                    )
+                    .padding(start = 14.dp, top = 10.dp, bottom = 10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(customer.name, style = MaterialTheme.typography.titleSmall)
+                    if (customer.type.isNotBlank()) {
+                        Spacer(Modifier.width(4.dp))
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(customer.type) },
+                        )
+                    }
+                    if (customer.fromContacts) {
+                        AssistChip(
+                            onClick = {},
+                            label = { Text("通讯录") },
+                        )
+                    }
+                }
+                if (customer.phone.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        customer.phone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            IconButton(onClick = onToggleFavorite) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = if (customer.favorite) "取消收藏" else "收藏",
+                    tint = if (customer.favorite) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun CustomerEditDialog(
     initial: Customer,
     onSave: (Customer) -> Unit,
@@ -183,6 +212,7 @@ private fun CustomerEditDialog(
     var phone by remember { mutableStateOf(initial.phone) }
     var type by remember { mutableStateOf(initial.type) }
     var remark by remember { mutableStateOf(initial.remark) }
+    var favorite by remember { mutableStateOf(initial.favorite) }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -213,6 +243,8 @@ private fun CustomerEditDialog(
                 }
                 Spacer(Modifier.height(8.dp))
                 LabeledField("备注", remark, { remark = it })
+                Spacer(Modifier.height(4.dp))
+                LabeledSwitch("收藏", favorite, { favorite = it })
                 error?.let {
                     Spacer(Modifier.height(6.dp))
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -229,6 +261,7 @@ private fun CustomerEditDialog(
                             phone = phone.trim(),
                             type = type.trim(),
                             remark = remark.trim(),
+                            favorite = favorite,
                         )
                     )
                 }

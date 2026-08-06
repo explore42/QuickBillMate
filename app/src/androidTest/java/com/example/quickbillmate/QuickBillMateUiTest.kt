@@ -39,9 +39,12 @@ class QuickBillMateUiTest {
     @Test
     fun newBillOpensEditorAndSampleLoadsPreview() {
         composeRule.onNodeWithTag("home_new_bill").performClick()
-        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
-        composeRule.onNodeWithTag("editor_sample").performClick()
+        // 右上角设置 → 应用示例
+        composeRule.onNodeWithContentDescription("设置").performClick()
+        waitFor { composeRule.onAllNodesWithText("应用示例").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("应用示例").performClick()
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("editor_preview").performScrollTo().assertIsDisplayed()
     }
@@ -78,20 +81,45 @@ class QuickBillMateUiTest {
     @Test
     fun presetPickerOpensAndAppliesPreset() {
         composeRule.onNodeWithTag("home_new_bill").performClick()
-        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
-        composeRule.onNodeWithContentDescription("样式预设").performClick()
+        composeRule.onNodeWithContentDescription("设置").performClick()
         waitFor { composeRule.onAllNodesWithText("选择样式预设").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("选择样式预设").performClick()
+        waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("商务蓝").performClick()
-        waitFor { composeRule.onAllNodesWithText("选择样式预设").fetchSemanticsNodes().isEmpty() }
+        // 选中后预设列表收起
+        waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isEmpty() }
+        composeRule.onNodeWithText("关闭").performClick()
+        waitFor { composeRule.onAllNodesWithText("关闭").fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun discardChangesRemovesNewDraft() {
+        val name = "临时客户${System.currentTimeMillis() % 100000}"
+
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
+
+        composeRule.onNodeWithText("不保存").performClick()
+        waitFor { composeRule.onAllNodesWithText("放弃").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("放弃").performClick()
+
+        // 回到首页，且该草稿已删除
+        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test
     fun billViewShowsDetailsAndEditNavigates() {
         // 新建一张单据并载入示例
         composeRule.onNodeWithTag("home_new_bill").performClick()
-        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithTag("editor_sample").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithContentDescription("设置").performClick()
+        waitFor { composeRule.onAllNodesWithText("应用示例").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("应用示例").performClick()
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
         // 保存后返回
         composeRule.onNodeWithText("保存").performClick()
@@ -106,7 +134,7 @@ class QuickBillMateUiTest {
 
         // 编辑 → 编辑页
         composeRule.onNodeWithContentDescription("编辑").performClick()
-        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

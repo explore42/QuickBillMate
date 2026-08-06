@@ -36,4 +36,10 @@ class CustomersViewModel(private val repo: AppRepository) : ViewModel() {
     fun deleteCustomer(customer: Customer) {
         viewModelScope.launch { repo.deleteCustomer(customer) }
     }
+
+    fun toggleFavorite(customer: Customer) {
+        viewModelScope.launch {
+            repo.saveCustomer(customer.copy(favorite = !customer.favorite))
+        }
+    }
 }

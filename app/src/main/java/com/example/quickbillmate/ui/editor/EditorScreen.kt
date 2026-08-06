@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,7 +33,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -43,6 +48,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -90,8 +96,8 @@ fun EditorScreen(
     val s = viewModel.state
     val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
-    var showClearConfirm by remember { mutableStateOf(false) }
-    var showPresetPicker by remember { mutableStateOf(false) }
+    var showActionsDialog by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
     var showProductPicker by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -117,8 +123,8 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showPresetPicker = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "样式预设")
+                    IconButton(onClick = { showActionsDialog = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 },
             )
@@ -130,25 +136,17 @@ fun EditorScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                OutlinedButton(
+                    onClick = { showDiscardConfirm = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("不保存")
+                }
                 Button(
                     onClick = { viewModel.saveNow() },
                     modifier = Modifier.weight(1.4f),
                 ) {
                     Text("保存")
-                }
-                OutlinedButton(
-                    onClick = { viewModel.loadSample() },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("editor_sample"),
-                ) {
-                    Text("示例")
-                }
-                OutlinedButton(
-                    onClick = { showClearConfirm = true },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("清空")
                 }
             }
         },
@@ -316,13 +314,6 @@ fun EditorScreen(
                     }
                 }
 
-                // 显示选项
-                SectionCard("显示选项") {
-                    LabeledSwitch("显示业务经理", s.showManager, viewModel::onShowManagerChange)
-                    LabeledSwitch("显示备注", s.showRemark, viewModel::onShowRemarkChange)
-                    LabeledSwitch("显示水印", s.showWatermark, viewModel::onShowWatermarkChange)
-                }
-
                 // 清单预览
                 PreviewCard(bitmap = s.preview)
                 Spacer(Modifier.height(8.dp))
@@ -361,19 +352,44 @@ fun EditorScreen(
         }
     }
 
-    if (showPresetPicker) {
-        PresetPickerDialog(
-            currentKey = s.presetKey,
+    if (showActionsDialog) {
+        EditorActionsDialog(
+            showManager = s.showManager,
+            showRemark = s.showRemark,
+            showWatermark = s.showWatermark,
+            company = s.companyName,
+            phone = s.contactPhone,
+            manager = s.salesManager,
+            presetKey = s.presetKey,
             presets = s.presets,
-            onSelect = { key ->
-                viewModel.selectPreset(key)
-                showPresetPicker = false
+            onSample = { viewModel.loadSample() },
+            onCompanySave = { company, phone, manager ->
+                viewModel.onCompanyNameChange(company)
+                viewModel.onContactPhoneChange(phone)
+                viewModel.onManagerChange(manager)
             },
-            onManage = {
-                showPresetPicker = false
+            onSelectPreset = viewModel::selectPreset,
+            onManagePresets = {
+                showActionsDialog = false
                 onManagePresets()
             },
-            onDismiss = { showPresetPicker = false },
+            onShowManagerChange = viewModel::onShowManagerChange,
+            onShowRemarkChange = viewModel::onShowRemarkChange,
+            onShowWatermarkChange = viewModel::onShowWatermarkChange,
+            onDismiss = { showActionsDialog = false },
+        )
+    }
+
+    if (showDiscardConfirm) {
+        ConfirmDialog(
+            title = "放弃修改？",
+            text = "未保存的修改将被丢弃，且无法恢复。",
+            confirmText = "放弃",
+            onConfirm = {
+                showDiscardConfirm = false
+                viewModel.discardChanges(onBack)
+            },
+            onDismiss = { showDiscardConfirm = false },
         )
     }
 
@@ -387,21 +403,10 @@ fun EditorScreen(
             onDismiss = { showProductPicker = false },
         )
     }
-
-    if (showClearConfirm) {
-        ConfirmDialog(
-            title = "清空表单",
-            text = "确定清空所有字段与商品行吗？",
-            confirmText = "清空",
-            onConfirm = {
-                viewModel.clearAll()
-                showClearConfirm = false
-            },
-            onDismiss = { showClearConfirm = false },
-        )
-    }
 }
 
+/** 客户名称：既是输入框也是下拉框。 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomerField(
     value: String,
@@ -411,49 +416,75 @@ private fun CustomerField(
     onGrantContacts: () -> Unit,
     onSelect: (CustomerSuggestion) -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    val menuOpen = expanded && suggestions.isNotEmpty()
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            label = { Text("客户名称") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        if (suggestions.isNotEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    suggestions.forEach { suggestion ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(suggestion) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    suggestion.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    "通讯录",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
+        ExposedDropdownMenuBox(
+            expanded = menuOpen,
+            onExpandedChange = { expanded = it },
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = {
+                    onChange(it)
+                    expanded = true
+                },
+                label = { Text("客户名称") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(
+                        type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                        enabled = true,
+                    ),
+                singleLine = true,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuOpen)
+                },
+            )
+            ExposedDropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { expanded = false },
+            ) {
+                suggestions.forEach { suggestion ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        suggestion.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    SuggestionTag(
+                                        text = when {
+                                            suggestion.fromDb && suggestion.fromContacts -> "通讯录"
+                                            suggestion.fromDb -> "客户库"
+                                            else -> "通讯录"
+                                        },
+                                    )
+                                }
+                                val subtitle = listOf(suggestion.type, suggestion.phone)
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" · ")
+                                if (subtitle.isNotBlank()) {
+                                    Text(
+                                        subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
-                            if (suggestion.phone.isNotBlank()) {
-                                Text(
-                                    suggestion.phone,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        HorizontalDivider()
-                    }
+                        },
+                        onClick = {
+                            onSelect(suggestion)
+                            expanded = false
+                        },
+                    )
                 }
             }
-        } else if (!contactsGranted) {
+        }
+        if (!contactsGranted) {
             Text(
                 text = "开启通讯录权限可联想联系人",
                 style = MaterialTheme.typography.bodySmall,
@@ -461,6 +492,216 @@ private fun CustomerField(
             )
             TextButton(onClick = onGrantContacts) { Text("授权通讯录") }
         }
+    }
+}
+
+@Composable
+private fun SuggestionTag(text: String) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+/** 右上角设置对话框：应用示例为按钮，其余项内联展开。 */
+@Composable
+private fun EditorActionsDialog(
+    showManager: Boolean,
+    showRemark: Boolean,
+    showWatermark: Boolean,
+    company: String,
+    phone: String,
+    manager: String,
+    presetKey: String,
+    presets: List<StylePreset>,
+    onSample: () -> Unit,
+    onCompanySave: (String, String, String) -> Unit,
+    onSelectPreset: (String) -> Unit,
+    onManagePresets: () -> Unit,
+    onShowManagerChange: (Boolean) -> Unit,
+    onShowRemarkChange: (Boolean) -> Unit,
+    onShowWatermarkChange: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var companyExpanded by remember { mutableStateOf(false) }
+    var presetExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设置") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                FilledTonalButton(
+                    onClick = {
+                        onSample()
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("应用示例")
+                }
+
+                ExpandableHeader("公司信息", companyExpanded) {
+                    companyExpanded = !companyExpanded
+                    presetExpanded = false
+                }
+                if (companyExpanded) {
+                    CompanyInlineEditor(
+                        company = company,
+                        phone = phone,
+                        manager = manager,
+                        onSave = { c, p, m ->
+                            onCompanySave(c, p, m)
+                            companyExpanded = false
+                        },
+                        onCancel = { companyExpanded = false },
+                    )
+                }
+
+                ExpandableHeader("选择样式预设", presetExpanded) {
+                    presetExpanded = !presetExpanded
+                    companyExpanded = false
+                }
+                if (presetExpanded) {
+                    PresetInlineList(
+                        currentKey = presetKey,
+                        presets = presets,
+                        onSelect = { key ->
+                            onSelectPreset(key)
+                            presetExpanded = false
+                        },
+                        onManage = onManagePresets,
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                LabeledSwitch("显示业务经理", showManager, onShowManagerChange)
+                LabeledSwitch("显示备注", showRemark, onShowRemarkChange)
+                LabeledSwitch("显示水印", showWatermark, onShowWatermarkChange)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+    )
+}
+
+@Composable
+private fun ExpandableHeader(
+    title: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(
+            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+@Composable
+private fun CompanyInlineEditor(
+    company: String,
+    phone: String,
+    manager: String,
+    onSave: (String, String, String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var companyText by remember(company) { mutableStateOf(company) }
+    var phoneText by remember(phone) { mutableStateOf(phone) }
+    var managerText by remember(manager) { mutableStateOf(manager) }
+
+    Column(modifier = Modifier.padding(start = 4.dp)) {
+        LabeledField("公司名称", companyText, { companyText = it })
+        Spacer(Modifier.height(6.dp))
+        LabeledField(
+            "联系电话",
+            phoneText,
+            { phoneText = it },
+            keyboardType = KeyboardType.Phone,
+        )
+        Spacer(Modifier.height(6.dp))
+        LabeledField("业务经理", managerText, { managerText = it })
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onCancel) { Text("取消") }
+            TextButton(onClick = {
+                onSave(companyText.trim(), phoneText.trim(), managerText.trim())
+            }) { Text("保存") }
+        }
+    }
+}
+
+@Composable
+private fun PresetInlineList(
+    currentKey: String,
+    presets: List<StylePreset>,
+    onSelect: (String) -> Unit,
+    onManage: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(start = 4.dp)) {
+        Text("内置预设", style = MaterialTheme.typography.labelMedium)
+        StylePresets.builtIns.forEach { preset ->
+            PresetRow(
+                name = preset.name,
+                tag = "内置",
+                selected = currentKey == preset.key,
+                onClick = { onSelect(preset.key) },
+            )
+        }
+        if (presets.isNotEmpty()) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+            Text("我的预设", style = MaterialTheme.typography.labelMedium)
+            presets.forEach { preset ->
+                PresetRow(
+                    name = preset.name,
+                    tag = "自定义",
+                    selected = currentKey == "custom:${preset.id}",
+                    onClick = { onSelect("custom:${preset.id}") },
+                )
+            }
+        }
+        TextButton(onClick = onManage) { Text("管理预设") }
+    }
+}
+
+@Composable
+private fun PresetRow(
+    name: String,
+    tag: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Text(name, modifier = Modifier.weight(1f))
+        Text(
+            tag,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -577,75 +818,6 @@ private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun PresetPickerDialog(
-    currentKey: String,
-    presets: List<StylePreset>,
-    onSelect: (String) -> Unit,
-    onManage: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择样式预设") },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                Text("内置预设", style = MaterialTheme.typography.labelMedium)
-                StylePresets.builtIns.forEach { preset ->
-                    PresetRow(
-                        name = preset.name,
-                        tag = "内置",
-                        selected = currentKey == preset.key,
-                        onClick = { onSelect(preset.key) },
-                    )
-                }
-                if (presets.isNotEmpty()) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-                    Text("我的预设", style = MaterialTheme.typography.labelMedium)
-                    presets.forEach { preset ->
-                        PresetRow(
-                            name = preset.name,
-                            tag = "自定义",
-                            selected = currentKey == "custom:${preset.id}",
-                            onClick = { onSelect("custom:${preset.id}") },
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onManage) { Text("管理预设") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
-}
-
-@Composable
-private fun PresetRow(
-    name: String,
-    tag: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Text(name, modifier = Modifier.weight(1f))
-        Text(
-            tag,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

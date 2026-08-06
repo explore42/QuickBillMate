@@ -27,7 +27,11 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "quickbillmate.db",
-                ).build().also { instance = it }
+                )
+                    // 尚未发布正式版：结构变更直接重建开发库，不使用迁移脚本
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { instance = it }
             }
     }
 }

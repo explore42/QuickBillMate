@@ -81,15 +81,19 @@ interface ProductDao {
 
 @Dao
 interface CustomerDao {
-    @Query("SELECT * FROM customers ORDER BY fromContacts DESC, createdAt DESC, id DESC")
+    @Query(
+        "SELECT * FROM customers ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
+    )
     fun observeAll(): Flow<List<Customer>>
 
-    @Query("SELECT * FROM customers ORDER BY createdAt DESC, id DESC")
+    @Query(
+        "SELECT * FROM customers ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
+    )
     suspend fun getAll(): List<Customer>
 
     @Query(
         "SELECT * FROM customers WHERE name LIKE '%' || :q || '%' OR phone LIKE '%' || :q || '%' " +
-            "OR type LIKE '%' || :q || '%' ORDER BY fromContacts DESC, createdAt DESC, id DESC"
+            "OR type LIKE '%' || :q || '%' ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
     )
     fun observeSearch(q: String): Flow<List<Customer>>
 

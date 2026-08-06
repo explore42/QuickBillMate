@@ -22,7 +22,7 @@ data class Bill(
     val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
-    val showWatermark: Boolean = true,
+    val showWatermark: Boolean = false,
     val presetKey: String = "classic",
     val status: String = "草稿",
     val createdAt: Long = System.currentTimeMillis(),
@@ -74,6 +74,7 @@ data class Customer(
     val type: String = "",
     val remark: String = "",
     val fromContacts: Boolean = false,
+    val favorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )
 

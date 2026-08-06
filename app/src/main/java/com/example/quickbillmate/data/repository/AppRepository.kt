@@ -33,10 +33,9 @@ import java.nio.charset.CodingErrorAction
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/** 通讯录导入结果：新增 / 跳过 / 合并。 */
+/** 通讯录导入结果：新增 / 合并（同名同号视为合并，无需写库）。 */
 data class ContactImportOutcome(
     val inserted: Int = 0,
-    val skipped: Int = 0,
     val merged: Int = 0,
 )
 
@@ -165,39 +164,32 @@ class AppRepository(
     suspend fun deleteCustomer(customer: Customer) = customerDao.delete(customer)
 
     /**
-     * 通讯录导入客户：按 name+phone 去重；
-     * mergeSameName=true 时同名客户合并电话（逗号分隔，去重），否则同名跳过。
+     * 通讯录导入客户，统一按“合并”语义：
+     * - 同名不同号：追加号码到现有客户（逗号分隔、去重、标记 fromContacts），计入“合并”
+     * - 同名同号：已存在，无需写库，计入“合并”
+     * - 不同名：新增客户，计入“新增”
      */
-    suspend fun importContactCandidates(
-        candidates: List<ContactsImporter.Candidate>,
-        mergeSameName: Boolean = false,
-    ): ContactImportOutcome {
+    suspend fun importContactCandidates(candidates: List<ContactsImporter.Candidate>): ContactImportOutcome {
         var inserted = 0
-        var skipped = 0
         var merged = 0
         candidates.forEach { candidate ->
-            val exactDup = customerDao.countDuplicate(candidate.name, candidate.phone) > 0
-            if (exactDup) {
-                skipped++
-                return@forEach
-            }
             val existing = customerDao.findByName(candidate.name)
             if (existing != null) {
-                if (mergeSameName) {
-                    val phones = existing.phone.split(",").map { it.trim() }.filter { it.isNotBlank() }.toMutableList()
-                    if (candidate.phone !in phones) {
-                        phones.add(candidate.phone)
-                        customerDao.update(
-                            existing.copy(
-                                phone = phones.joinToString(","),
-                                fromContacts = true,
-                            )
+                val phones = existing.phone
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .toMutableList()
+                if (candidate.phone !in phones) {
+                    phones.add(candidate.phone)
+                    customerDao.update(
+                        existing.copy(
+                            phone = phones.joinToString(","),
+                            fromContacts = true,
                         )
-                    }
-                    merged++
-                } else {
-                    skipped++
+                    )
                 }
+                merged++
             } else {
                 customerDao.insert(
                     Customer(
@@ -209,7 +201,7 @@ class AppRepository(
                 inserted++
             }
         }
-        return ContactImportOutcome(inserted, skipped, merged)
+        return ContactImportOutcome(inserted, merged)
     }
 
     // ---------- 样式预设 ----------

@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.db.BillItem
+import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
@@ -16,7 +17,6 @@ import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StylePresets
-import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +44,8 @@ data class ItemRow(
 data class CustomerSuggestion(
     val name: String,
     val phone: String,
+    val type: String = "",
+    val fromDb: Boolean,
     val fromContacts: Boolean,
 )
 
@@ -66,10 +68,11 @@ data class EditorUiState(
     val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
-    val showWatermark: Boolean = true,
+    val showWatermark: Boolean = false,
     val presetKey: String = "classic",
     val items: List<ItemRow> = listOf(ItemRow()),
     val preview: Bitmap? = null,
+    val customers: List<Customer> = emptyList(),
     val suggestions: List<CustomerSuggestion> = emptyList(),
     val products: List<Product> = emptyList(),
     val presets: List<StylePreset> = emptyList(),
@@ -90,7 +93,18 @@ class EditorViewModel(
     private var loaded = false
     private var cachedContacts: List<ContactsImporter.Candidate>? = null
 
+    /** 进入编辑页时的原始快照，用于“不保存”时恢复；新建单据时为 null。 */
+    private var originalBill: Bill? = null
+    private var originalItems: List<BillItem> = emptyList()
+    private var isNewDraft = false
+
     init {
+        viewModelScope.launch {
+            repo.observeCustomers("").collect { customers ->
+                state = state.copy(customers = customers)
+                refreshSuggestions(state.customerName)
+            }
+        }
         viewModelScope.launch {
             repo.observeProducts("").collect { state = state.copy(products = it) }
         }
@@ -110,7 +124,11 @@ class EditorViewModel(
                 contactPhone = settings.defaultPhone,
                 salesManager = settings.defaultManager,
             )
+            isNewDraft = true
+            originalBill = draft
+            originalItems = emptyList()
             applyBill(draft, emptyList())
+            refreshSuggestions(state.customerName)
             scheduleSave()
             schedulePreview()
         }
@@ -124,9 +142,31 @@ class EditorViewModel(
                 createNew()
             } else {
                 val items = repo.getItems(billId)
+                isNewDraft = false
+                originalBill = bill
+                originalItems = items
                 applyBill(bill, items)
+                refreshSuggestions(state.customerName)
                 schedulePreview()
             }
+        }
+    }
+
+    /**
+     * “不保存”：新建单据时删除草稿；编辑已有单据时恢复进入页面时的原始内容。
+     * 完成后回调（通常返回上一页）。
+     */
+    fun discardChanges(onDone: () -> Unit) {
+        viewModelScope.launch {
+            if (isNewDraft) {
+                repo.getBill(state.billId)?.let { repo.deleteBill(it) }
+            } else {
+                val original = originalBill
+                if (original != null) {
+                    repo.saveBill(original, originalItems)
+                }
+            }
+            onDone()
         }
     }
 
@@ -196,27 +236,55 @@ class EditorViewModel(
 
     fun onContactsPermission(granted: Boolean) {
         state = state.copy(contactsGranted = granted)
-        if (granted) refreshSuggestions(state.customerName)
+        refreshSuggestions(state.customerName)
     }
 
-    /** 客户信息不展示客户库已有客户，仅联想通讯录联系人。 */
+    /**
+     * 客户联想（下拉）：客户库优先（收藏 → 通讯录来源 → 时间），通讯录兜底，手动输入始终可用。
+     * 输入为空时也返回默认候选（收藏客户优先），便于直接下拉选择。
+     */
     private fun refreshSuggestions(query: String) {
-        if (query.isBlank()) {
-            state = state.copy(suggestions = emptyList())
-            return
-        }
         val q = query.trim()
-        if (!state.contactsGranted) {
-            state = state.copy(suggestions = emptyList())
-            return
-        }
-        val contacts = cachedContacts ?: ContactsImporter.query(app).also { cachedContacts = it }
-        state = state.copy(
-            suggestions = contacts
-                .filter { it.name.contains(q) || it.phone.contains(q) }
-                .take(6)
-                .map { CustomerSuggestion(it.name, it.phone, fromContacts = true) },
+        val libraryPool = state.customers.sortedWith(
+            compareByDescending<Customer> { it.favorite }
+                .thenByDescending { it.fromContacts }
+                .thenByDescending { it.createdAt }
         )
+
+        val fromDb = (if (q.isBlank()) libraryPool else libraryPool.filter {
+            it.name.contains(q) || it.phone.contains(q)
+        })
+            .take(6)
+            .map {
+                CustomerSuggestion(
+                    name = it.name,
+                    phone = it.phone,
+                    type = it.type,
+                    fromDb = true,
+                    fromContacts = it.fromContacts,
+                )
+            }
+
+        val dbKeys = fromDb.map { it.name to it.phone }.toSet()
+        val fromContacts = if (state.contactsGranted) {
+            val contacts = cachedContacts ?: ContactsImporter.query(app).also { cachedContacts = it }
+            contacts
+                .filter { q.isBlank() || it.name.contains(q) || it.phone.contains(q) }
+                .filterNot { (it.name to it.phone) in dbKeys }
+                .take(6 - fromDb.size)
+                .map {
+                    CustomerSuggestion(
+                        name = it.name,
+                        phone = it.phone,
+                        fromDb = false,
+                        fromContacts = true,
+                    )
+                }
+        } else {
+            emptyList()
+        }
+
+        state = state.copy(suggestions = fromDb + fromContacts)
     }
 
     fun selectSuggestion(suggestion: CustomerSuggestion) {
@@ -227,11 +295,11 @@ class EditorViewModel(
                 suggestions = emptyList(),
             )
         }
-        if (suggestion.fromContacts) {
+        // 通讯录候选选中后自动按合并语义导入客户库
+        if (!suggestion.fromDb && suggestion.fromContacts) {
             viewModelScope.launch {
                 repo.importContactCandidates(
-                    listOf(ContactsImporter.Candidate(suggestion.name, suggestion.phone)),
-                    mergeSameName = false,
+                    listOf(ContactsImporter.Candidate(suggestion.name, suggestion.phone))
                 )
             }
         }
@@ -284,7 +352,7 @@ class EditorViewModel(
         }
     }
 
-    // ---------- 示例 / 清空 ----------
+    // ---------- 示例 / 自动保存 / 手动保存 / 预览 ----------
 
     fun loadSample() {
         update {
@@ -305,25 +373,6 @@ class EditorViewModel(
         }
     }
 
-    fun clearAll() {
-        update {
-            copy(
-                customerName = "",
-                customerPhone = "",
-                companyName = "",
-                contactPhone = "",
-                salesManager = "",
-                docCode = "XS",
-                discountText = "0.00",
-                remark = "",
-                showManager = true,
-                showRemark = true,
-                showWatermark = true,
-                items = listOf(ItemRow()),
-            )
-        }
-    }
-
     private fun sampleItems(): List<ItemRow> = listOf(
         ItemRow("腻子粉", "YGP800 20kg", "袋", "10", "35.00", "20袋/托", ""),
         ItemRow("墙衬", "YGP400 20kg", "袋", "5", "28.00", "20袋/托", ""),
@@ -335,8 +384,6 @@ class EditorViewModel(
         ItemRow("美缝剂", "瓷白色 400ml", "支", "12", "38.00", "50支/箱", ""),
         ItemRow("玻璃胶", "透明 300ml", "支", "6", "15.00", "50支/箱", ""),
     )
-
-    // ---------- 自动保存 / 手动保存 / 预览 ----------
 
     private fun scheduleSave() {
         if (!loaded) return

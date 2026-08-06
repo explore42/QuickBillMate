@@ -9,11 +9,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -26,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -40,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.EmptyState
 
@@ -119,11 +124,18 @@ fun ContactsImportScreen(
                         },
                     )
                     Text("全选（仅当前筛选结果）", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "已选中 ${viewModel.selected.size} 项",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(filtered, key = { it.name + it.phone }) { candidate ->
                         val key = "${candidate.name}\u0000${candidate.phone}"
                         val checked = key in viewModel.selected
+                        val merge = viewModel.isMergeCandidate(candidate)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -133,7 +145,13 @@ fun ContactsImportScreen(
                         ) {
                             Checkbox(checked = checked, onCheckedChange = { viewModel.toggle(key, it) })
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(candidate.name, style = MaterialTheme.typography.bodyLarge)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(candidate.name, style = MaterialTheme.typography.bodyLarge)
+                                    if (merge) {
+                                        Spacer(Modifier.width(8.dp))
+                                        MergeBadge()
+                                    }
+                                }
                                 Text(
                                     candidate.phone,
                                     style = MaterialTheme.typography.bodySmall,
@@ -172,38 +190,32 @@ fun ContactsImportScreen(
         )
     }
 
-    viewModel.pendingMerge?.let { pending ->
-        AlertDialog(
-            onDismissRequest = { viewModel.cancelMerge() },
-            title = { Text("发现同名客户") },
-            text = {
-                Text("选中的联系人中有 ${viewModel.pendingMergeConflictCount} 条与客户库中已有客户同名。是否合并到现有客户（追加不同号码）？")
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.importWithMerge(mergeSameName = true) }) { Text("合并") }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.importWithMerge(mergeSameName = false) }) { Text("跳过同名") }
-            },
-        )
-    }
-
     viewModel.importResult?.let { outcome ->
-        val parts = buildList {
-            add("成功 ${outcome.inserted} 条")
-            if (outcome.merged > 0) add("合并 ${outcome.merged} 条")
-            if (outcome.skipped > 0) add("已存在跳过 ${outcome.skipped} 条")
-        }
         AlertDialog(
             onDismissRequest = viewModel::consumeResult,
             title = { Text("导入完成") },
-            text = { Text(parts.joinToString(" / ")) },
+            text = { Text("新增 ${outcome.inserted} 条 / 合并 ${outcome.merged} 条") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.consumeResult()
                     onBack()
                 }) { Text("返回客户") }
             },
+        )
+    }
+}
+
+@Composable
+private fun MergeBadge() {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = "合并",
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
 }

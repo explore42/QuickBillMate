@@ -31,10 +31,8 @@ class ContactsImportViewModel(
     var importResult by mutableStateOf<ContactImportOutcome?>(null)
         private set
 
-    /** 待确认的同名合并清单（发现同名客户时弹出确认）。 */
-    var pendingMerge by mutableStateOf<List<ContactsImporter.Candidate>?>(null)
-        private set
-    var pendingMergeConflictCount by mutableStateOf(0)
+    /** 客户库中已有的客户姓名集合，用于给同名联系人显示“合并”徽标。 */
+    var existingCustomerNames by mutableStateOf<Set<String>>(emptySet())
         private set
 
     val filtered: List<ContactsImporter.Candidate>
@@ -49,12 +47,17 @@ class ContactsImportViewModel(
         query = value
     }
 
+    fun isMergeCandidate(candidate: ContactsImporter.Candidate): Boolean =
+        candidate.name in existingCustomerNames
+
     fun load() {
         viewModelScope.launch {
             loading = true
-            candidates = withContext(Dispatchers.IO) {
+            val contacts = withContext(Dispatchers.IO) {
                 ContactsImporter.query(app)
             }
+            existingCustomerNames = repo.getCustomers().map { it.name }.toSet()
+            candidates = contacts
             loading = false
         }
     }
@@ -71,41 +74,14 @@ class ContactsImportViewModel(
     fun selectedList(): List<ContactsImporter.Candidate> =
         candidates.filter { keyOf(it.name, it.phone) in selected }
 
+    /** 直接按合并语义导入选中的联系人，不再弹“跳过”确认。 */
     fun importSelected() {
         val list = selectedList()
         if (list.isEmpty()) return
         viewModelScope.launch {
-            val existing = repo.getCustomers()
-            val conflicts = list.filter { candidate ->
-                existing.any { it.name == candidate.name } &&
-                    !existing.any { it.name == candidate.name && it.phone == candidate.phone }
-            }
-            if (conflicts.isNotEmpty()) {
-                pendingMerge = list
-                pendingMergeConflictCount = conflicts.size
-            } else {
-                doImport(list, mergeSameName = false)
-            }
-        }
-    }
-
-    fun importWithMerge(mergeSameName: Boolean) {
-        val list = pendingMerge ?: return
-        pendingMerge = null
-        pendingMergeConflictCount = 0
-        doImport(list, mergeSameName)
-    }
-
-    fun cancelMerge() {
-        pendingMerge = null
-        pendingMergeConflictCount = 0
-    }
-
-    private fun doImport(list: List<ContactsImporter.Candidate>, mergeSameName: Boolean) {
-        viewModelScope.launch {
             importing = true
             importResult = withContext(Dispatchers.IO) {
-                repo.importContactCandidates(list, mergeSameName)
+                repo.importContactCandidates(list)
             }
             importing = false
         }
