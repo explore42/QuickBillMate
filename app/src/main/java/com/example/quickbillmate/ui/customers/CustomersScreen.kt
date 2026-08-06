@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -27,7 +26,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,11 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
-import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
+import com.example.quickbillmate.ui.common.SearchableTopBar
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
 
@@ -64,8 +62,11 @@ fun CustomersScreen(
 
     Scaffold(
         topBar = {
-            AppTopBar(
+            SearchableTopBar(
                 title = "客户",
+                searchPlaceholder = "搜索姓名/电话/类型",
+                query = viewModel.queryText,
+                onQueryChange = viewModel::setQuery,
                 actions = {
                     TextButton(onClick = onImportContacts) { Text("导入") }
                 },
@@ -77,31 +78,25 @@ fun CustomersScreen(
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            OutlinedTextField(
-                value = viewModel.queryText,
-                onValueChange = viewModel::setQuery,
-                label = { Text("搜索姓名/电话/类型") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        if (customers.isEmpty()) {
+            EmptyState(
+                icon = Icons.Default.Edit,
+                text = if (viewModel.queryText.isNotBlank()) "没有找到匹配的客户" else "还没有客户，点击右下角新增",
+                modifier = Modifier.padding(padding),
             )
-            if (customers.isEmpty()) {
-                EmptyState(Icons.Default.Edit, "还没有客户，点击右下角新增")
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(customers, key = { it.id }) { customer ->
-                        CustomerCard(
-                            customer = customer,
-                            onEdit = { editing = customer },
-                            onDelete = { pendingDelete = customer },
-                            onToggleFavorite = { viewModel.toggleFavorite(customer) },
-                        )
-                    }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(customers, key = { it.id }) { customer ->
+                    CustomerCard(
+                        customer = customer,
+                        onEdit = { editing = customer },
+                        onDelete = { pendingDelete = customer },
+                        onToggleFavorite = { viewModel.toggleFavorite(customer) },
+                    )
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.example.quickbillmate
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -27,6 +29,23 @@ class QuickBillMateUiTest {
 
     private fun waitFor(timeoutMs: Long = 10000, condition: () -> Boolean) {
         composeRule.waitUntil(timeoutMillis = timeoutMs, condition = condition)
+    }
+
+    private fun waitHomeReady() {
+        waitFor {
+            composeRule.onAllNodesWithContentDescription("新建销售清单").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun createBillWithCustomer(name: String) {
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
+        composeRule.onNodeWithText("保存").performClick()
+        composeRule.onNodeWithContentDescription("返回").performClick()
+        waitHomeReady()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test
@@ -111,22 +130,14 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("放弃").performClick()
 
         // 回到首页，且该草稿已删除
-        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
+        waitHomeReady()
         waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty() }
     }
 
     @Test
     fun deleteSelectedBillRemovesIt() {
         val name = "待删客户${System.currentTimeMillis() % 100000}"
-
-        // 新建一张带唯一客户名的单据
-        composeRule.onNodeWithTag("home_new_bill").performClick()
-        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("客户名称").performClick()
-        composeRule.onNodeWithText("客户名称").performTextInput(name)
-        composeRule.onNodeWithText("保存").performClick()
-        composeRule.onNodeWithContentDescription("返回").performClick()
-        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        createBillWithCustomer(name)
 
         // 长按进入多选
         composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
@@ -140,7 +151,47 @@ class QuickBillMateUiTest {
 
         // 单据消失，回到普通首页
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isEmpty() }
-        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
+        waitHomeReady()
+    }
+
+    @Test
+    fun homeSearchFiltersBills() {
+        val name = "搜索客户${System.currentTimeMillis() % 100000}"
+        createBillWithCustomer(name)
+
+        // 点击标题栏搜索图标展开
+        composeRule.onNodeWithContentDescription("搜索").performClick()
+        waitFor {
+            composeRule.onAllNodesWithText("搜索商品 / 客户 / 时间").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNode(hasSetTextAction()).performTextInput(name)
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 其他单据被过滤掉，只剩匹配的那条
+        waitFor {
+            composeRule.onAllNodes(hasText("示例客户", substring = true)).fetchSemanticsNodes().isEmpty()
+        }
+
+        // 叉号清除后输入无结果关键字，显示空态文案
+        composeRule.onNodeWithContentDescription("清除搜索").performClick()
+        composeRule.onNode(hasSetTextAction()).performTextInput("绝对不存在的关键字xyz")
+        waitFor { composeRule.onAllNodesWithText("没有找到匹配的单据").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun backInSelectionExitsSelectionInsteadOfFinishing() {
+        val name = "返回客户${System.currentTimeMillis() % 100000}"
+        createBillWithCustomer(name)
+
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+
+        Espresso.pressBack()
+
+        // 退出多选而不是退出应用
+        waitFor { composeRule.onAllNodesWithText("已选中").fetchSemanticsNodes().isEmpty() }
+        composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("新建销售清单").assertIsDisplayed()
     }
 
     @Test
@@ -155,7 +206,7 @@ class QuickBillMateUiTest {
         // 保存后返回
         composeRule.onNodeWithText("保存").performClick()
         composeRule.onNodeWithContentDescription("返回").performClick()
-        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
+        waitHomeReady()
 
         // 点击第一条单据（最新）→ 查看页
         waitFor { composeRule.onAllNodesWithText("示例客户").fetchSemanticsNodes().isNotEmpty() }

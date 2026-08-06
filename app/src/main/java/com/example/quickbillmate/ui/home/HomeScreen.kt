@@ -1,5 +1,6 @@
 package com.example.quickbillmate.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
+import com.example.quickbillmate.ui.common.SearchableTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +87,8 @@ fun HomeScreen(
         bills = bills,
         selectionMode = viewModel.selectionMode,
         selectedIds = viewModel.selectedIds,
+        searchQuery = viewModel.searchQuery,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
         onNewBill = onNewBill,
         onOpenBill = onOpenBill,
         onEnterSelection = viewModel::enterSelection,
@@ -112,6 +116,8 @@ fun HomeContent(
     bills: List<HomeBill>,
     selectionMode: Boolean,
     selectedIds: Set<Long>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onNewBill: () -> Unit,
     onOpenBill: (Long) -> Unit,
     onEnterSelection: (Long) -> Unit,
@@ -127,6 +133,11 @@ fun HomeContent(
     showDeleteConfirm: Boolean,
     onDismissDeleteConfirm: () -> Unit,
 ) {
+    // 多选状态下，系统返回手势/按钮改为退出多选，而不是退出应用
+    BackHandler(enabled = selectionMode) {
+        onExitSelection()
+    }
+
     Scaffold(
         topBar = {
             if (selectionMode) {
@@ -146,7 +157,12 @@ fun HomeContent(
                     },
                 )
             } else {
-                AppTopBar(title = "快贝智单")
+                SearchableTopBar(
+                    title = "快贝智单",
+                    searchPlaceholder = "搜索商品 / 客户 / 时间",
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                )
             }
         },
         floatingActionButton = {
@@ -174,83 +190,74 @@ fun HomeContent(
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (!selectionMode) {
-                Text(
-                    text = "最近单据",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-
-            if (bills.isEmpty() && !selectionMode) {
-                EmptyState(
-                    icon = Icons.Default.ShoppingCart,
-                    text = "还没有单据，点击右下角新建",
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(bills, key = { it.bill.id }) { homeBill ->
-                        val bill = homeBill.bill
-                        val selected = bill.id in selectedIds
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (selectionMode) {
-                                                onToggleSelection(bill.id)
-                                            } else {
-                                                onOpenBill(bill.id)
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (selectionMode) {
-                                                onToggleSelection(bill.id)
-                                            } else {
-                                                onEnterSelection(bill.id)
-                                            }
-                                        },
-                                    )
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = bill.customerName.ifBlank { "未填写客户" },
-                                            style = MaterialTheme.typography.titleSmall,
-                                            modifier = Modifier.weight(1f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            text = bill.docDate,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                        )
-                                    }
-                                    Spacer(Modifier.height(6.dp))
+        if (bills.isEmpty()) {
+            EmptyState(
+                icon = Icons.Default.ShoppingCart,
+                text = if (searchQuery.isNotBlank()) "没有找到匹配的单据" else "还没有单据，点击右下角新建",
+                modifier = Modifier.padding(padding),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(bills, key = { it.bill.id }) { homeBill ->
+                    val bill = homeBill.bill
+                    val selected = bill.id in selectedIds
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .combinedClickable(
+                                    onClick = {
+                                        if (selectionMode) {
+                                            onToggleSelection(bill.id)
+                                        } else {
+                                            onOpenBill(bill.id)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (selectionMode) {
+                                            onToggleSelection(bill.id)
+                                        } else {
+                                            onEnterSelection(bill.id)
+                                        }
+                                    },
+                                )
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     Text(
-                                        text = "${homeBill.docNumber} · ${homeBill.itemCount} 项 · ¥${homeBill.receivableText}",
+                                        text = bill.customerName.ifBlank { "未填写客户" },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = bill.docDate,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = MaterialTheme.colorScheme.outline,
                                     )
                                 }
-                                if (selectionMode) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Checkbox(
-                                        checked = selected,
-                                        onCheckedChange = { onToggleSelection(bill.id) },
-                                    )
-                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "${homeBill.docNumber} · ${homeBill.itemCount} 项 · ¥${homeBill.receivableText}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (selectionMode) {
+                                Spacer(Modifier.width(8.dp))
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = { onToggleSelection(bill.id) },
+                                )
                             }
                         }
                     }

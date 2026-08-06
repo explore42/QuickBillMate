@@ -63,6 +63,8 @@ fun HomeContentPreview() {
             bills = sampleBills(),
             selectionMode = false,
             selectedIds = emptySet(),
+            searchQuery = "",
+            onSearchQueryChange = {},
             onNewBill = {},
             onOpenBill = {},
             onEnterSelection = {},
@@ -89,6 +91,8 @@ fun HomeSelectionPreview() {
             bills = sampleBills(),
             selectionMode = true,
             selectedIds = setOf(1L),
+            searchQuery = "",
+            onSearchQueryChange = {},
             onNewBill = {},
             onOpenBill = {},
             onEnterSelection = {},
@@ -157,6 +161,7 @@ private fun sampleBills(): List<HomeBill> = listOf(
         ),
         itemCount = 3,
         receivable = 888.0,
+        itemNames = listOf("腻子粉", "墙衬", "蓝和纸墙面保护膜"),
     ),
     HomeBill(
         bill = Bill(

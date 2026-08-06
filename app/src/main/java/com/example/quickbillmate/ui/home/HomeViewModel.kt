@@ -16,7 +16,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class HomeBill(val bill: Bill, val itemCount: Int, val receivable: Double) {
+data class HomeBill(
+    val bill: Bill,
+    val itemCount: Int,
+    val receivable: Double,
+    val itemNames: List<String> = emptyList(),
+) {
     val docNumber: String
         get() = BillNumber.build(bill.docCode, bill.docDate, bill.docSerial)
 
@@ -30,6 +35,11 @@ class HomeViewModel(
 ) : ViewModel() {
     private val _bills = MutableStateFlow<List<HomeBill>>(emptyList())
     val bills: StateFlow<List<HomeBill>> = _bills
+
+    var searchQuery by mutableStateOf("")
+        private set
+
+    private var allBills: List<HomeBill> = emptyList()
 
     var selectionMode by mutableStateOf(false)
         private set
@@ -45,7 +55,7 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             repo.observeRecentBills().collect { list ->
-                _bills.value = list.map { bill ->
+                allBills = list.map { bill ->
                     val items = repo.getItems(bill.id)
                     val total = items.sumOf {
                         if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
@@ -54,14 +64,30 @@ class HomeViewModel(
                         bill = bill,
                         itemCount = items.size,
                         receivable = Math.max(0.0, Money.round2(total - bill.discount)),
+                        itemNames = items.map { it.name },
                     )
                 }
-                // 列表刷新后清理已不存在的选中项
-                val valid = selectedIds.intersect(list.map { it.id }.toSet())
-                if (valid != selectedIds) {
-                    selectedIds = valid
-                    if (valid.isEmpty()) selectionMode = false
-                }
+                applyFilter()
+            }
+        }
+    }
+
+    fun onSearchQueryChange(value: String) {
+        searchQuery = value
+        applyFilter()
+    }
+
+    /** 按商品名 / 客户姓名电话 / 单据日期筛选。 */
+    private fun applyFilter() {
+        val q = searchQuery.trim()
+        _bills.value = if (q.isBlank()) {
+            allBills
+        } else {
+            allBills.filter { home ->
+                home.bill.customerName.contains(q) ||
+                    home.bill.customerPhone.contains(q) ||
+                    home.bill.docDate.contains(q) ||
+                    home.itemNames.any { it.contains(q) }
             }
         }
     }
@@ -81,7 +107,7 @@ class HomeViewModel(
     }
 
     fun selectAll() {
-        selectedIds = _bills.value.map { it.bill.id }.toSet()
+        selectedIds = allBills.map { it.bill.id }.toSet()
     }
 
     fun exitSelection() {

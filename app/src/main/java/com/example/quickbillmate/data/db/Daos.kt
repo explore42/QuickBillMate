@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BillDao {
-    @Query("SELECT * FROM bills ORDER BY updatedAt DESC LIMIT 20")
+    @Query("SELECT * FROM bills ORDER BY updatedAt DESC")
     fun observeRecent(): Flow<List<Bill>>
 
     @Query("SELECT * FROM bills WHERE id = :id")
