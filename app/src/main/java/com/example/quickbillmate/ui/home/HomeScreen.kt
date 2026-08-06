@@ -48,7 +48,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
-import com.example.quickbillmate.ui.common.InfoDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,18 +81,61 @@ fun HomeScreen(
         }
     }
 
+    HomeContent(
+        bills = bills,
+        selectionMode = viewModel.selectionMode,
+        selectedIds = viewModel.selectedIds,
+        onNewBill = onNewBill,
+        onOpenBill = onOpenBill,
+        onEnterSelection = viewModel::enterSelection,
+        onToggleSelection = viewModel::toggleSelection,
+        onExitSelection = viewModel::exitSelection,
+        onSelectAll = viewModel::selectAll,
+        onCopy = viewModel::copySelected,
+        onEdit = { viewModel.editSelected(onOpenBill) },
+        onExport = viewModel::exportSelected,
+        onDeleteRequest = { showDeleteConfirm = true },
+        onConfirmDelete = viewModel::confirmDelete,
+        onCancelDelete = viewModel::cancelDelete,
+        showDeleteConfirm = showDeleteConfirm,
+        onDismissDeleteConfirm = { showDeleteConfirm = false },
+    )
+}
+
+/** 首页纯界面层：数据与回调全部由参数传入，可在 Android Studio 中直接预览调试。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeContent(
+    bills: List<HomeBill>,
+    selectionMode: Boolean,
+    selectedIds: Set<Long>,
+    onNewBill: () -> Unit,
+    onOpenBill: (Long) -> Unit,
+    onEnterSelection: (Long) -> Unit,
+    onToggleSelection: (Long) -> Unit,
+    onExitSelection: () -> Unit,
+    onSelectAll: () -> Unit,
+    onCopy: () -> Unit,
+    onEdit: (Long) -> Unit,
+    onExport: () -> Unit,
+    onDeleteRequest: () -> Unit,
+    onConfirmDelete: () -> Unit,
+    onCancelDelete: () -> Unit,
+    showDeleteConfirm: Boolean,
+    onDismissDeleteConfirm: () -> Unit,
+) {
     Scaffold(
         topBar = {
-            if (viewModel.selectionMode) {
+            if (selectionMode) {
                 TopAppBar(
-                    title = { Text("已选中 ${viewModel.selectedIds.size} 项") },
+                    title = { Text("已选中 ${selectedIds.size} 项") },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.exitSelection() }) {
+                        IconButton(onClick = onExitSelection) {
                             Icon(Icons.Default.Close, contentDescription = "退出多选")
                         }
                     },
                     actions = {
-                        TextButton(onClick = { viewModel.selectAll() }) {
+                        TextButton(onClick = onSelectAll) {
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(Modifier.width(2.dp))
                             Text("全选")
@@ -105,19 +147,19 @@ fun HomeScreen(
             }
         },
         bottomBar = {
-            if (viewModel.selectionMode) {
+            if (selectionMode) {
                 SelectionActionBar(
-                    canEdit = viewModel.selectedIds.size == 1,
-                    onCopy = { viewModel.copySelected() },
-                    onEdit = { viewModel.editSelected(onOpenBill) },
-                    onExport = { viewModel.exportSelected() },
-                    onDelete = { showDeleteConfirm = true },
+                    canEdit = selectedIds.size == 1,
+                    onCopy = onCopy,
+                    onEdit = { onEdit(selectedIds.firstOrNull() ?: 0L) },
+                    onExport = onExport,
+                    onDelete = onDeleteRequest,
                 )
             }
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (!viewModel.selectionMode) {
+            if (!selectionMode) {
                 Button(
                     onClick = onNewBill,
                     modifier = Modifier
@@ -137,7 +179,7 @@ fun HomeScreen(
                 )
             }
 
-            if (bills.isEmpty() && !viewModel.selectionMode) {
+            if (bills.isEmpty() && !selectionMode) {
                 EmptyState(
                     icon = Icons.Default.ShoppingCart,
                     text = "还没有单据，点击上方新建",
@@ -150,23 +192,23 @@ fun HomeScreen(
                 ) {
                     items(bills, key = { it.bill.id }) { homeBill ->
                         val bill = homeBill.bill
-                        val selected = bill.id in viewModel.selectedIds
+                        val selected = bill.id in selectedIds
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier
                                     .combinedClickable(
                                         onClick = {
-                                            if (viewModel.selectionMode) {
-                                                viewModel.toggleSelection(bill.id)
+                                            if (selectionMode) {
+                                                onToggleSelection(bill.id)
                                             } else {
                                                 onOpenBill(bill.id)
                                             }
                                         },
                                         onLongClick = {
-                                            if (viewModel.selectionMode) {
-                                                viewModel.toggleSelection(bill.id)
+                                            if (selectionMode) {
+                                                onToggleSelection(bill.id)
                                             } else {
-                                                viewModel.enterSelection(bill.id)
+                                                onEnterSelection(bill.id)
                                             }
                                         },
                                     )
@@ -198,11 +240,11 @@ fun HomeScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                if (viewModel.selectionMode) {
+                                if (selectionMode) {
                                     Spacer(Modifier.width(8.dp))
                                     Checkbox(
                                         checked = selected,
-                                        onCheckedChange = { viewModel.toggleSelection(bill.id) },
+                                        onCheckedChange = { onToggleSelection(bill.id) },
                                     )
                                 }
                             }
@@ -216,14 +258,14 @@ fun HomeScreen(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除单据",
-            text = "确定删除选中的 ${viewModel.selectedIds.size} 条单据及其商品行吗？此操作不可恢复。",
+            text = "确定删除选中的 ${selectedIds.size} 条单据及其商品行吗？此操作不可恢复。",
             onConfirm = {
-                viewModel.confirmDelete()
-                showDeleteConfirm = false
+                onConfirmDelete()
+                onDismissDeleteConfirm()
             },
             onDismiss = {
-                viewModel.cancelDelete()
-                showDeleteConfirm = false
+                onCancelDelete()
+                onDismissDeleteConfirm()
             },
         )
     }

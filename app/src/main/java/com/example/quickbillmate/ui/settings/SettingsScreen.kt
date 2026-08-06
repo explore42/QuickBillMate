@@ -40,11 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -61,12 +61,53 @@ fun SettingsScreen(
 ) {
     val presets by viewModel.presets.collectAsState()
     val context = LocalContext.current
+
+    SettingsContent(
+        themeMode = viewModel.themeMode,
+        defaultCompany = viewModel.defaultCompany,
+        defaultPhone = viewModel.defaultPhone,
+        defaultManager = viewModel.defaultManager,
+        defaultPresetKey = viewModel.defaultPresetKey,
+        versionName = viewModel.versionName,
+        presets = presets,
+        onThemeModeChange = { mode ->
+            viewModel.updateThemeMode(mode)
+            onThemeModeChange(mode)
+        },
+        onCompanySave = { company, phone, manager ->
+            viewModel.updateCompany(company)
+            viewModel.updatePhone(phone)
+            viewModel.updateManager(manager)
+        },
+        onPresetChange = viewModel::updateDefaultPreset,
+        onOpenUrl = { url ->
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        },
+    )
+}
+
+/** 设置页纯界面层：数据全部由参数传入，可在 Android Studio 中直接预览调试。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsContent(
+    themeMode: String,
+    defaultCompany: String,
+    defaultPhone: String,
+    defaultManager: String,
+    defaultPresetKey: String,
+    versionName: String,
+    presets: List<StylePreset>,
+    onThemeModeChange: (String) -> Unit,
+    onCompanySave: (String, String, String) -> Unit,
+    onPresetChange: (String) -> Unit,
+    onOpenUrl: (String) -> Unit,
+) {
     var showThemeMenu by remember { mutableStateOf(false) }
     var showPresetMenu by remember { mutableStateOf(false) }
     var showCompanyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
-    val themeLabel = when (viewModel.themeMode) {
+    val themeLabel = when (themeMode) {
         SettingsStore.THEME_DARK -> "深色"
         SettingsStore.THEME_LIGHT -> "浅色"
         else -> "跟随系统"
@@ -102,7 +143,6 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text(label) },
                             onClick = {
-                                viewModel.updateThemeMode(mode)
                                 onThemeModeChange(mode)
                                 showThemeMenu = false
                             },
@@ -116,7 +156,7 @@ fun SettingsScreen(
                 SettingRow(
                     icon = { Icon(Icons.Default.Build, contentDescription = null) },
                     title = "默认样式预设",
-                    subtitle = presetDisplayName(viewModel.defaultPresetKey, presets),
+                    subtitle = presetDisplayName(defaultPresetKey, presets),
                     onClick = { showPresetMenu = true },
                 )
                 DropdownMenu(
@@ -127,7 +167,7 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text(preset.name) },
                             onClick = {
-                                viewModel.updateDefaultPreset(preset.key)
+                                onPresetChange(preset.key)
                                 showPresetMenu = false
                             },
                         )
@@ -136,7 +176,7 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text(preset.name) },
                             onClick = {
-                                viewModel.updateDefaultPreset("custom:${preset.id}")
+                                onPresetChange("custom:${preset.id}")
                                 showPresetMenu = false
                             },
                         )
@@ -148,7 +188,7 @@ fun SettingsScreen(
             SettingRow(
                 icon = { Icon(Icons.Default.AccountBox, contentDescription = null) },
                 title = "默认公司信息",
-                subtitle = listOf(viewModel.defaultCompany, viewModel.defaultPhone, viewModel.defaultManager)
+                subtitle = listOf(defaultCompany, defaultPhone, defaultManager)
                     .filter { it.isNotBlank() }
                     .joinToString(" · ")
                     .ifBlank { "未设置" },
@@ -159,7 +199,7 @@ fun SettingsScreen(
             SettingRow(
                 icon = { Icon(Icons.Default.Info, contentDescription = null) },
                 title = "关于",
-                subtitle = "版本 ${viewModel.versionName}",
+                subtitle = "版本 $versionName",
                 onClick = { showAboutDialog = true },
             )
         }
@@ -167,13 +207,11 @@ fun SettingsScreen(
 
     if (showCompanyDialog) {
         CompanyDefaultsDialog(
-            company = viewModel.defaultCompany,
-            phone = viewModel.defaultPhone,
-            manager = viewModel.defaultManager,
+            company = defaultCompany,
+            phone = defaultPhone,
+            manager = defaultManager,
             onSave = { company, phone, manager ->
-                viewModel.updateCompany(company)
-                viewModel.updatePhone(phone)
-                viewModel.updateManager(manager)
+                onCompanySave(company, phone, manager)
                 showCompanyDialog = false
             },
             onDismiss = { showCompanyDialog = false },
@@ -189,7 +227,7 @@ fun SettingsScreen(
                     Text("快贝智单 QuickBillMate")
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "版本 ${viewModel.versionName}",
+                        "版本 $versionName",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -201,11 +239,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text("开源地址：", style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(PROJECT_URL))
-                        )
-                    }) {
+                    TextButton(onClick = { onOpenUrl(PROJECT_URL) }) {
                         Text(PROJECT_URL, color = MaterialTheme.colorScheme.primary)
                     }
                 }

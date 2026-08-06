@@ -98,8 +98,9 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithContentDescription("返回").performClick()
         waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
 
-        // 点击单据 → 查看页
-        composeRule.onNodeWithText("示例客户").performClick()
+        // 点击第一条单据（最新）→ 查看页
+        waitFor { composeRule.onAllNodesWithText("示例客户").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onAllNodesWithText("示例客户")[0].performClick()
         waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("单据详情").assertIsDisplayed()
 
