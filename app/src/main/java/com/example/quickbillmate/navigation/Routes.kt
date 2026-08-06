@@ -1,0 +1,23 @@
+package com.example.quickbillmate.navigation
+
+object Routes {
+    const val HOME = "home"
+    const val PRODUCTS = "products"
+    const val CUSTOMERS = "customers"
+    const val SETTINGS = "settings"
+    const val EDITOR = "editor/{billId}"
+    const val PRESETS = "presets"
+    const val PRESET_EDITOR = "preset_editor?presetId={presetId}&base={base}"
+    const val CONTACTS_IMPORT = "contacts_import"
+
+    const val EDITOR_ARG_BILL_ID = "billId"
+    const val PRESET_EDITOR_ARG_ID = "presetId"
+    const val PRESET_EDITOR_ARG_BASE = "base"
+
+    fun editor(billId: Long) = "editor/$billId"
+
+    fun presetEditor(presetId: Long = 0, base: String = "classic") =
+        "preset_editor?presetId=$presetId&base=$base"
+
+    val tabRoutes = listOf(HOME, PRODUCTS, CUSTOMERS, SETTINGS)
+}
