@@ -2,6 +2,7 @@ package com.example.quickbillmate.ui.customers
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,23 +14,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,18 +44,70 @@ import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
+import com.example.quickbillmate.ui.common.GroupSectionHeader
+import com.example.quickbillmate.ui.common.InitialCircle
 import com.example.quickbillmate.ui.common.LabeledField
+import com.example.quickbillmate.ui.common.LetterIndexBar
+import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.util.Pinyin
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
+
+/** 客户分组：title 为分组标题（收藏 / 字母 / #）。 */
+internal data class CustomerSection(
+    val title: String,
+    val customers: List<Customer>,
+)
+
+/**
+ * 把已排序的客户列表按「收藏 → 字母 → #」分组。
+ * 收藏客户只进“收藏”组，字母组只含非收藏客户，避免同一客户出现在两个分组。
+ */
+internal fun groupCustomers(customers: List<Customer>, letters: List<String>): List<CustomerSection> {
+    val favorites = customers.filter { it.favorite }
+    val byLetter = customers.zip(letters).filterNot { (customer, _) -> customer.favorite }.groupBy { it.second }
+    return buildList {
+        if (favorites.isNotEmpty()) add(CustomerSection("收藏", favorites))
+        byLetter.keys.filter { it != "#" }.sorted().forEach { letter ->
+            byLetter[letter]?.let { add(CustomerSection(letter, it.map { pair -> pair.first })) }
+        }
+        byLetter["#"]?.let { add(CustomerSection("#", it.map { pair -> pair.first })) }
+    }
+}
 
 @Composable
 fun CustomersScreen(
     onImportContacts: () -> Unit,
+    scrollToTopTick: Int = 0,
     viewModel: CustomersViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val customers by viewModel.customers.collectAsState()
+    val listState = rememberLazyListState()
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
+    val letters = remember(customers) { customers.map { Pinyin.firstLetter(it.name) } }
+    val grouped = remember(customers, letters) { groupCustomers(customers, letters) }
+    val sections = remember(grouped) {
+        grouped.map { section ->
+            if (section.title == "收藏") {
+                IndexSection("♥", "收藏")
+            } else {
+                IndexSection(section.title, section.title)
+            }
+        }
+    }
+    val firstBySection = remember(grouped) {
+        buildMap {
+            var index = 0
+            grouped.forEach { section ->
+                put(if (section.title == "收藏") "♥" else section.title, index)
+                index += 1 + section.customers.size
+            }
+        }
+    }
     var editing by remember { mutableStateOf<Customer?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Customer?>(null) }
@@ -85,19 +137,37 @@ fun CustomersScreen(
                 modifier = Modifier.padding(padding),
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(customers, key = { it.id }, contentType = { "customerCard" }) { customer ->
-                    CustomerCard(
-                        customer = customer,
-                        onEdit = { editing = customer },
-                        onDelete = { pendingDelete = customer },
-                        onToggleFavorite = { viewModel.toggleFavorite(customer) },
-                    )
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    grouped.forEachIndexed { groupIndex, section ->
+                        item(key = "header_${section.title}", contentType = { "sectionHeader" }) {
+                            GroupSectionHeader(
+                                title = section.title,
+                                showTopDivider = groupIndex > 0,
+                            )
+                        }
+                        items(
+                            section.customers,
+                            key = { it.id },
+                            contentType = { "customerCard" },
+                        ) { customer ->
+                            CustomerCard(
+                                customer = customer,
+                                onEdit = { editing = customer },
+                                onDelete = { pendingDelete = customer },
+                            )
+                        }
+                    }
                 }
+                LetterIndexBar(
+                    state = listState,
+                    sections = sections,
+                    firstIndexOf = { firstBySection[it] ?: -1 },
+                )
             }
         }
     }
@@ -142,19 +212,24 @@ private fun CustomerCard(
     customer: Customer,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onToggleFavorite: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .combinedClickable(
-                        onClick = onEdit,
-                        onLongClick = onDelete,
-                    )
-                    .padding(start = 14.dp, top = 10.dp, bottom = 10.dp),
-            ) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        InitialCircle(customer.name.trim().firstOrNull()?.toString() ?: "?")
+        Spacer(Modifier.width(12.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .combinedClickable(
+                    onClick = onEdit,
+                    onLongClick = onDelete,
+                )
+                .padding(top = 6.dp, bottom = 6.dp),
+        ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(customer.name, style = MaterialTheme.typography.titleSmall)
                     if (customer.type.isNotBlank()) {
@@ -164,15 +239,10 @@ private fun CustomerCard(
                             label = { Text(customer.type) },
                         )
                     }
-                    if (customer.fromContacts) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text("通讯录") },
-                        )
-                    }
+
                 }
                 if (customer.phone.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         customer.phone,
                         style = MaterialTheme.typography.bodySmall,
@@ -180,18 +250,7 @@ private fun CustomerCard(
                     )
                 }
             }
-            IconButton(onClick = onToggleFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = if (customer.favorite) "取消收藏" else "收藏",
-                    tint = if (customer.favorite) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant
-                    },
-                )
-            }
-        }
+
     }
 }
 

@@ -23,6 +23,7 @@ data class Bill(
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
     val showWatermark: Boolean = false,
+    val favorite: Boolean = false,
     val presetKey: String = "classic",
     val status: String = "草稿",
     val createdAt: Long = System.currentTimeMillis(),
@@ -63,6 +64,7 @@ data class Product(
     val price: Double = 0.0,
     val pack: String = "",
     val note: String = "",
+    val favorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )
 
@@ -73,7 +75,6 @@ data class Customer(
     val phone: String = "",
     val type: String = "",
     val remark: String = "",
-    val fromContacts: Boolean = false,
     val favorite: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )

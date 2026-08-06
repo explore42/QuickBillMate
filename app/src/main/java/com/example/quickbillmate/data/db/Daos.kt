@@ -57,15 +57,15 @@ interface BillItemDao {
 
 @Dao
 interface ProductDao {
-    @Query("SELECT * FROM products ORDER BY createdAt DESC, id DESC")
+    @Query("SELECT * FROM products ORDER BY favorite DESC, createdAt DESC, id DESC")
     fun observeAll(): Flow<List<Product>>
 
-    @Query("SELECT * FROM products ORDER BY createdAt DESC, id DESC")
+    @Query("SELECT * FROM products ORDER BY favorite DESC, createdAt DESC, id DESC")
     suspend fun getAll(): List<Product>
 
     @Query(
         "SELECT * FROM products WHERE name LIKE '%' || :q || '%' OR spec LIKE '%' || :q || '%' " +
-            "ORDER BY createdAt DESC, id DESC"
+            "ORDER BY favorite DESC, createdAt DESC, id DESC"
     )
     fun observeSearch(q: String): Flow<List<Product>>
 
@@ -85,18 +85,18 @@ interface ProductDao {
 @Dao
 interface CustomerDao {
     @Query(
-        "SELECT * FROM customers ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
+        "SELECT * FROM customers ORDER BY favorite DESC, createdAt DESC, id DESC"
     )
     fun observeAll(): Flow<List<Customer>>
 
     @Query(
-        "SELECT * FROM customers ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
+        "SELECT * FROM customers ORDER BY favorite DESC, createdAt DESC, id DESC"
     )
     suspend fun getAll(): List<Customer>
 
     @Query(
         "SELECT * FROM customers WHERE name LIKE '%' || :q || '%' OR phone LIKE '%' || :q || '%' " +
-            "OR type LIKE '%' || :q || '%' ORDER BY favorite DESC, fromContacts DESC, createdAt DESC, id DESC"
+            "OR type LIKE '%' || :q || '%' ORDER BY favorite DESC, createdAt DESC, id DESC"
     )
     fun observeSearch(q: String): Flow<List<Customer>>
 

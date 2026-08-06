@@ -12,6 +12,7 @@ import com.example.quickbillmate.data.repository.AppRepository
 import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.importexport.ProductJsonException
+import com.example.quickbillmate.util.Pinyin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +42,7 @@ class ProductsViewModel(
         .debounce(300)
         .distinctUntilChanged()
         .flatMapLatest { repo.observeProducts(it) }
+        .map { list -> Pinyin.sortByPinyinLetter(list, { it.favorite }, { Pinyin.firstLetter(it.name) }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     var importing by mutableStateOf(false)

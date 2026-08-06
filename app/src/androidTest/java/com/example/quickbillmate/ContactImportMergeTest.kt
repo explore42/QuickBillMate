@@ -12,7 +12,6 @@ import com.example.quickbillmate.importexport.ContactsImporter
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,7 +48,6 @@ class ContactImportMergeTest {
         assertEquals(1, outcome.merged)
         val customer = repo.getCustomers().single()
         assertEquals("13800000000,13900000000", customer.phone)
-        assertTrue(customer.fromContacts)
     }
 
     @Test
@@ -76,6 +74,5 @@ class ContactImportMergeTest {
         val customer = repo.getCustomers().single()
         assertEquals("李四", customer.name)
         assertEquals("13700000000", customer.phone)
-        assertTrue(customer.fromContacts)
     }
 }

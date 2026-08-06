@@ -167,7 +167,7 @@ class AppRepository(
 
     /**
      * 通讯录导入客户，统一按“合并”语义：
-     * - 同名不同号：追加号码到现有客户（逗号分隔、去重、标记 fromContacts），计入“合并”
+     * - 同名不同号：追加号码到现有客户（逗号分隔、去重），计入“合并”
      * - 同名同号：已存在，无需写库，计入“合并”
      * - 不同名：新增客户，计入“新增”
      */
@@ -187,7 +187,6 @@ class AppRepository(
                     customerDao.update(
                         existing.copy(
                             phone = phones.joinToString(","),
-                            fromContacts = true,
                         )
                     )
                 }
@@ -197,7 +196,6 @@ class AppRepository(
                     Customer(
                         name = candidate.name,
                         phone = candidate.phone,
-                        fromContacts = true,
                     )
                 )
                 inserted++

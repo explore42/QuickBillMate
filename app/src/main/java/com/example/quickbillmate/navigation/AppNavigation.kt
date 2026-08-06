@@ -59,6 +59,9 @@ fun QuickBillMateAppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     var homeSelectionActive by remember { mutableStateOf(false) }
+    var homeScrollTicks by remember { mutableStateOf(0) }
+    var productsScrollTicks by remember { mutableStateOf(0) }
+    var customersScrollTicks by remember { mutableStateOf(0) }
 
     Scaffold(
         // 顶部边距由各页面自己的标题栏处理，外层不再额外让出状态栏高度
@@ -67,24 +70,39 @@ fun QuickBillMateAppNavHost(
             if (currentRoute in Routes.tabRoutes && !(currentRoute == Routes.HOME && homeSelectionActive)) {
                 NavigationBar {
                     TabItem(Icons.Default.Home, "首页", currentRoute == Routes.HOME) {
-                        navController.navigate(Routes.HOME) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute == Routes.HOME) {
+                            // 已在首页：点击导航栏回到列表顶部
+                            homeScrollTicks++
+                        } else {
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                     TabItem(Icons.Default.List, "商品", currentRoute == Routes.PRODUCTS) {
-                        navController.navigate(Routes.PRODUCTS) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute == Routes.PRODUCTS) {
+                            // 已在商品页：点击导航栏回到列表顶部
+                            productsScrollTicks++
+                        } else {
+                            navController.navigate(Routes.PRODUCTS) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                     TabItem(Icons.Default.Person, "客户", currentRoute == Routes.CUSTOMERS) {
-                        navController.navigate(Routes.CUSTOMERS) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        if (currentRoute == Routes.CUSTOMERS) {
+                            // 已在客户页：点击导航栏回到列表顶部
+                            customersScrollTicks++
+                        } else {
+                            navController.navigate(Routes.CUSTOMERS) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                     TabItem(Icons.Default.Settings, "设置", currentRoute == Routes.SETTINGS) {
@@ -143,16 +161,18 @@ fun QuickBillMateAppNavHost(
                     onNewBill = { navController.navigate(Routes.editor(0)) },
                     onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
                     onSelectionModeChange = { active -> homeSelectionActive = active },
+                    scrollToTopTick = homeScrollTicks,
                 )
             }
 
             composable(Routes.PRODUCTS) {
-                ProductsScreen()
+                ProductsScreen(scrollToTopTick = productsScrollTicks)
             }
 
             composable(Routes.CUSTOMERS) {
                 CustomersScreen(
                     onImportContacts = { navController.navigate(Routes.CONTACTS_IMPORT) },
+                    scrollToTopTick = customersScrollTicks,
                 )
             }
 

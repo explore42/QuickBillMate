@@ -3,6 +3,7 @@ package com.example.quickbillmate.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -21,7 +23,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -49,7 +50,33 @@ import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
+import com.example.quickbillmate.ui.common.GroupSectionHeader
+import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.TimeIndexBar
+import com.example.quickbillmate.ui.common.monthBubble
+import com.example.quickbillmate.ui.common.monthKey
+
+/** 单据分组：key 为索引标识，title 为分组标题。 */
+internal data class BillSection(
+    val key: String,
+    val title: String,
+    val bills: List<HomeBill>,
+)
+
+/** 把单据列表按「收藏 → 时间（月份，新在前）」分组。 */
+internal fun groupBills(bills: List<HomeBill>): List<BillSection> {
+    val favorites = bills.filter { it.bill.favorite }
+    val byMonth = bills.filterNot { it.bill.favorite }.groupBy { monthKey(it.bill.docDate) }
+    return buildList {
+        if (favorites.isNotEmpty()) add(BillSection("♥", "收藏", favorites))
+        byMonth.keys
+            .sortedWith(compareBy<String> { it == "其他" }.thenByDescending { it })
+            .forEach { month ->
+                byMonth[month]?.let { add(BillSection(month, monthBubble(month), it)) }
+            }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +84,7 @@ fun HomeScreen(
     onNewBill: () -> Unit,
     onOpenBill: (Long) -> Unit,
     onSelectionModeChange: (Boolean) -> Unit,
+    scrollToTopTick: Int = 0,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val bills by viewModel.bills.collectAsState()
@@ -85,6 +113,7 @@ fun HomeScreen(
 
     HomeContent(
         bills = bills,
+        scrollToTopTick = scrollToTopTick,
         selectionMode = viewModel.selectionMode,
         selectedIds = viewModel.selectedIds,
         searchQuery = viewModel.searchQuery,
@@ -114,6 +143,7 @@ fun HomeScreen(
 @Composable
 fun HomeContent(
     bills: List<HomeBill>,
+    scrollToTopTick: Int = 0,
     selectionMode: Boolean,
     selectedIds: Set<Long>,
     searchQuery: String,
@@ -136,6 +166,30 @@ fun HomeContent(
     // 多选状态下，系统返回手势/按钮改为退出多选，而不是退出应用
     BackHandler(enabled = selectionMode) {
         onExitSelection()
+    }
+
+    val listState = rememberLazyListState()
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
+    val grouped = remember(bills) { groupBills(bills) }
+    val sections = remember(grouped) {
+        grouped.map { section ->
+            if (section.key == "♥") {
+                IndexSection("♥", "收藏")
+            } else {
+                IndexSection(section.key, monthBubble(section.key))
+            }
+        }
+    }
+    val firstBySection = remember(grouped) {
+        buildMap {
+            var index = 0
+            grouped.forEach { section ->
+                put(section.key, index)
+                index += 1 + section.bills.size
+            }
+        }
     }
 
     Scaffold(
@@ -197,17 +251,29 @@ fun HomeContent(
                 modifier = Modifier.padding(padding),
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(bills, key = { it.bill.id }, contentType = { "billCard" }) { homeBill ->
-                    val bill = homeBill.bill
-                    val selected = bill.id in selectedIds
-                    Card(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    grouped.forEachIndexed { groupIndex, section ->
+                        item(key = "header_${section.key}", contentType = { "sectionHeader" }) {
+                            GroupSectionHeader(
+                                title = section.title,
+                                showTopDivider = groupIndex > 0,
+                            )
+                        }
+                        items(
+                            section.bills,
+                            key = { it.bill.id },
+                            contentType = { "billCard" },
+                        ) { homeBill ->
+                        val bill = homeBill.bill
+                        val selected = bill.id in selectedIds
                         Row(
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = {
                                         if (selectionMode) {
@@ -224,7 +290,7 @@ fun HomeContent(
                                         }
                                     },
                                 )
-                                .padding(14.dp),
+                                .padding(start = 0.dp, end = 52.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -261,7 +327,13 @@ fun HomeContent(
                             }
                         }
                     }
+                    }
                 }
+                TimeIndexBar(
+                    state = listState,
+                    sections = sections,
+                    firstIndexOf = { firstBySection[it] ?: -1 },
+                )
             }
         }
     }

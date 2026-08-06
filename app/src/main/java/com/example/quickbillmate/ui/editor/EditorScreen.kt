@@ -275,6 +275,8 @@ fun EditorScreen(
                         onChange = viewModel::onDisclaimerChange,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Spacer(Modifier.height(8.dp))
+                    LabeledSwitch("收藏", s.favorite, viewModel::onFavoriteChange)
                 }
 
                 // 商品信息
@@ -456,13 +458,9 @@ private fun CustomerField(
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    SuggestionTag(
-                                        text = when {
-                                            suggestion.fromDb && suggestion.fromContacts -> "通讯录"
-                                            suggestion.fromDb -> "客户库"
-                                            else -> "通讯录"
-                                        },
-                                    )
+                                    if (suggestion.fromDb) {
+                                        SuggestionTag(text = "客户库")
+                                    }
                                 }
                                 val subtitle = listOf(suggestion.type, suggestion.phone)
                                     .filter { it.isNotBlank() }

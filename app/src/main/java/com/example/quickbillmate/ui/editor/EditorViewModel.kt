@@ -46,7 +46,6 @@ data class CustomerSuggestion(
     val phone: String,
     val type: String = "",
     val fromDb: Boolean,
-    val fromContacts: Boolean,
 )
 
 data class EditorUiState(
@@ -69,6 +68,7 @@ data class EditorUiState(
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
     val showWatermark: Boolean = false,
+    val favorite: Boolean = false,
     val presetKey: String = "classic",
     val items: List<ItemRow> = listOf(ItemRow()),
     val preview: Bitmap? = null,
@@ -192,6 +192,7 @@ class EditorViewModel(
             showManager = bill.showManager,
             showRemark = bill.showRemark,
             showWatermark = bill.showWatermark,
+            favorite = bill.favorite,
             presetKey = bill.presetKey,
             items = items.map { it.toRow() }.ifEmpty { listOf(ItemRow()) },
         )
@@ -225,6 +226,8 @@ class EditorViewModel(
     fun onShowRemarkChange(value: Boolean) = update { copy(showRemark = value) }
     fun onShowWatermarkChange(value: Boolean) = update { copy(showWatermark = value) }
 
+    fun onFavoriteChange(value: Boolean) = update { copy(favorite = value) }
+
     fun regenerateSerial() {
         viewModelScope.launch {
             val serial = repo.generateUniqueSerial(state.docCode.ifBlank { "XS" }, state.docDate)
@@ -240,14 +243,13 @@ class EditorViewModel(
     }
 
     /**
-     * 客户联想（下拉）：客户库优先（收藏 → 通讯录来源 → 时间），通讯录兜底，手动输入始终可用。
+     * 客户联想（下拉）：客户库优先（收藏 → 时间），通讯录兜底，手动输入始终可用。
      * 输入为空时也返回默认候选（收藏客户优先），便于直接下拉选择。
      */
     private fun refreshSuggestions(query: String) {
         val q = query.trim()
         val libraryPool = state.customers.sortedWith(
             compareByDescending<Customer> { it.favorite }
-                .thenByDescending { it.fromContacts }
                 .thenByDescending { it.createdAt }
         )
 
@@ -261,7 +263,6 @@ class EditorViewModel(
                     phone = it.phone,
                     type = it.type,
                     fromDb = true,
-                    fromContacts = it.fromContacts,
                 )
             }
 
@@ -277,7 +278,6 @@ class EditorViewModel(
                         name = it.name,
                         phone = it.phone,
                         fromDb = false,
-                        fromContacts = true,
                     )
                 }
         } else {
@@ -296,7 +296,7 @@ class EditorViewModel(
             )
         }
         // 通讯录候选选中后自动按合并语义导入客户库
-        if (!suggestion.fromDb && suggestion.fromContacts) {
+        if (!suggestion.fromDb) {
             viewModelScope.launch {
                 repo.importContactCandidates(
                     listOf(ContactsImporter.Candidate(suggestion.name, suggestion.phone))
@@ -472,6 +472,7 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     showManager = showManager,
     showRemark = showRemark,
     showWatermark = showWatermark,
+    favorite = favorite,
     presetKey = presetKey,
     status = status,
     createdAt = createdAt,

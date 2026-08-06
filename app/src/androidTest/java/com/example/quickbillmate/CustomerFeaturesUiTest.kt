@@ -11,7 +11,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,10 +42,12 @@ class CustomerFeaturesUiTest {
         composeRule.onNodeWithText("收藏").performClick()
         composeRule.onNodeWithText("保存").performClick()
 
-        waitFor { composeRule.onAllNodesWithContentDescription("取消收藏").fetchSemanticsNodes().isNotEmpty() }
-        val topA = rowTop(nameA)
-        val topB = rowTop(nameB)
-        assertTrue("收藏客户应优先展示（A 应在 B 上方）", topA < topB)
+        // 收藏后，收藏客户应排在其他客户前面
+        waitFor {
+            val nodesA = composeRule.onAllNodes(hasText(nameA, substring = true)).fetchSemanticsNodes()
+            val nodesB = composeRule.onAllNodes(hasText(nameB, substring = true)).fetchSemanticsNodes()
+            nodesA.isNotEmpty() && nodesB.isNotEmpty() && nodesA[0].boundsInRoot.top < nodesB[0].boundsInRoot.top
+        }
     }
 
     @Test
@@ -80,9 +81,5 @@ class CustomerFeaturesUiTest {
         waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
     }
 
-    private fun rowTop(text: String): Float {
-        val nodes = composeRule.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes()
-        assertTrue("应能找到包含 $text 的行", nodes.isNotEmpty())
-        return nodes[0].boundsInRoot.top
-    }
+
 }

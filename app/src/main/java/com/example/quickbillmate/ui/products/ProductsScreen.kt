@@ -7,7 +7,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,14 +16,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -54,15 +55,68 @@ import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
+import com.example.quickbillmate.ui.common.GroupSectionHeader
+import com.example.quickbillmate.ui.common.IndexSection
+import com.example.quickbillmate.ui.common.InitialCircle
 import com.example.quickbillmate.ui.common.LabeledField
+import com.example.quickbillmate.ui.common.LabeledSwitch
+import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.Pinyin
+
+/** 商品分组：title 为分组标题（收藏 / 字母 / #）。 */
+internal data class ProductSection(
+    val title: String,
+    val products: List<Product>,
+)
+
+/**
+ * 把已排序的商品列表按「收藏 → 字母 → #」分组。
+ * 收藏商品只进“收藏”组，字母组只含非收藏商品，避免同一商品出现在两个分组。
+ */
+internal fun groupProducts(products: List<Product>, letters: List<String>): List<ProductSection> {
+    val favorites = products.filter { it.favorite }
+    val byLetter = products.zip(letters).filterNot { (product, _) -> product.favorite }.groupBy { it.second }
+    return buildList {
+        if (favorites.isNotEmpty()) add(ProductSection("收藏", favorites))
+        byLetter.keys.filter { it != "#" }.sorted().forEach { letter ->
+            byLetter[letter]?.let { add(ProductSection(letter, it.map { pair -> pair.first })) }
+        }
+        byLetter["#"]?.let { add(ProductSection("#", it.map { pair -> pair.first })) }
+    }
+}
 
 @Composable
 fun ProductsScreen(
+    scrollToTopTick: Int = 0,
     viewModel: ProductsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val products by viewModel.products.collectAsState()
+    val listState = rememberLazyListState()
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
+    val letters = remember(products) { products.map { Pinyin.firstLetter(it.name) } }
+    val grouped = remember(products, letters) { groupProducts(products, letters) }
+    val sections = remember(grouped) {
+        grouped.map { section ->
+            if (section.title == "收藏") {
+                IndexSection("♥", "收藏")
+            } else {
+                IndexSection(section.title, section.title)
+            }
+        }
+    }
+    val firstBySection = remember(grouped) {
+        buildMap {
+            var index = 0
+            grouped.forEach { section ->
+                put(if (section.title == "收藏") "♥" else section.title, index)
+                index += 1 + section.products.size
+            }
+        }
+    }
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Product?>(null) }
@@ -136,23 +190,41 @@ fun ProductsScreen(
                 modifier = Modifier.padding(padding),
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(products, key = { it.id }, contentType = { "productCard" }) { product ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    grouped.forEachIndexed { groupIndex, section ->
+                        item(key = "header_${section.title}", contentType = { "sectionHeader" }) {
+                            GroupSectionHeader(
+                                title = section.title,
+                                showTopDivider = groupIndex > 0,
+                            )
+                        }
+                        items(
+                            section.products,
+                            key = { it.id },
+                            contentType = { "productCard" },
+                        ) { product ->
                         Row(
                             modifier = Modifier
-                                .combinedClickable(
-                                    onClick = { editing = product },
-                                    onLongClick = { pendingDelete = product },
-                                )
-                                .padding(14.dp),
+                                .fillMaxWidth()
+                                .padding(start = 0.dp, end = 32.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            InitialCircle(product.name.trim().firstOrNull()?.toString() ?: "?")
+                            Spacer(Modifier.width(12.dp))
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .combinedClickable(
+                                        onClick = { editing = product },
+                                        onLongClick = { pendingDelete = product },
+                                    )
+                                    .padding(vertical = 10.dp),
+                            ) {
                                 Text(product.name, style = MaterialTheme.typography.titleSmall)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
@@ -168,9 +240,16 @@ fun ProductsScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.primary,
                             )
+
                         }
                     }
+                    }
                 }
+                LetterIndexBar(
+                    state = listState,
+                    sections = sections,
+                    firstIndexOf = { firstBySection[it] ?: -1 },
+                )
             }
         }
     }
@@ -332,6 +411,7 @@ private fun ProductEditDialog(
     var price by remember { mutableStateOf(if (initial.price == 0.0) "" else Money.format(initial.price)) }
     var pack by remember { mutableStateOf(initial.pack) }
     var note by remember { mutableStateOf(initial.note) }
+    var favorite by remember { mutableStateOf(initial.favorite) }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -361,6 +441,8 @@ private fun ProductEditDialog(
                 LabeledField("包装规格", pack, { pack = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledField("备注", note, { note = it })
+                Spacer(Modifier.height(8.dp))
+                LabeledSwitch("收藏", favorite, { favorite = it })
                 error?.let {
                     Spacer(Modifier.height(6.dp))
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -384,6 +466,7 @@ private fun ProductEditDialog(
                             price = priceValue ?: 0.0,
                             pack = pack.trim(),
                             note = note.trim(),
+                            favorite = favorite,
                         )
                     )
                 }
