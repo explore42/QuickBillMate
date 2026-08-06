@@ -19,14 +19,12 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,15 +38,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.render.StylePresets
+import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PresetsScreen(
     onBack: () -> Unit,
     onNewPreset: () -> Unit,
     onEditPreset: (Long) -> Unit,
-    viewModel: PresetsViewModel = viewModel(),
+    viewModel: PresetsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val presets by viewModel.presets.collectAsState()
     var menuFor by remember { mutableStateOf<String?>(null) }
@@ -56,8 +55,8 @@ fun PresetsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("样式预设") },
+            AppTopBar(
+                title = "样式预设",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")

@@ -1,7 +1,9 @@
 package com.example.quickbillmate
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -29,7 +32,7 @@ class QuickBillMateUiTest {
     @Test
     fun homeShowsTitleNewButtonAndTabs() {
         composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
-        composeRule.onNodeWithText("新建销售清单").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("新建销售清单").assertIsDisplayed()
         composeRule.onNodeWithText("首页").assertIsDisplayed()
         composeRule.onNodeWithText("商品").assertIsDisplayed()
         composeRule.onNodeWithText("客户").assertIsDisplayed()
@@ -110,6 +113,34 @@ class QuickBillMateUiTest {
         // 回到首页，且该草稿已删除
         waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
         waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isEmpty() }
+    }
+
+    @Test
+    fun deleteSelectedBillRemovesIt() {
+        val name = "待删客户${System.currentTimeMillis() % 100000}"
+
+        // 新建一张带唯一客户名的单据
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
+        composeRule.onNodeWithText("保存").performClick()
+        composeRule.onNodeWithContentDescription("返回").performClick()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 长按进入多选
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+
+        // 底部操作栏点删除 → 确认
+        composeRule.onNodeWithText("删除").performClick()
+        waitFor { composeRule.onAllNodesWithText("删除单据").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("删除").fetchSemanticsNodes().size == 2 }
+        composeRule.onAllNodesWithText("删除")[1].performClick()
+
+        // 单据消失，回到普通首页
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isEmpty() }
+        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test

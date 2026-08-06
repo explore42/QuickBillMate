@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +31,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,11 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.EmptyState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsImportScreen(
     onBack: () -> Unit,
@@ -73,8 +70,8 @@ fun ContactsImportScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("从通讯录导入") },
+            AppTopBar(
+                title = "从通讯录导入",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
@@ -191,10 +188,14 @@ fun ContactsImportScreen(
     }
 
     viewModel.importResult?.let { outcome ->
+        val parts = buildList {
+            add("新增 ${outcome.inserted} 条")
+            if (outcome.merged > 0) add("合并 ${outcome.merged} 条")
+        }
         AlertDialog(
             onDismissRequest = viewModel::consumeResult,
             title = { Text("导入完成") },
-            text = { Text("新增 ${outcome.inserted} 条 / 合并 ${outcome.merged} 条") },
+            text = { Text(parts.joinToString(" / ")) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.consumeResult()

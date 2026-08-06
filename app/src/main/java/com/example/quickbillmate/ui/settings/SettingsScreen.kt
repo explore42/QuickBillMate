@@ -25,13 +25,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,12 +46,12 @@ import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.editor.presetDisplayName
 
 private const val PROJECT_URL = "https://github.com/explore42/QuickBillMate"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onThemeModeChange: (String) -> Unit,
@@ -87,7 +85,6 @@ fun SettingsScreen(
 }
 
 /** 设置页纯界面层：数据全部由参数传入，可在 Android Studio 中直接预览调试。 */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContent(
     themeMode: String,
@@ -114,7 +111,7 @@ fun SettingsContent(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("设置") }) },
+        topBar = { AppTopBar(title = "设置") },
     ) { padding ->
         Column(
             modifier = Modifier

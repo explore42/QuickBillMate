@@ -26,7 +26,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,7 +34,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,12 +49,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.ui.editor.presetDisplayName
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BillViewScreen(
     billId: Long,
@@ -107,8 +105,8 @@ fun BillViewScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("单据详情") },
+            AppTopBar(
+                title = "单据详情",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")

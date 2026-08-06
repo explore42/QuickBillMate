@@ -51,7 +51,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -72,6 +71,7 @@ import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
@@ -115,8 +115,8 @@ fun EditorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (billId == 0L) "新建销售清单" else "编辑销售清单") },
+            AppTopBar(
+                title = if (billId == 0L) "新建销售清单" else "编辑销售清单",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")

@@ -20,17 +20,16 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
 
@@ -94,7 +94,10 @@ fun HomeScreen(
         onCopy = viewModel::copySelected,
         onEdit = { viewModel.editSelected(onOpenBill) },
         onExport = viewModel::exportSelected,
-        onDeleteRequest = { showDeleteConfirm = true },
+        onDeleteRequest = {
+            viewModel.requestDelete()
+            showDeleteConfirm = true
+        },
         onConfirmDelete = viewModel::confirmDelete,
         onCancelDelete = viewModel::cancelDelete,
         showDeleteConfirm = showDeleteConfirm,
@@ -127,8 +130,8 @@ fun HomeContent(
     Scaffold(
         topBar = {
             if (selectionMode) {
-                TopAppBar(
-                    title = { Text("已选中 ${selectedIds.size} 项") },
+                AppTopBar(
+                    title = "已选中 ${selectedIds.size} 项",
                     navigationIcon = {
                         IconButton(onClick = onExitSelection) {
                             Icon(Icons.Default.Close, contentDescription = "退出多选")
@@ -143,7 +146,20 @@ fun HomeContent(
                     },
                 )
             } else {
-                TopAppBar(title = { Text("快贝智单") })
+                AppTopBar(title = "快贝智单")
+            }
+        },
+        floatingActionButton = {
+            if (!selectionMode) {
+                FloatingActionButton(
+                    onClick = onNewBill,
+                    modifier = Modifier.testTag("home_new_bill"),
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "新建销售清单",
+                    )
+                }
             }
         },
         bottomBar = {
@@ -160,29 +176,17 @@ fun HomeContent(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (!selectionMode) {
-                Button(
-                    onClick = onNewBill,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .testTag("home_new_bill"),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("新建销售清单")
-                }
-
                 Text(
                     text = "最近单据",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
 
             if (bills.isEmpty() && !selectionMode) {
                 EmptyState(
                     icon = Icons.Default.ShoppingCart,
-                    text = "还没有单据，点击上方新建",
+                    text = "还没有单据，点击右下角新建",
                 )
             } else {
                 LazyColumn(

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +28,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,11 +41,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.SectionCard
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PresetEditorScreen(
     presetId: Long,
@@ -61,8 +59,8 @@ fun PresetEditorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (presetId == 0L) "新建预设" else "编辑预设") },
+            AppTopBar(
+                title = if (presetId == 0L) "新建预设" else "编辑预设",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")

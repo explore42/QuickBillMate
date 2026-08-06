@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -28,7 +27,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,7 +36,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,12 +54,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.util.Money
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsScreen(
     viewModel: ProductsViewModel = viewModel(factory = AppViewModelProvider.Factory),
@@ -97,8 +94,8 @@ fun ProductsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("商品") },
+            AppTopBar(
+                title = "商品",
                 actions = {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "更多")
