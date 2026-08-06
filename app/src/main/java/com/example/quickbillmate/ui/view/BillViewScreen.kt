@@ -1,0 +1,335 @@
+package com.example.quickbillmate.ui.view
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.SectionCard
+import com.example.quickbillmate.ui.editor.presetDisplayName
+import com.example.quickbillmate.util.BillNumber
+import com.example.quickbillmate.util.Money
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BillViewScreen(
+    billId: Long,
+    onBack: () -> Unit,
+    onEdit: (Long) -> Unit,
+    viewModel: BillViewViewModel = viewModel(factory = AppViewModelProvider.Factory),
+) {
+    LaunchedEffect(Unit) {
+        viewModel.load(billId)
+    }
+
+    val s = viewModel.state
+    val context = LocalContext.current
+    var storageDenied by remember { mutableStateOf(false) }
+
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.exportToGallery() else storageDenied = true
+    }
+
+    fun doExport() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (granted) viewModel.exportToGallery() else {
+                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        } else {
+            viewModel.exportToGallery()
+        }
+    }
+
+    val shareOutcome = s.shareOutcome
+    LaunchedEffect(shareOutcome) {
+        shareOutcome?.let { outcome ->
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "分享清单"))
+            viewModel.consumeShareOutcome()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("单据详情") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onEdit(billId) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "编辑")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = { doExport() },
+                    modifier = Modifier.weight(1.4f),
+                    enabled = !s.exporting,
+                ) {
+                    Text(if (s.exporting) "导出中…" else "导出图片")
+                }
+                OutlinedButton(
+                    onClick = { viewModel.shareNow() },
+                    modifier = Modifier.weight(1f),
+                    enabled = !s.exporting,
+                ) {
+                    Text("分享")
+                }
+            }
+        },
+    ) { padding ->
+        if (!s.loaded || s.bill == null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val bill = s.bill
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            "清单预览",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        s.preview?.let {
+                            Image(
+                                bitmap = it.asImageBitmap(),
+                                contentDescription = "清单预览",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("view_preview"),
+                            )
+                        }
+                    }
+                }
+
+                SectionCard("客户信息") {
+                    InfoLine("客户名称", bill.customerName.ifBlank { "—" })
+                    InfoLine("客户电话", bill.customerPhone.ifBlank { "—" })
+                }
+
+                SectionCard("公司信息") {
+                    InfoLine("公司名称", bill.companyName.ifBlank { "—" })
+                    InfoLine("联系电话", bill.contactPhone.ifBlank { "—" })
+                    InfoLine("业务经理", bill.salesManager.ifBlank { "—" })
+                }
+
+                SectionCard("客单信息") {
+                    InfoLine(
+                        "单据编号",
+                        BillNumber.build(bill.docCode, bill.docDate, bill.docSerial).ifBlank { "—" },
+                    )
+                    InfoLine("单据日期", bill.docDate.ifBlank { "—" })
+                    InfoLine("优惠金额", Money.format(bill.discount))
+                    if (bill.remark.isNotBlank()) InfoLine("备注", bill.remark)
+                    InfoLine("标题后缀", bill.titleSuffix)
+                    if (bill.disclaimer.isNotBlank()) InfoLine("底部说明", bill.disclaimer)
+                    InfoLine("样式预设", presetDisplayName(bill.presetKey, s.presets))
+                    InfoLine("状态", bill.status)
+                }
+
+                SectionCard("商品信息") {
+                    if (s.items.isEmpty()) {
+                        Text("无商品行", color = MaterialTheme.colorScheme.outline)
+                    } else {
+                        s.items.forEachIndexed { index, item ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "${index + 1}.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.width(32.dp),
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.name.ifBlank { "（未填写名称）" }, style = MaterialTheme.typography.bodyMedium)
+                                    val detail = listOf(item.spec, item.unit, item.pack)
+                                        .filter { it.isNotBlank() }
+                                        .joinToString("  ")
+                                    if (detail.isNotBlank()) {
+                                        Text(
+                                            detail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    if (item.note.isNotBlank()) {
+                                        Text(
+                                            "备注：${item.note}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        "${Money.format(item.qty)} × ${Money.format(item.price)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        Money.format(if (item.qty <= 0) 0.0 else Money.round2(item.qty * item.price)),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                            if (index != s.items.lastIndex) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                            }
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        val total = s.items.sumOf {
+                            if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
+                        }
+                        val receivable = Math.max(0.0, Money.round2(total - bill.discount))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "合计：${Money.format(total)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                "应收：${Money.format(receivable)}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+
+                SectionCard("显示选项") {
+                    InfoLine("显示业务经理", if (bill.showManager) "开" else "关")
+                    InfoLine("显示备注", if (bill.showRemark) "开" else "关")
+                    InfoLine("显示水印", if (bill.showWatermark) "开" else "关")
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    if (storageDenied) {
+        AlertDialog(
+            onDismissRequest = { storageDenied = false },
+            title = { Text("需要存储权限") },
+            text = { Text("保存图片到相册需要存储权限，请到系统设置中授权后重试。") },
+            confirmButton = {
+                TextButton(onClick = { storageDenied = false }) { Text("知道了") }
+            },
+        )
+    }
+
+    s.exportOutcome?.let { outcome ->
+        AlertDialog(
+            onDismissRequest = viewModel::consumeExportOutcome,
+            title = { Text(if (outcome.saved) "导出成功" else "导出失败") },
+            text = { Text(outcome.message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::consumeExportOutcome) { Text("完成") }
+            },
+            dismissButton = {
+                if (outcome.saved && outcome.shareUri != null) {
+                    TextButton(onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "分享清单"))
+                        viewModel.consumeExportOutcome()
+                    }) { Text("分享") }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun InfoLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(110.dp),
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}

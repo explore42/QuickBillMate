@@ -21,15 +21,24 @@ import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.importexport.ProductJsonException
 import com.example.quickbillmate.render.InvoiceRenderer
 import com.example.quickbillmate.render.RenderInvoice
+import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StyleParams
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.BillNumber
+import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
+/** 通讯录导入结果：新增 / 跳过 / 合并。 */
+data class ContactImportOutcome(
+    val inserted: Int = 0,
+    val skipped: Int = 0,
+    val merged: Int = 0,
+)
 
 class AppRepository(
     private val database: AppDatabase,
@@ -107,6 +116,26 @@ class AppRepository(
         }
     }
 
+    /** 复制单据（含商品行），新流水号、状态为草稿；返回新单据 id。 */
+    suspend fun copyBill(billId: Long): Long? {
+        val bill = billDao.getBill(billId) ?: return null
+        val items = itemDao.getItems(billId)
+        val now = System.currentTimeMillis()
+        val serial = generateUniqueSerial(bill.docCode, bill.docDate)
+        val copy = bill.copy(
+            id = 0,
+            docSerial = serial,
+            status = "草稿",
+            createdAt = now,
+            updatedAt = now,
+        )
+        return database.withTransaction {
+            val newId = billDao.insert(copy)
+            itemDao.insertAll(items.map { it.copy(id = 0, billId = newId) })
+            newId
+        }
+    }
+
     suspend fun deleteBill(bill: Bill) = billDao.delete(bill)
 
     // ---------- 商品 ----------
@@ -135,14 +164,40 @@ class AppRepository(
 
     suspend fun deleteCustomer(customer: Customer) = customerDao.delete(customer)
 
-    /** 通讯录导入客户：按 name+phone 去重，返回 (成功, 已存在跳过)。 */
-    suspend fun importContactCandidates(candidates: List<ContactsImporter.Candidate>): Pair<Int, Int> {
-        var success = 0
+    /**
+     * 通讯录导入客户：按 name+phone 去重；
+     * mergeSameName=true 时同名客户合并电话（逗号分隔，去重），否则同名跳过。
+     */
+    suspend fun importContactCandidates(
+        candidates: List<ContactsImporter.Candidate>,
+        mergeSameName: Boolean = false,
+    ): ContactImportOutcome {
+        var inserted = 0
         var skipped = 0
+        var merged = 0
         candidates.forEach { candidate ->
-            val dup = customerDao.countDuplicate(candidate.name, candidate.phone)
-            if (dup > 0) {
+            val exactDup = customerDao.countDuplicate(candidate.name, candidate.phone) > 0
+            if (exactDup) {
                 skipped++
+                return@forEach
+            }
+            val existing = customerDao.findByName(candidate.name)
+            if (existing != null) {
+                if (mergeSameName) {
+                    val phones = existing.phone.split(",").map { it.trim() }.filter { it.isNotBlank() }.toMutableList()
+                    if (candidate.phone !in phones) {
+                        phones.add(candidate.phone)
+                        customerDao.update(
+                            existing.copy(
+                                phone = phones.joinToString(","),
+                                fromContacts = true,
+                            )
+                        )
+                    }
+                    merged++
+                } else {
+                    skipped++
+                }
             } else {
                 customerDao.insert(
                     Customer(
@@ -151,10 +206,10 @@ class AppRepository(
                         fromContacts = true,
                     )
                 )
-                success++
+                inserted++
             }
         }
-        return success to skipped
+        return ContactImportOutcome(inserted, skipped, merged)
     }
 
     // ---------- 样式预设 ----------
@@ -262,6 +317,56 @@ class AppRepository(
 
     suspend fun resolveParams(presetKey: String?, presets: List<StylePreset>): StyleParams =
         StylePresets.resolve(presetKey, presets)
+
+    fun buildRenderInvoice(bill: Bill, items: List<BillItem>): RenderInvoice = RenderInvoice(
+        customerName = bill.customerName,
+        customerPhone = bill.customerPhone,
+        companyName = bill.companyName,
+        contactPhone = bill.contactPhone,
+        salesManager = bill.salesManager,
+        docCode = bill.docCode,
+        docSerial = bill.docSerial,
+        docDate = bill.docDate,
+        discount = bill.discount,
+        remark = bill.remark,
+        titleSuffix = bill.titleSuffix,
+        disclaimer = bill.disclaimer,
+        showManager = bill.showManager,
+        showRemark = bill.showRemark,
+        showWatermark = bill.showWatermark,
+        items = items.map {
+            RenderItem(
+                name = it.name,
+                spec = it.spec,
+                unit = it.unit,
+                qty = it.qty,
+                price = it.price,
+                pack = it.pack,
+                note = it.note,
+            )
+        },
+    )
+
+    suspend fun renderBillPreview(bill: Bill, items: List<BillItem>, widthPx: Int): Bitmap {
+        val params = resolveParams(bill.presetKey, presetDao.getAll())
+        return renderer.render(buildRenderInvoice(bill, items), params, widthPx)
+    }
+
+    fun billFileName(bill: Bill): String =
+        "销售清单_${BillNumber.build(bill.docCode, bill.docDate, bill.docSerial)}.png"
+
+    /** 渲染并保存单据图片到相册；成功后把单据状态置为“已导出”。 */
+    suspend fun exportBillToGallery(context: Context, bill: Bill, items: List<BillItem>): Boolean {
+        val bitmap = renderBillPreview(bill, items, 1600)
+        val ok = GalleryWriter.save(context, bitmap, billFileName(bill))
+        if (ok) updateBillStatus(bill.id, "已导出")
+        return ok
+    }
+
+    suspend fun shareBill(context: Context, bill: Bill, items: List<BillItem>): Uri {
+        val bitmap = renderBillPreview(bill, items, 1600)
+        return GalleryWriter.shareUri(context, bitmap, billFileName(bill))
+    }
 
     fun saveInvoiceToGallery(context: Context, bitmap: Bitmap, fileName: String): Boolean =
         GalleryWriter.save(context, bitmap, fileName)

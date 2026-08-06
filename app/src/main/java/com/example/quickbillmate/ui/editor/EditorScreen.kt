@@ -1,9 +1,5 @@
 package com.example.quickbillmate.ui.editor
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -65,7 +61,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
@@ -98,7 +93,6 @@ fun EditorScreen(
     var showClearConfirm by remember { mutableStateOf(false) }
     var showPresetPicker by remember { mutableStateOf(false) }
     var showProductPicker by remember { mutableStateOf(false) }
-    var storageDenied by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -106,36 +100,10 @@ fun EditorScreen(
         viewModel.onContactsPermission(granted)
     }
 
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) viewModel.exportToGallery() else storageDenied = true
-    }
-
-    fun doExport() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            ) == PackageManager.PERMISSION_GRANTED
-            if (granted) viewModel.exportToGallery() else {
-                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        } else {
-            viewModel.exportToGallery()
-        }
-    }
-
-    val shareOutcome = s.shareOutcome
-    LaunchedEffect(shareOutcome) {
-        shareOutcome?.let { outcome ->
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/png"
-                putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(intent, "分享清单"))
-            viewModel.consumeShareOutcome()
+    val savedTick = s.savedTick
+    LaunchedEffect(savedTick) {
+        if (savedTick > 0) {
+            android.widget.Toast.makeText(context, "已保存", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -163,18 +131,10 @@ fun EditorScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(
-                    onClick = { doExport() },
+                    onClick = { viewModel.saveNow() },
                     modifier = Modifier.weight(1.4f),
-                    enabled = !s.exporting,
                 ) {
-                    Text(if (s.exporting) "导出中…" else "导出图片")
-                }
-                OutlinedButton(
-                    onClick = { viewModel.shareNow() },
-                    modifier = Modifier.weight(1f),
-                    enabled = !s.exporting,
-                ) {
-                    Text("分享")
+                    Text("保存")
                 }
                 OutlinedButton(
                     onClick = { viewModel.loadSample() },
@@ -440,41 +400,6 @@ fun EditorScreen(
             onDismiss = { showClearConfirm = false },
         )
     }
-
-    if (storageDenied) {
-        AlertDialog(
-            onDismissRequest = { storageDenied = false },
-            title = { Text("需要存储权限") },
-            text = { Text("保存图片到相册需要存储权限，请到系统设置中授权后重试。") },
-            confirmButton = {
-                TextButton(onClick = { storageDenied = false }) { Text("知道了") }
-            },
-        )
-    }
-
-    s.exportOutcome?.let { outcome ->
-        AlertDialog(
-            onDismissRequest = viewModel::consumeExportOutcome,
-            title = { Text(if (outcome.saved) "导出成功" else "导出失败") },
-            text = { Text(outcome.message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeExportOutcome) { Text("完成") }
-            },
-            dismissButton = {
-                if (outcome.saved && outcome.shareUri != null) {
-                    TextButton(onClick = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "image/png"
-                            putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享清单"))
-                        viewModel.consumeExportOutcome()
-                    }) { Text("分享") }
-                }
-            },
-        )
-    }
 }
 
 @Composable
@@ -510,19 +435,15 @@ private fun CustomerField(
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f),
                                 )
-                                if (suggestion.fromContacts) {
-                                    Text(
-                                        "通讯录",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                            if (suggestion.phone.isNotBlank() || suggestion.type.isNotBlank()) {
                                 Text(
-                                    listOf(suggestion.type, suggestion.phone)
-                                        .filter { it.isNotBlank() }
-                                        .joinToString(" · "),
+                                    "通讯录",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            if (suggestion.phone.isNotBlank()) {
+                                Text(
+                                    suggestion.phone,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

@@ -87,15 +87,37 @@ class QuickBillMateUiTest {
     }
 
     @Test
-    fun darkModeToggleSwitchesImmediately() {
-        val current = if (composeRule.onAllNodesWithText("☾ 深色").fetchSemanticsNodes().isNotEmpty()) {
-            "☾ 深色"
-        } else {
-            "☀ 浅色"
-        }
-        val target = if (current == "☾ 深色") "☀ 浅色" else "☾ 深色"
-        composeRule.onNodeWithText(current).performClick()
-        waitFor { composeRule.onAllNodesWithText(target).fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText(target).assertIsDisplayed()
+    fun billViewShowsDetailsAndEditNavigates() {
+        // 新建一张单据并载入示例
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("editor_sample").performClick()
+        waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
+        // 保存后返回
+        composeRule.onNodeWithText("保存").performClick()
+        composeRule.onNodeWithContentDescription("返回").performClick()
+        waitFor { composeRule.onAllNodesWithText("最近单据").fetchSemanticsNodes().isNotEmpty() }
+
+        // 点击单据 → 查看页
+        composeRule.onNodeWithText("示例客户").performClick()
+        waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("单据详情").assertIsDisplayed()
+
+        // 编辑 → 编辑页
+        composeRule.onNodeWithContentDescription("编辑").performClick()
+        waitFor { composeRule.onAllNodesWithTag("editor_sample").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun settingsShowsRowsAndAboutLink() {
+        composeRule.onNodeWithText("设置").performClick()
+        waitFor { composeRule.onAllNodesWithText("深色模式").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("深色模式").assertIsDisplayed()
+        composeRule.onNodeWithText("默认样式预设").assertIsDisplayed()
+        composeRule.onNodeWithText("默认公司信息").assertIsDisplayed()
+
+        composeRule.onNodeWithText("关于").performClick()
+        waitFor { composeRule.onAllNodesWithText("开源地址：").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("https://github.com/explore42/QuickBillMate").assertIsDisplayed()
     }
 }

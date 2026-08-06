@@ -2,7 +2,6 @@ package com.example.quickbillmate.ui.editor
 
 import android.app.Application
 import android.graphics.Bitmap
-import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,7 +9,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.db.BillItem
-import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
@@ -46,16 +44,7 @@ data class ItemRow(
 data class CustomerSuggestion(
     val name: String,
     val phone: String,
-    val type: String = "",
-    val fromDb: Boolean,
     val fromContacts: Boolean,
-)
-
-data class ExportOutcome(
-    val saved: Boolean,
-    val fileName: String,
-    val shareUri: Uri?,
-    val message: String,
 )
 
 data class EditorUiState(
@@ -81,15 +70,11 @@ data class EditorUiState(
     val presetKey: String = "classic",
     val items: List<ItemRow> = listOf(ItemRow()),
     val preview: Bitmap? = null,
-    val customers: List<Customer> = emptyList(),
     val suggestions: List<CustomerSuggestion> = emptyList(),
     val products: List<Product> = emptyList(),
     val presets: List<StylePreset> = emptyList(),
     val contactsGranted: Boolean = false,
-    val exporting: Boolean = false,
-    val exportOutcome: ExportOutcome? = null,
-    val shareOutcome: ExportOutcome? = null,
-    val message: String? = null,
+    val savedTick: Int = 0,
 )
 
 class EditorViewModel(
@@ -106,9 +91,6 @@ class EditorViewModel(
     private var cachedContacts: List<ContactsImporter.Candidate>? = null
 
     init {
-        viewModelScope.launch {
-            repo.observeCustomers("").collect { state = state.copy(customers = it) }
-        }
         viewModelScope.launch {
             repo.observeProducts("").collect { state = state.copy(products = it) }
         }
@@ -217,30 +199,24 @@ class EditorViewModel(
         if (granted) refreshSuggestions(state.customerName)
     }
 
+    /** 客户信息不展示客户库已有客户，仅联想通讯录联系人。 */
     private fun refreshSuggestions(query: String) {
         if (query.isBlank()) {
             state = state.copy(suggestions = emptyList())
             return
         }
         val q = query.trim()
-        val fromDb = state.customers
-            .filter { it.name.contains(q) || it.phone.contains(q) }
-            .sortedByDescending { it.fromContacts }
-            .take(5)
-            .map { CustomerSuggestion(it.name, it.phone, it.type, fromDb = true, fromContacts = it.fromContacts) }
-
-        val dbKeys = fromDb.map { it.name to it.phone }.toSet()
-        if (state.contactsGranted && fromDb.size < 5) {
-            val contacts = cachedContacts ?: ContactsImporter.query(app).also { cachedContacts = it }
-            val fromContacts = contacts
-                .filter { it.name.contains(q) || it.phone.contains(q) }
-                .filterNot { (it.name to it.phone) in dbKeys }
-                .take(5 - fromDb.size)
-                .map { CustomerSuggestion(it.name, it.phone, "通讯录", fromDb = false, fromContacts = true) }
-            state = state.copy(suggestions = fromDb + fromContacts)
-        } else {
-            state = state.copy(suggestions = fromDb)
+        if (!state.contactsGranted) {
+            state = state.copy(suggestions = emptyList())
+            return
         }
+        val contacts = cachedContacts ?: ContactsImporter.query(app).also { cachedContacts = it }
+        state = state.copy(
+            suggestions = contacts
+                .filter { it.name.contains(q) || it.phone.contains(q) }
+                .take(6)
+                .map { CustomerSuggestion(it.name, it.phone, fromContacts = true) },
+        )
     }
 
     fun selectSuggestion(suggestion: CustomerSuggestion) {
@@ -254,7 +230,8 @@ class EditorViewModel(
         if (suggestion.fromContacts) {
             viewModelScope.launch {
                 repo.importContactCandidates(
-                    listOf(ContactsImporter.Candidate(suggestion.name, suggestion.phone))
+                    listOf(ContactsImporter.Candidate(suggestion.name, suggestion.phone)),
+                    mergeSameName = false,
                 )
             }
         }
@@ -359,7 +336,7 @@ class EditorViewModel(
         ItemRow("玻璃胶", "透明 300ml", "支", "6", "15.00", "50支/箱", ""),
     )
 
-    // ---------- 自动保存 / 预览 ----------
+    // ---------- 自动保存 / 手动保存 / 预览 ----------
 
     private fun scheduleSave() {
         if (!loaded) return
@@ -367,6 +344,16 @@ class EditorViewModel(
         saveJob = viewModelScope.launch {
             delay(400)
             autosave()
+        }
+    }
+
+    /** 独立“保存”按钮：立即保存并提示。 */
+    fun saveNow() {
+        if (!loaded) return
+        saveJob?.cancel()
+        viewModelScope.launch {
+            autosave()
+            state = state.copy(savedTick = state.savedTick + 1)
         }
     }
 
@@ -397,71 +384,6 @@ class EditorViewModel(
             state = state.copy(preview = bitmap)
         }
     }
-
-    // ---------- 导出 / 分享 ----------
-
-    fun exportToGallery() {
-        if (state.exporting) return
-        viewModelScope.launch {
-            state = state.copy(exporting = true)
-            val s = state
-            val fileName = invoiceFileName(s)
-            val bitmap = withContext(Dispatchers.Default) {
-                repo.renderInvoice(s.toRenderInvoice(), s.presetKey, 1600)
-            }
-            val ok = withContext(Dispatchers.IO) {
-                repo.saveInvoiceToGallery(app, bitmap, fileName)
-            }
-            if (ok) {
-                state = state.copy(status = "已导出")
-                repo.updateBillStatus(s.billId, "已导出")
-            }
-            val shareUri = repo.invoiceShareUri(app, bitmap, fileName)
-            state = state.copy(
-                exporting = false,
-                exportOutcome = ExportOutcome(
-                    saved = ok,
-                    fileName = fileName,
-                    shareUri = shareUri,
-                    message = if (ok) "已保存到相册" else "保存失败，请检查存储空间或权限",
-                ),
-            )
-        }
-    }
-
-    fun shareNow() {
-        if (state.exporting) return
-        viewModelScope.launch {
-            state = state.copy(exporting = true)
-            val s = state
-            val fileName = invoiceFileName(s)
-            val bitmap = withContext(Dispatchers.Default) {
-                repo.renderInvoice(s.toRenderInvoice(), s.presetKey, 1600)
-            }
-            val uri = withContext(Dispatchers.IO) {
-                repo.invoiceShareUri(app, bitmap, fileName)
-            }
-            state = state.copy(
-                exporting = false,
-                shareOutcome = ExportOutcome(saved = true, fileName = fileName, shareUri = uri, message = ""),
-            )
-        }
-    }
-
-    fun consumeExportOutcome() {
-        state = state.copy(exportOutcome = null)
-    }
-
-    fun consumeShareOutcome() {
-        state = state.copy(shareOutcome = null)
-    }
-
-    fun consumeMessage() {
-        state = state.copy(message = null)
-    }
-
-    private fun invoiceFileName(s: EditorUiState): String =
-        "销售清单_${BillNumber.build(s.docCode, s.docDate, s.docSerial)}.png"
 }
 
 private fun BillItem.toRow(): ItemRow = ItemRow(

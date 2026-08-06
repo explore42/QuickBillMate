@@ -13,14 +13,18 @@ import com.example.quickbillmate.ui.presets.PresetEditorViewModel
 import com.example.quickbillmate.ui.presets.PresetsViewModel
 import com.example.quickbillmate.ui.products.ProductsViewModel
 import com.example.quickbillmate.ui.settings.SettingsViewModel
+import com.example.quickbillmate.ui.view.BillViewViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
-            HomeViewModel(app().repository)
+            HomeViewModel(app(), app().repository)
         }
         initializer {
             EditorViewModel(app(), app().repository)
+        }
+        initializer {
+            BillViewViewModel(app(), app().repository)
         }
         initializer {
             ProductsViewModel(app(), app().repository)

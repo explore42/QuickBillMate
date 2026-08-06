@@ -1,5 +1,9 @@
 package com.example.quickbillmate.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -14,6 +18,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -23,7 +30,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
-import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.ui.contacts.ContactsImportScreen
 import com.example.quickbillmate.ui.customers.CustomersScreen
 import com.example.quickbillmate.ui.editor.EditorScreen
@@ -32,20 +38,22 @@ import com.example.quickbillmate.ui.presets.PresetEditorScreen
 import com.example.quickbillmate.ui.presets.PresetsScreen
 import com.example.quickbillmate.ui.products.ProductsScreen
 import com.example.quickbillmate.ui.settings.SettingsScreen
+import com.example.quickbillmate.ui.view.BillViewScreen
+
+private const val SLIDE_DURATION_MS = 320
 
 @Composable
 fun QuickBillMateAppNavHost(
     navController: NavHostController,
-    themeMode: String,
-    darkTheme: Boolean,
     onThemeModeChange: (String) -> Unit,
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    var homeSelectionActive by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
-            if (currentRoute in Routes.tabRoutes) {
+            if (currentRoute in Routes.tabRoutes && !(currentRoute == Routes.HOME && homeSelectionActive)) {
                 NavigationBar {
                     TabItem(Icons.Default.Home, "首页", currentRoute == Routes.HOME) {
                         navController.navigate(Routes.HOME) {
@@ -83,21 +91,36 @@ fun QuickBillMateAppNavHost(
             navController = navController,
             startDestination = Routes.HOME,
             modifier = Modifier.padding(padding),
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
+            },
         ) {
             composable(Routes.HOME) {
                 HomeScreen(
                     onNewBill = { navController.navigate(Routes.editor(0)) },
-                    onOpenBill = { billId -> navController.navigate(Routes.editor(billId)) },
-                    onToggleTheme = {
-                        onThemeModeChange(
-                            if (themeMode == SettingsStore.THEME_DARK) {
-                                SettingsStore.THEME_LIGHT
-                            } else {
-                                SettingsStore.THEME_DARK
-                            }
-                        )
-                    },
-                    darkTheme = darkTheme,
+                    onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
+                    onSelectionModeChange = { active -> homeSelectionActive = active },
                 )
             }
 
@@ -128,6 +151,22 @@ fun QuickBillMateAppNavHost(
                     billId = entry.arguments?.getLong(Routes.EDITOR_ARG_BILL_ID) ?: 0L,
                     onBack = { navController.popBackStack() },
                     onManagePresets = { navController.navigate(Routes.PRESETS) },
+                )
+            }
+
+            composable(
+                route = Routes.VIEW,
+                arguments = listOf(
+                    navArgument(Routes.VIEW_ARG_BILL_ID) {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    }
+                ),
+            ) { entry ->
+                BillViewScreen(
+                    billId = entry.arguments?.getLong(Routes.VIEW_ARG_BILL_ID) ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { id -> navController.navigate(Routes.editor(id)) },
                 )
             }
 

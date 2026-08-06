@@ -96,6 +96,9 @@ interface CustomerDao {
     @Query("SELECT COUNT(*) FROM customers WHERE name = :name AND phone = :phone")
     suspend fun countDuplicate(name: String, phone: String): Int
 
+    @Query("SELECT * FROM customers WHERE name = :name LIMIT 1")
+    suspend fun findByName(name: String): Customer?
+
     @Insert
     suspend fun insert(customer: Customer): Long
 

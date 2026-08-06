@@ -28,8 +28,6 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 QuickBillMateAppNavHost(
                     navController = navController,
-                    themeMode = themeMode,
-                    darkTheme = darkTheme,
                     onThemeModeChange = { mode ->
                         themeMode = mode
                         settings.themeMode = mode

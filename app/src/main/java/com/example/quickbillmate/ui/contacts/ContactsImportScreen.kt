@@ -6,7 +6,6 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -173,11 +172,32 @@ fun ContactsImportScreen(
         )
     }
 
-    viewModel.importResult?.let { (success, skipped) ->
+    viewModel.pendingMerge?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelMerge() },
+            title = { Text("发现同名客户") },
+            text = {
+                Text("选中的联系人中有 ${viewModel.pendingMergeConflictCount} 条与客户库中已有客户同名。是否合并到现有客户（追加不同号码）？")
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.importWithMerge(mergeSameName = true) }) { Text("合并") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.importWithMerge(mergeSameName = false) }) { Text("跳过同名") }
+            },
+        )
+    }
+
+    viewModel.importResult?.let { outcome ->
+        val parts = buildList {
+            add("成功 ${outcome.inserted} 条")
+            if (outcome.merged > 0) add("合并 ${outcome.merged} 条")
+            if (outcome.skipped > 0) add("已存在跳过 ${outcome.skipped} 条")
+        }
         AlertDialog(
             onDismissRequest = viewModel::consumeResult,
             title = { Text("导入完成") },
-            text = { Text("成功 $success 条 / 已存在跳过 $skipped 条") },
+            text = { Text(parts.joinToString(" / ")) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.consumeResult()

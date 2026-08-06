@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.ContactImportOutcome
 import com.example.quickbillmate.importexport.ContactsImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,7 +28,13 @@ class ContactsImportViewModel(
         private set
     var importing by mutableStateOf(false)
         private set
-    var importResult by mutableStateOf<Pair<Int, Int>?>(null)
+    var importResult by mutableStateOf<ContactImportOutcome?>(null)
+        private set
+
+    /** 待确认的同名合并清单（发现同名客户时弹出确认）。 */
+    var pendingMerge by mutableStateOf<List<ContactsImporter.Candidate>?>(null)
+        private set
+    var pendingMergeConflictCount by mutableStateOf(0)
         private set
 
     val filtered: List<ContactsImporter.Candidate>
@@ -68,9 +75,37 @@ class ContactsImportViewModel(
         val list = selectedList()
         if (list.isEmpty()) return
         viewModelScope.launch {
+            val existing = repo.getCustomers()
+            val conflicts = list.filter { candidate ->
+                existing.any { it.name == candidate.name } &&
+                    !existing.any { it.name == candidate.name && it.phone == candidate.phone }
+            }
+            if (conflicts.isNotEmpty()) {
+                pendingMerge = list
+                pendingMergeConflictCount = conflicts.size
+            } else {
+                doImport(list, mergeSameName = false)
+            }
+        }
+    }
+
+    fun importWithMerge(mergeSameName: Boolean) {
+        val list = pendingMerge ?: return
+        pendingMerge = null
+        pendingMergeConflictCount = 0
+        doImport(list, mergeSameName)
+    }
+
+    fun cancelMerge() {
+        pendingMerge = null
+        pendingMergeConflictCount = 0
+    }
+
+    private fun doImport(list: List<ContactsImporter.Candidate>, mergeSameName: Boolean) {
+        viewModelScope.launch {
             importing = true
             importResult = withContext(Dispatchers.IO) {
-                repo.importContactCandidates(list)
+                repo.importContactCandidates(list, mergeSameName)
             }
             importing = false
         }
