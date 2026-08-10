@@ -53,6 +53,7 @@ import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.TimeIndexBar
 import com.example.quickbillmate.ui.common.monthBubble
 import com.example.quickbillmate.ui.common.monthKey
@@ -115,6 +116,7 @@ fun HomeScreen(
         bills = bills,
         scrollToTopTick = scrollToTopTick,
         selectionMode = viewModel.selectionMode,
+        onSelectGroup = viewModel::selectGroup,
         selectedIds = viewModel.selectedIds,
         searchQuery = viewModel.searchQuery,
         onSearchQueryChange = viewModel::onSearchQueryChange,
@@ -145,6 +147,7 @@ fun HomeContent(
     bills: List<HomeBill>,
     scrollToTopTick: Int = 0,
     selectionMode: Boolean,
+    onSelectGroup: (Set<Long>) -> Unit,
     selectedIds: Set<Long>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
@@ -262,6 +265,11 @@ fun HomeContent(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                onSelectGroup = if (selectionMode) {
+                                    { onSelectGroup(section.bills.map { it.bill.id }.toSet()) }
+                                } else {
+                                    null
+                                },
                             )
                         }
                         items(
@@ -293,6 +301,13 @@ fun HomeContent(
                                 .padding(start = 0.dp, end = 52.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (selectionMode) {
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = { onToggleSelection(bill.id) },
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -316,13 +331,6 @@ fun HomeContent(
                                     text = "${homeBill.docNumber} · ${homeBill.itemCount} 项 · ¥${homeBill.receivableText}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (selectionMode) {
-                                Spacer(Modifier.width(8.dp))
-                                Checkbox(
-                                    checked = selected,
-                                    onCheckedChange = { onToggleSelection(bill.id) },
                                 )
                             }
                         }
@@ -354,62 +362,4 @@ fun HomeContent(
     }
 }
 
-@Composable
-private fun SelectionActionBar(
-    canEdit: Boolean,
-    onCopy: () -> Unit,
-    onEdit: () -> Unit,
-    onExport: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SelectionAction(Icons.Default.Add, "复制", true, onCopy)
-        SelectionAction(Icons.Default.Edit, "编辑", canEdit, onEdit)
-        SelectionAction(Icons.Default.ShoppingCart, "导出", true, onExport)
-        SelectionAction(Icons.Default.Delete, "删除", true, onDelete)
-    }
-}
 
-@Composable
-private fun SelectionAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .combinedClickable(
-                onClick = { if (enabled) onClick() },
-                onLongClick = null,
-            )
-            .padding(horizontal = 18.dp, vertical = 6.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        )
-    }
-}

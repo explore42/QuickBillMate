@@ -125,6 +125,12 @@ class HomeViewModel(
         selectedIds = allBills.map { it.bill.id }.toSet()
     }
 
+    /** 分组全选：只选中该分组内的单据。 */
+    fun selectGroup(ids: Set<Long>) {
+        selectionMode = true
+        selectedIds = ids
+    }
+
     fun exitSelection() {
         selectionMode = false
         selectedIds = emptySet()

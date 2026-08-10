@@ -361,6 +361,7 @@ fun EditorScreen(
             onShowRemarkChange = viewModel::onShowRemarkChange,
             onShowWatermarkChange = viewModel::onShowWatermarkChange,
             onShowMultiPhonesChange = viewModel::onShowMultiPhonesChange,
+            onSave = { viewModel.saveNow { showActionsDialog = false } },
             onDismiss = { showActionsDialog = false },
         )
     }
@@ -528,6 +529,7 @@ private fun EditorActionsDialog(
     onShowRemarkChange: (Boolean) -> Unit,
     onShowWatermarkChange: (Boolean) -> Unit,
     onShowMultiPhonesChange: (Boolean) -> Unit,
+    onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var companyExpanded by remember { mutableStateOf(false) }
@@ -608,7 +610,7 @@ private fun EditorActionsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
+            TextButton(onClick = onSave) { Text("保存") }
         },
     )
 }

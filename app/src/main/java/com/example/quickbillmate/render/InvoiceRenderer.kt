@@ -292,17 +292,21 @@ class InvoiceRenderer {
                 }
                 val text = ellipsize(cell.text, cell.paint, cell.width - 8f)
                 val baseline = top + height * 0.5f - (cell.paint.descent() + cell.paint.ascent()) / 2f
+                // 单元格内裁剪：即使文字度量异常也不会溢出到相邻列，杜绝重叠
+                canvas.save()
+                canvas.clipRect(x, top, cx, top + height)
                 when (cell.align) {
                     Paint.Align.LEFT -> canvas.drawText(text, x + 4f, baseline, cell.paint)
                     Paint.Align.RIGHT -> canvas.drawText(text, cx - 4f, baseline, cell.paint)
                     Paint.Align.CENTER -> canvas.drawText(text, (x + cx) / 2f, baseline, cell.paint)
                 }
+                canvas.restore()
                 x = cx
             }
         }
 
         private fun alignForColumn(i: Int): Paint.Align = when (i) {
-            0 -> Paint.Align.CENTER
+            0, 3 -> Paint.Align.CENTER
             4, 5, 6 -> Paint.Align.RIGHT
             else -> Paint.Align.LEFT
         }

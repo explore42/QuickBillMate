@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
@@ -22,9 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -57,10 +60,12 @@ import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.IndexSection
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.InitialCircle
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.LetterIndexBar
+import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.util.Money
 
@@ -121,9 +126,31 @@ fun ProductsScreen(
     var showMenu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Product?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
-    var pendingDelete by remember { mutableStateOf<Product?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showTemplate by remember { mutableStateOf(false) }
+
+    val copyMessage = viewModel.copyMessage
+    LaunchedEffect(copyMessage) {
+        copyMessage?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeCopyMessage()
+        }
+    }
+    val exportMessage = viewModel.exportMessage
+    LaunchedEffect(exportMessage) {
+        exportMessage?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeExportMessage()
+        }
+    }
+    val exportError = viewModel.exportError
+    LaunchedEffect(exportError) {
+        exportError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeExportError()
+        }
+    }
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -144,8 +171,27 @@ fun ProductsScreen(
         }
     }
 
+    BackHandler(enabled = viewModel.selectionMode) {
+        viewModel.exitSelection()
+    }
+
     Scaffold(
         topBar = {
+            if (viewModel.selectionMode) {
+                AppTopBar(
+                    title = "已选中 ${viewModel.selectedIds.size} 项",
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.exitSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "退出多选")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.selectAll() }) {
+                            Text("全选")
+                        }
+                    },
+                )
+            } else {
             SearchableTopBar(
                 title = "快贝智单",
                 searchPlaceholder = "搜索名称/规格",
@@ -176,10 +222,27 @@ fun ProductsScreen(
                     }
                 },
             )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "新增商品")
+            if (!viewModel.selectionMode) {
+                FloatingActionButton(onClick = { showNewDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "新增商品")
+                }
+            }
+        },
+        bottomBar = {
+            if (viewModel.selectionMode) {
+                SelectionActionBar(
+                    canEdit = viewModel.selectedIds.size == 1,
+                    onCopy = { viewModel.copySelected() },
+                    onEdit = { viewModel.editSelected { editing = it } },
+                    onExport = { viewModel.exportSelected() },
+                    onDelete = {
+                        viewModel.requestDelete()
+                        showDeleteConfirm = true
+                    },
+                )
             }
         },
     ) { padding ->
@@ -201,6 +264,11 @@ fun ProductsScreen(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                onSelectGroup = if (viewModel.selectionMode) {
+                                    { viewModel.selectGroup(section.products.map { it.id }.toSet()) }
+                                } else {
+                                    null
+                                },
                             )
                         }
                         items(
@@ -214,14 +282,33 @@ fun ProductsScreen(
                                 .padding(start = 0.dp, end = 32.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (viewModel.selectionMode) {
+                                Checkbox(
+                                    checked = product.id in viewModel.selectedIds,
+                                    onCheckedChange = { viewModel.toggleSelection(product.id) },
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
                             InitialCircle(product.name.trim().firstOrNull()?.toString() ?: "?")
                             Spacer(Modifier.width(12.dp))
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
                                     .combinedClickable(
-                                        onClick = { editing = product },
-                                        onLongClick = { pendingDelete = product },
+                                        onClick = {
+                                            if (viewModel.selectionMode) {
+                                                viewModel.toggleSelection(product.id)
+                                            } else {
+                                                editing = product
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (viewModel.selectionMode) {
+                                                viewModel.toggleSelection(product.id)
+                                            } else {
+                                                viewModel.enterSelection(product.id)
+                                            }
+                                        },
                                     )
                                     .padding(vertical = 10.dp),
                             ) {
@@ -276,15 +363,18 @@ fun ProductsScreen(
         )
     }
 
-    pendingDelete?.let { product ->
+    if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除商品",
-            text = "确定删除商品“${product.name}”吗？",
+            text = "确定删除选中的 ${viewModel.selectedIds.size} 条商品吗？此操作不可恢复。",
             onConfirm = {
-                viewModel.deleteProduct(product)
-                pendingDelete = null
+                viewModel.confirmDelete()
+                showDeleteConfirm = false
             },
-            onDismiss = { pendingDelete = null },
+            onDismiss = {
+                viewModel.cancelDelete()
+                showDeleteConfirm = false
+            },
         )
     }
 

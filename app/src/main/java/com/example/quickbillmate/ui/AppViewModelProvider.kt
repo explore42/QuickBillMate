@@ -30,7 +30,7 @@ object AppViewModelProvider {
             ProductsViewModel(app(), app().repository)
         }
         initializer {
-            CustomersViewModel(app().repository)
+            CustomersViewModel(app(), app().repository)
         }
         initializer {
             ContactsImportViewModel(app(), app().repository)

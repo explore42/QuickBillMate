@@ -62,6 +62,7 @@ fun HomeContentPreview() {
         HomeContent(
             bills = sampleBills(),
             selectionMode = false,
+            onSelectGroup = {},
             selectedIds = emptySet(),
             searchQuery = "",
             onSearchQueryChange = {},
@@ -90,6 +91,7 @@ fun HomeSelectionPreview() {
         HomeContent(
             bills = sampleBills(),
             selectionMode = true,
+            onSelectGroup = {},
             selectedIds = setOf(1L),
             searchQuery = "",
             onSearchQueryChange = {},

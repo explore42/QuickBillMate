@@ -3,10 +3,15 @@ package com.example.quickbillmate.ui.view
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,14 +42,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -69,6 +82,11 @@ fun BillViewScreen(
     val s = viewModel.state
     val context = LocalContext.current
     var storageDenied by remember { mutableStateOf(false) }
+    var previewFull by remember { mutableStateOf(false) }
+
+    fun dial(phone: String) {
+        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+    }
 
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -171,12 +189,13 @@ fun BillViewScreen(
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(Modifier.height(10.dp))
-                        s.preview?.let {
+                        s.preview?.let { bitmap ->
                             Image(
-                                bitmap = it.asImageBitmap(),
+                                bitmap = bitmap.asImageBitmap(),
                                 contentDescription = "单据预览",
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clickable { previewFull = true }
                                     .testTag("view_preview"),
                             )
                         }
@@ -185,9 +204,11 @@ fun BillViewScreen(
 
                 SectionCard("客户信息") {
                     InfoLine("客户名称", bill.customerName.ifBlank { "—" })
+                    val dialPhone = PhoneUtil.splitPhones(bill.customerPhone).firstOrNull()
                     InfoLine(
                         "客户电话",
                         PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones).ifBlank { "—" },
+                        onValueClick = dialPhone?.let { { dial(it) } },
                     )
                 }
 
@@ -290,6 +311,10 @@ fun BillViewScreen(
         }
     }
 
+    if (previewFull) {
+        s.preview?.let { FullPreviewDialog(it, onDismiss = { previewFull = false }) }
+    }
+
     if (storageDenied) {
         AlertDialog(
             onDismissRequest = { storageDenied = false },
@@ -327,7 +352,7 @@ fun BillViewScreen(
 }
 
 @Composable
-private fun InfoLine(label: String, value: String) {
+private fun InfoLine(label: String, value: String, onValueClick: (() -> Unit)? = null) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(
             label,
@@ -335,6 +360,60 @@ private fun InfoLine(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(110.dp),
         )
-        Text(value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = if (onValueClick != null) {
+                Modifier.clickable { onValueClick() }
+            } else {
+                Modifier
+            },
+        )
+    }
+}
+
+/** 全屏预览：支持双指缩放，点击右上角或返回关闭。 */
+@Composable
+private fun FullPreviewDialog(bitmap: android.graphics.Bitmap, onDismiss: () -> Unit) {
+    BackHandler(onBack = onDismiss)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            var scale by remember { mutableFloatStateOf(1f) }
+            var offset by remember { mutableStateOf(Offset.Zero) }
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "单据预览",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 4f)
+                            offset += pan
+                        }
+                    },
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .background(Color.Black.copy(alpha = 0.5f)),
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White)
+            }
+        }
     }
 }

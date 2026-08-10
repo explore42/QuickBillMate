@@ -15,6 +15,7 @@ import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.importexport.ContactsImporter
+import com.example.quickbillmate.importexport.CustomerJsonCodec
 import com.example.quickbillmate.importexport.GalleryWriter
 import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
@@ -176,6 +177,15 @@ class AppRepository(
 
     suspend fun getProducts(): List<Product> = productDao.getAll()
 
+    suspend fun copyProducts(products: List<Product>) {
+        val copies = products.map { it.copy(id = 0, name = it.name + "（副本）").withPinyin() }
+        productDao.insertAll(copies)
+    }
+
+    suspend fun deleteProducts(products: List<Product>) {
+        products.forEach { productDao.delete(it) }
+    }
+
     suspend fun saveProduct(product: Product) {
         if (product.id == 0L) {
             productDao.insert(product.withPinyin())
@@ -199,6 +209,15 @@ class AppRepository(
         if (query.isBlank()) customerDao.observeAll() else customerDao.observeSearch(query.trim())
 
     suspend fun getCustomers(): List<Customer> = customerDao.getAll()
+
+    suspend fun copyCustomers(customers: List<Customer>) {
+        val copies = customers.map { it.copy(id = 0, name = it.name + "（副本）").withPinyin() }
+        customerDao.insertAll(copies)
+    }
+
+    suspend fun deleteCustomers(customers: List<Customer>) {
+        customers.forEach { customerDao.delete(it) }
+    }
 
     suspend fun saveCustomer(customer: Customer) {
         if (customer.id == 0L) {
@@ -295,11 +314,21 @@ class AppRepository(
         return result
     }
 
-    /** 导出到系统“下载”目录，返回文件名；失败返回 null。 */
-    suspend fun exportProductsToDownloads(context: Context): String? {
-        val products = productDao.getAll()
+    /** 导出指定商品到系统“下载”目录，返回文件名；失败返回 null。 */
+    suspend fun exportProductsToDownloads(context: Context, products: List<Product>): String? {
         val text = ProductJsonCodec.export(products)
         val fileName = "products_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            exportModern(context, text, fileName)
+        } else {
+            exportLegacy(context, text, fileName)
+        }
+    }
+
+    /** 导出指定客户到系统“下载”目录，返回文件名；失败返回 null。 */
+    suspend fun exportCustomersToDownloads(context: Context, customers: List<Customer>): String? {
+        val text = CustomerJsonCodec.export(customers)
+        val fileName = "customers_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             exportModern(context, text, fileName)
         } else {

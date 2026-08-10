@@ -53,6 +53,17 @@ class ProductsViewModel(
     var importError by mutableStateOf<String?>(null)
         private set
 
+    var selectionMode by mutableStateOf(false)
+        private set
+    var selectedIds by mutableStateOf<Set<Long>>(emptySet())
+        private set
+    var pendingDeleteIds by mutableStateOf<Set<Long>>(emptySet())
+        private set
+    var copyMessage by mutableStateOf<String?>(null)
+        private set
+    var exportMessage by mutableStateOf<String?>(null)
+        private set
+
     var exporting by mutableStateOf(false)
         private set
     var exportFileName by mutableStateOf<String?>(null)
@@ -73,6 +84,97 @@ class ProductsViewModel(
 
     fun deleteProduct(product: Product) {
         viewModelScope.launch { repo.deleteProduct(product) }
+    }
+
+    fun enterSelection(id: Long) {
+        selectionMode = true
+        selectedIds = setOf(id)
+    }
+
+    fun toggleSelection(id: Long) {
+        selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id
+        if (selectedIds.isEmpty()) selectionMode = false
+    }
+
+    fun selectAll() {
+        selectedIds = products.value.map { it.id }.toSet()
+    }
+
+    /** 分组全选：只选中该分组内的商品。 */
+    fun selectGroup(ids: Set<Long>) {
+        selectionMode = true
+        selectedIds = ids
+    }
+
+    fun exitSelection() {
+        selectionMode = false
+        selectedIds = emptySet()
+    }
+
+    fun copySelected() {
+        val ids = selectedIds
+        viewModelScope.launch {
+            repo.copyProducts(products.value.filter { it.id in ids })
+            copyMessage = "已复制 ${ids.size} 条"
+            exitSelection()
+        }
+    }
+
+    fun editSelected(onEdit: (Product) -> Unit) {
+        if (selectedIds.size == 1) {
+            val item = products.value.firstOrNull { it.id == selectedIds.first() }
+            if (item != null) {
+                exitSelection()
+                onEdit(item)
+            }
+        }
+    }
+
+    fun exportSelected() {
+        val ids = selectedIds
+        viewModelScope.launch {
+            val list = products.value.filter { it.id in ids }
+            exportError = null
+            exportMessage = null
+            try {
+                exportMessage = withContext(Dispatchers.IO) {
+                    repo.exportProductsToDownloads(app, list)
+                }
+                if (exportMessage == null) exportError = "导出失败，请检查存储空间"
+            } catch (_: Exception) {
+                exportError = "导出失败，请检查存储空间"
+            }
+            exitSelection()
+        }
+    }
+
+    fun requestDelete() {
+        if (selectedIds.isNotEmpty()) pendingDeleteIds = selectedIds
+    }
+
+    fun confirmDelete() {
+        val ids = pendingDeleteIds
+        viewModelScope.launch {
+            repo.deleteProducts(products.value.filter { it.id in ids })
+            exitSelection()
+            pendingDeleteIds = emptySet()
+        }
+    }
+
+    fun cancelDelete() {
+        pendingDeleteIds = emptySet()
+    }
+
+    fun consumeCopyMessage() {
+        copyMessage = null
+    }
+
+    fun consumeExportMessage() {
+        exportMessage = null
+    }
+
+    fun consumeExportError() {
+        exportError = null
     }
 
     fun importFromUri(uri: Uri) {
@@ -99,7 +201,7 @@ class ProductsViewModel(
             exportError = null
             try {
                 exportFileName = withContext(Dispatchers.IO) {
-                    repo.exportProductsToDownloads(app)
+                    repo.exportProductsToDownloads(app, repo.getProducts())
                 }
                 if (exportFileName == null) exportError = "导出失败，请检查存储空间"
             } catch (_: Exception) {

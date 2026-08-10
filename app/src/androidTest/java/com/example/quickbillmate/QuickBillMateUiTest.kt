@@ -111,8 +111,9 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("商务蓝").performClick()
         // 选中后预设列表收起
         waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isEmpty() }
-        composeRule.onNodeWithText("关闭").performClick()
-        waitFor { composeRule.onAllNodesWithText("关闭").fetchSemanticsNodes().isEmpty() }
+        // 返回键关闭设置弹窗
+        Espresso.pressBack()
+        waitFor { composeRule.onAllNodesWithText("选择图片样式").fetchSemanticsNodes().isEmpty() }
     }
 
     @Test

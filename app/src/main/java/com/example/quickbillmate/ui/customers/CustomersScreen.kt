@@ -1,5 +1,8 @@
 package com.example.quickbillmate.ui.customers
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,13 +21,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,12 +45,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
+import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.InitialCircle
@@ -53,6 +62,7 @@ import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.util.PhoneUtil
 
 
@@ -113,10 +123,52 @@ fun CustomersScreen(
     }
     var editing by remember { mutableStateOf<Customer?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
-    var pendingDelete by remember { mutableStateOf<Customer?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val copyMessage = viewModel.copyMessage
+    LaunchedEffect(copyMessage) {
+        copyMessage?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeCopyMessage()
+        }
+    }
+    val exportMessage = viewModel.exportMessage
+    LaunchedEffect(exportMessage) {
+        exportMessage?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeExportMessage()
+        }
+    }
+    val exportError = viewModel.exportError
+    LaunchedEffect(exportError) {
+        exportError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeExportError()
+        }
+    }
+
+    BackHandler(enabled = viewModel.selectionMode) {
+        viewModel.exitSelection()
+    }
 
     Scaffold(
         topBar = {
+            if (viewModel.selectionMode) {
+                AppTopBar(
+                    title = "已选中 ${viewModel.selectedIds.size} 项",
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.exitSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "退出多选")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.selectAll() }) {
+                            Text("全选")
+                        }
+                    },
+                )
+            } else {
             SearchableTopBar(
                 title = "快贝智单",
                 searchPlaceholder = "搜索姓名/电话/类型",
@@ -126,10 +178,27 @@ fun CustomersScreen(
                     TextButton(onClick = onImportContacts) { Text("导入") }
                 },
             )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "新增客户")
+            if (!viewModel.selectionMode) {
+                FloatingActionButton(onClick = { showNewDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "新增客户")
+                }
+            }
+        },
+        bottomBar = {
+            if (viewModel.selectionMode) {
+                SelectionActionBar(
+                    canEdit = viewModel.selectedIds.size == 1,
+                    onCopy = { viewModel.copySelected() },
+                    onEdit = { viewModel.editSelected { editing = it } },
+                    onExport = { viewModel.exportSelected() },
+                    onDelete = {
+                        viewModel.requestDelete()
+                        showDeleteConfirm = true
+                    },
+                )
             }
         },
     ) { padding ->
@@ -151,6 +220,11 @@ fun CustomersScreen(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                onSelectGroup = if (viewModel.selectionMode) {
+                                    { viewModel.selectGroup(section.customers.map { it.id }.toSet()) }
+                                } else {
+                                    null
+                                },
                             )
                         }
                         items(
@@ -160,8 +234,11 @@ fun CustomersScreen(
                         ) { customer ->
                             CustomerCard(
                                 customer = customer,
+                                selectionMode = viewModel.selectionMode,
+                                selected = customer.id in viewModel.selectedIds,
+                                onToggleSelection = { viewModel.toggleSelection(customer.id) },
                                 onEdit = { editing = customer },
-                                onDelete = { pendingDelete = customer },
+                                onDelete = { viewModel.enterSelection(customer.id) },
                             )
                         }
                     }
@@ -197,15 +274,18 @@ fun CustomersScreen(
         )
     }
 
-    pendingDelete?.let { customer ->
+    if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除客户",
-            text = "确定删除客户“${customer.name}”吗？",
+            text = "确定删除选中的 ${viewModel.selectedIds.size} 条客户吗？此操作不可恢复。",
             onConfirm = {
-                viewModel.deleteCustomer(customer)
-                pendingDelete = null
+                viewModel.confirmDelete()
+                showDeleteConfirm = false
             },
-            onDismiss = { pendingDelete = null },
+            onDismiss = {
+                viewModel.cancelDelete()
+                showDeleteConfirm = false
+            },
         )
     }
 }
@@ -213,6 +293,9 @@ fun CustomersScreen(
 @Composable
 private fun CustomerCard(
     customer: Customer,
+    selectionMode: Boolean,
+    selected: Boolean,
+    onToggleSelection: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -222,14 +305,18 @@ private fun CustomerCard(
             .padding(end = 32.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (selectionMode) {
+            Checkbox(checked = selected, onCheckedChange = { onToggleSelection() })
+            Spacer(Modifier.width(8.dp))
+        }
         InitialCircle(customer.name.trim().firstOrNull()?.toString() ?: "?")
         Spacer(Modifier.width(12.dp))
         Column(
             modifier = Modifier
                 .weight(1f)
                 .combinedClickable(
-                    onClick = onEdit,
-                    onLongClick = onDelete,
+                    onClick = { if (selectionMode) onToggleSelection() else onEdit() },
+                    onLongClick = { if (selectionMode) onToggleSelection() else onDelete() },
                 )
                 .padding(top = 6.dp, bottom = 6.dp),
         ) {
@@ -254,6 +341,15 @@ private fun CustomerCard(
                 }
             }
 
+        val dialPhone = PhoneUtil.splitPhones(customer.phone).firstOrNull()
+        if (dialPhone != null) {
+            val context = LocalContext.current
+            IconButton(onClick = {
+                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialPhone")))
+            }) {
+                Icon(Icons.Default.Call, contentDescription = "拨打电话")
+            }
+        }
     }
 }
 
