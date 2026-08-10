@@ -59,6 +59,8 @@ fun QuickBillMateAppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     var homeSelectionActive by remember { mutableStateOf(false) }
+    var productsSelectionActive by remember { mutableStateOf(false) }
+    var customersSelectionActive by remember { mutableStateOf(false) }
     var homeScrollTicks by remember { mutableStateOf(0) }
     var productsScrollTicks by remember { mutableStateOf(0) }
     var customersScrollTicks by remember { mutableStateOf(0) }
@@ -67,7 +69,11 @@ fun QuickBillMateAppNavHost(
         // 顶部边距由各页面自己的标题栏处理，外层不再额外让出状态栏高度
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (currentRoute in Routes.tabRoutes && !(currentRoute == Routes.HOME && homeSelectionActive)) {
+            val selectionActive =
+                (currentRoute == Routes.HOME && homeSelectionActive) ||
+                    (currentRoute == Routes.PRODUCTS && productsSelectionActive) ||
+                    (currentRoute == Routes.CUSTOMERS && customersSelectionActive)
+            if (currentRoute in Routes.tabRoutes && !selectionActive) {
                 NavigationBar {
                     TabItem(Icons.Default.Home, "单据", currentRoute == Routes.HOME) {
                         if (currentRoute == Routes.HOME) {
@@ -166,12 +172,16 @@ fun QuickBillMateAppNavHost(
             }
 
             composable(Routes.PRODUCTS) {
-                ProductsScreen(scrollToTopTick = productsScrollTicks)
+                ProductsScreen(
+                    onSelectionModeChange = { active -> productsSelectionActive = active },
+                    scrollToTopTick = productsScrollTicks,
+                )
             }
 
             composable(Routes.CUSTOMERS) {
                 CustomersScreen(
                     onImportContacts = { navController.navigate(Routes.CONTACTS_IMPORT) },
+                    onSelectionModeChange = { active -> customersSelectionActive = active },
                     scrollToTopTick = customersScrollTicks,
                 )
             }

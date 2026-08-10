@@ -21,12 +21,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -46,11 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.common.DetailLine
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.EmptyState
@@ -93,6 +95,7 @@ internal fun groupCustomers(customers: List<Customer>, letters: List<String>): L
 @Composable
 fun CustomersScreen(
     onImportContacts: () -> Unit,
+    onSelectionModeChange: (Boolean) -> Unit = {},
     scrollToTopTick: Int = 0,
     viewModel: CustomersViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
@@ -124,6 +127,11 @@ fun CustomersScreen(
     var editing by remember { mutableStateOf<Customer?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<Customer?>(null) }
+
+    LaunchedEffect(viewModel.selectionMode) {
+        onSelectionModeChange(viewModel.selectionMode)
+    }
 
     val context = LocalContext.current
     val copyMessage = viewModel.copyMessage
@@ -163,8 +171,13 @@ fun CustomersScreen(
                         }
                     },
                     actions = {
-                        TextButton(onClick = { viewModel.selectAll() }) {
-                            Text("全选")
+                        val allVisibleSelected =
+                            customers.isNotEmpty() && customers.all { it.id in viewModel.selectedIds }
+                        TextButton(
+                            onClick = { viewModel.toggleSelectAll() },
+                            modifier = Modifier.testTag("select_all_toggle"),
+                        ) {
+                            Text(if (allVisibleSelected) "取消全选" else "全选")
                         }
                     },
                 )
@@ -237,7 +250,7 @@ fun CustomersScreen(
                                 selectionMode = viewModel.selectionMode,
                                 selected = customer.id in viewModel.selectedIds,
                                 onToggleSelection = { viewModel.toggleSelection(customer.id) },
-                                onEdit = { editing = customer },
+                                onDetail = { detail = customer },
                                 onDelete = { viewModel.enterSelection(customer.id) },
                             )
                         }
@@ -260,6 +273,27 @@ fun CustomersScreen(
                 showNewDialog = false
             },
             onDismiss = { showNewDialog = false },
+        )
+    }
+
+    detail?.let { customer ->
+        CustomerDetailDialog(
+            customer = customer,
+            onToggleFavorite = { newValue ->
+                val updated = customer.copy(favorite = newValue)
+                viewModel.saveCustomer(updated)
+                detail = updated
+            },
+            onEdit = {
+                detail = null
+                editing = customer
+            },
+            onCall = PhoneUtil.splitPhones(customer.phone).firstOrNull()?.let { phone ->
+                {
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                }
+            },
+            onDismiss = { detail = null },
         )
     }
 
@@ -291,12 +325,49 @@ fun CustomersScreen(
 }
 
 @Composable
+private fun CustomerDetailDialog(
+    customer: Customer,
+    onToggleFavorite: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+    onCall: (() -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("客户详情") },
+        text = {
+            Column {
+                DetailLine("姓名", customer.name)
+                if (customer.type.isNotBlank()) DetailLine("客户类型", customer.type)
+                if (customer.phone.isNotBlank()) DetailLine("电话", customer.phone)
+                if (customer.remark.isNotBlank()) DetailLine("备注", customer.remark)
+                Spacer(Modifier.height(6.dp))
+                LabeledSwitch("收藏", customer.favorite, onToggleFavorite)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onEdit()
+                    onDismiss()
+                },
+            ) { Text("修改") }
+        },
+        confirmButton = {
+            if (onCall != null) {
+                Button(onClick = onCall) { Text("呼叫") }
+            }
+        },
+    )
+}
+
+@Composable
 private fun CustomerCard(
     customer: Customer,
     selectionMode: Boolean,
     selected: Boolean,
     onToggleSelection: () -> Unit,
-    onEdit: () -> Unit,
+    onDetail: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -315,7 +386,7 @@ private fun CustomerCard(
             modifier = Modifier
                 .weight(1f)
                 .combinedClickable(
-                    onClick = { if (selectionMode) onToggleSelection() else onEdit() },
+                    onClick = { if (selectionMode) onToggleSelection() else onDetail() },
                     onLongClick = { if (selectionMode) onToggleSelection() else onDelete() },
                 )
                 .padding(top = 6.dp, bottom = 6.dp),
@@ -341,15 +412,6 @@ private fun CustomerCard(
                 }
             }
 
-        val dialPhone = PhoneUtil.splitPhones(customer.phone).firstOrNull()
-        if (dialPhone != null) {
-            val context = LocalContext.current
-            IconButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dialPhone")))
-            }) {
-                Icon(Icons.Default.Call, contentDescription = "拨打电话")
-            }
-        }
     }
 }
 

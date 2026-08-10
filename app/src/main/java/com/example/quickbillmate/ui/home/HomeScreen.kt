@@ -125,7 +125,7 @@ fun HomeScreen(
         onEnterSelection = viewModel::enterSelection,
         onToggleSelection = viewModel::toggleSelection,
         onExitSelection = viewModel::exitSelection,
-        onSelectAll = viewModel::selectAll,
+        onToggleSelectAll = viewModel::toggleSelectAll,
         onCopy = viewModel::copySelected,
         onEdit = { viewModel.editSelected(onOpenBill) },
         onExport = viewModel::exportSelected,
@@ -156,7 +156,7 @@ fun HomeContent(
     onEnterSelection: (Long) -> Unit,
     onToggleSelection: (Long) -> Unit,
     onExitSelection: () -> Unit,
-    onSelectAll: () -> Unit,
+    onToggleSelectAll: () -> Unit,
     onCopy: () -> Unit,
     onEdit: (Long) -> Unit,
     onExport: () -> Unit,
@@ -206,10 +206,17 @@ fun HomeContent(
                         }
                     },
                     actions = {
-                        TextButton(onClick = onSelectAll) {
-                            Icon(Icons.Default.Check, contentDescription = null)
+                        val allVisibleSelected = bills.isNotEmpty() && bills.all { it.bill.id in selectedIds }
+                        TextButton(
+                            onClick = onToggleSelectAll,
+                            modifier = Modifier.testTag("select_all_toggle"),
+                        ) {
+                            Icon(
+                                if (allVisibleSelected) Icons.Default.Close else Icons.Default.Check,
+                                contentDescription = null,
+                            )
                             Spacer(Modifier.width(2.dp))
-                            Text("全选")
+                            Text(if (allVisibleSelected) "取消全选" else "全选")
                         }
                     },
                 )
@@ -361,5 +368,4 @@ fun HomeContent(
         )
     }
 }
-
 

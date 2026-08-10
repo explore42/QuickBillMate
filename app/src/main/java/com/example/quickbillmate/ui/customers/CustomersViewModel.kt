@@ -77,14 +77,23 @@ class CustomersViewModel(
         if (selectedIds.isEmpty()) selectionMode = false
     }
 
+    /** 全选当前可见（筛选后）列表。 */
     fun selectAll() {
         selectedIds = customers.value.map { it.id }.toSet()
     }
 
-    /** 分组全选：只选中该分组内的客户。 */
+    /** 顶栏全选切换：全部已选则清空（留在多选模式），否则选中全部可见客户。 */
+    fun toggleSelectAll() {
+        val visibleIds = customers.value.map { it.id }
+        val allVisibleSelected = visibleIds.isNotEmpty() && visibleIds.all { it in selectedIds }
+        selectedIds = if (allVisibleSelected) emptySet() else visibleIds.toSet()
+        selectionMode = true
+    }
+
+    /** 分组全选：与已有选中合并，不替换。 */
     fun selectGroup(ids: Set<Long>) {
         selectionMode = true
-        selectedIds = ids
+        selectedIds = selectedIds + ids
     }
 
     fun exitSelection() {

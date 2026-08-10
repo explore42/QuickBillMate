@@ -57,6 +57,7 @@ import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
+import com.example.quickbillmate.ui.common.DetailLine
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.IndexSection
@@ -94,6 +95,7 @@ internal fun groupProducts(products: List<Product>, letters: List<String>): List
 
 @Composable
 fun ProductsScreen(
+    onSelectionModeChange: (Boolean) -> Unit = {},
     scrollToTopTick: Int = 0,
     viewModel: ProductsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
@@ -129,6 +131,11 @@ fun ProductsScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showTemplate by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<Product?>(null) }
+
+    LaunchedEffect(viewModel.selectionMode) {
+        onSelectionModeChange(viewModel.selectionMode)
+    }
 
     val copyMessage = viewModel.copyMessage
     LaunchedEffect(copyMessage) {
@@ -186,8 +193,13 @@ fun ProductsScreen(
                         }
                     },
                     actions = {
-                        TextButton(onClick = { viewModel.selectAll() }) {
-                            Text("全选")
+                        val allVisibleSelected =
+                            products.isNotEmpty() && products.all { it.id in viewModel.selectedIds }
+                        TextButton(
+                            onClick = { viewModel.toggleSelectAll() },
+                            modifier = Modifier.testTag("select_all_toggle"),
+                        ) {
+                            Text(if (allVisibleSelected) "取消全选" else "全选")
                         }
                     },
                 )
@@ -299,7 +311,7 @@ fun ProductsScreen(
                                             if (viewModel.selectionMode) {
                                                 viewModel.toggleSelection(product.id)
                                             } else {
-                                                editing = product
+                                                detail = product
                                             }
                                         },
                                         onLongClick = {
@@ -349,6 +361,22 @@ fun ProductsScreen(
                 showNewDialog = false
             },
             onDismiss = { showNewDialog = false },
+        )
+    }
+
+    detail?.let { product ->
+        ProductDetailDialog(
+            product = product,
+            onToggleFavorite = { newValue ->
+                val updated = product.copy(favorite = newValue)
+                viewModel.saveProduct(updated)
+                detail = updated
+            },
+            onEdit = {
+                detail = null
+                editing = product
+            },
+            onDismiss = { detail = null },
         )
     }
 
@@ -487,6 +515,40 @@ fun ProductsScreen(
             },
         )
     }
+}
+
+@Composable
+private fun ProductDetailDialog(
+    product: Product,
+    onToggleFavorite: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("商品详情") },
+        text = {
+            Column {
+                DetailLine("名称", product.name)
+                if (product.spec.isNotBlank()) DetailLine("规格", product.spec)
+                if (product.unit.isNotBlank()) DetailLine("单位", product.unit)
+                DetailLine("单价", "¥${Money.format(product.price)}")
+                if (product.pack.isNotBlank()) DetailLine("包装规格", product.pack)
+                if (product.note.isNotBlank()) DetailLine("备注", product.note)
+                Spacer(Modifier.height(6.dp))
+                LabeledSwitch("收藏", product.favorite, onToggleFavorite)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onEdit()
+                    onDismiss()
+                },
+            ) { Text("修改") }
+        },
+        confirmButton = {},
+    )
 }
 
 @Composable

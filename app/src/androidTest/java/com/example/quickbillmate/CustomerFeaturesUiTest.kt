@@ -35,9 +35,12 @@ class CustomerFeaturesUiTest {
         addCustomer(nameA)
         addCustomer(nameB)
 
-        // 打开 A 的编辑对话框，勾选“收藏”并保存
+        // 点击行先打开“客户详情”，点“修改”进入编辑，勾选“收藏”并保存
         waitFor { composeRule.onAllNodes(hasText(nameA, substring = true)).fetchSemanticsNodes().isNotEmpty() }
         composeRule.onAllNodes(hasText(nameA, substring = true))[0].performClick()
+        waitFor { composeRule.onAllNodesWithText("客户详情").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("修改").performClick()
+        waitFor { composeRule.onAllNodesWithText("编辑客户").fetchSemanticsNodes().isNotEmpty() }
         waitFor { composeRule.onAllNodesWithText("收藏").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("收藏").performClick()
         composeRule.onNodeWithText("保存").performClick()

@@ -15,6 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
@@ -36,7 +37,7 @@ fun PhoneListEditor(
                     label = { Text("电话 ${index + 1}") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag("phone_input"),
                 )
                 if (index > 0) {
                     IconButton(onClick = {

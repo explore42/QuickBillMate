@@ -1,6 +1,7 @@
 package com.example.quickbillmate
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -229,5 +230,98 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("关于").performClick()
         waitFor { composeRule.onAllNodesWithText("开源地址：").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("https://github.com/explore42/QuickBillMate").assertIsDisplayed()
+    }
+
+    @Test
+    fun productClickShowsDetailThenEdit() {
+        val name = "商品详情测试${System.currentTimeMillis() % 100000}"
+        composeRule.onNodeWithContentDescription("商品").performClick()
+        waitFor { composeRule.onAllNodesWithContentDescription("新增商品").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithContentDescription("新增商品").performClick()
+        waitFor { composeRule.onAllNodesWithText("新增商品").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("product_name").performClick()
+        composeRule.onNodeWithTag("product_name").performTextInput(name)
+        composeRule.onNodeWithTag("product_price").performClick()
+        composeRule.onNodeWithTag("product_price").performTextInput("35")
+        composeRule.onNodeWithText("保存").performClick()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 点击行先打开“商品详情”，点“修改”才进入编辑
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performClick()
+        waitFor { composeRule.onAllNodesWithText("商品详情").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("修改").performClick()
+        waitFor { composeRule.onAllNodesWithText("编辑商品").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun customerClickShowsDetailWithCallAndEdit() {
+        val name = "客户详情测试${System.currentTimeMillis() % 100000}"
+        composeRule.onNodeWithContentDescription("客户").performClick()
+        waitFor { composeRule.onAllNodesWithContentDescription("新增客户").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithContentDescription("新增客户").performClick()
+        waitFor { composeRule.onAllNodesWithText("新增客户").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("姓名*").performClick()
+        composeRule.onNodeWithText("姓名*").performTextInput(name)
+        composeRule.onAllNodesWithTag("phone_input")[0].performClick()
+        composeRule.onAllNodesWithTag("phone_input")[0].performTextInput("13800001111")
+        composeRule.onNodeWithText("保存").performClick()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 点击行先打开“客户详情”，含“呼叫”与“修改”
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performClick()
+        waitFor { composeRule.onAllNodesWithText("客户详情").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("呼叫").assertIsDisplayed()
+        composeRule.onNodeWithText("修改").performClick()
+        waitFor { composeRule.onAllNodesWithText("编辑客户").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun selectAllTogglesToDeselectAll() {
+        val first = "全选切换甲${System.currentTimeMillis() % 100000}"
+        val second = "全选切换乙${System.currentTimeMillis() % 100000}"
+        createBillWithCustomer(first)
+        createBillWithCustomer(second)
+
+        // 只选第一条时，顶栏为“全选”（未全选）
+        composeRule.onAllNodes(hasText(first, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("select_all_toggle").assertTextEquals("全选")
+
+        // 全选 → 变为“取消全选”
+        composeRule.onNodeWithTag("select_all_toggle").performClick()
+        waitFor { composeRule.onAllNodesWithText("取消全选").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("select_all_toggle").assertTextEquals("取消全选")
+
+        // 取消全选 → 清空但留在多选模式，按钮恢复“全选”
+        composeRule.onNodeWithTag("select_all_toggle").performClick()
+        waitFor { composeRule.onAllNodesWithText("已选中 0 项").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("select_all_toggle").assertTextEquals("全选")
+
+        Espresso.pressBack()
+        waitFor { composeRule.onAllNodesWithText("已选中").fetchSemanticsNodes().isEmpty() }
+        composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
+    }
+
+    @Test
+    fun groupSelectAllMergesWithExistingSelection() {
+        val first = "合并测试甲${System.currentTimeMillis() % 100000}"
+        val second = "合并测试乙${System.currentTimeMillis() % 100000}"
+        createBillWithCustomer(first)
+
+        // 新建一张收藏单据
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("收藏").performClick()
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(second)
+        composeRule.onNodeWithText("保存").performClick()
+        waitHomeReady()
+        waitFor { composeRule.onAllNodes(hasText(second, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 长按月份组里的单据，再点收藏组“全选”→ 与已有选中合并
+        composeRule.onAllNodes(hasText(first, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onAllNodesWithTag("select_group")[0].performClick()
+        waitFor { composeRule.onAllNodesWithText("已选中 2 项").fetchSemanticsNodes().isNotEmpty() }
     }
 }

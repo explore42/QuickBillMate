@@ -125,6 +125,26 @@ fun LabeledSwitch(
     }
 }
 
+/** 详情对话框里的只读字段行：标签 + 值。 */
+@Composable
+fun DetailLine(
+    label: String,
+    value: String,
+) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(96.dp),
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
 /**
  * 统一顶部标题栏：使用独立底色（与底部导航同色系），
  * 通过标准窗口边距适配全面屏状态栏，避免标题区域过大。
