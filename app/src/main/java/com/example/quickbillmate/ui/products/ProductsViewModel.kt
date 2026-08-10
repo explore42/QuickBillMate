@@ -109,10 +109,11 @@ class ProductsViewModel(
         selectionMode = true
     }
 
-    /** 分组全选：与已有选中合并，不替换。 */
+    /** 分组全选切换：组内全部已选则取消该组，否则与已有选中合并。 */
     fun selectGroup(ids: Set<Long>) {
         selectionMode = true
-        selectedIds = selectedIds + ids
+        selectedIds =
+            if (ids.isNotEmpty() && ids.all { it in selectedIds }) selectedIds - ids else selectedIds + ids
     }
 
     fun exitSelection() {

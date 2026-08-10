@@ -272,6 +272,9 @@ fun HomeContent(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                allSelected =
+                                    section.bills.isNotEmpty() &&
+                                        section.bills.all { it.bill.id in selectedIds },
                                 onSelectGroup = if (selectionMode) {
                                     { onSelectGroup(section.bills.map { it.bill.id }.toSet()) }
                                 } else {
@@ -368,4 +371,3 @@ fun HomeContent(
         )
     }
 }
-

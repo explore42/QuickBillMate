@@ -233,6 +233,9 @@ fun CustomersScreen(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                allSelected =
+                                    section.customers.isNotEmpty() &&
+                                        section.customers.all { it.id in viewModel.selectedIds },
                                 onSelectGroup = if (viewModel.selectionMode) {
                                     { viewModel.selectGroup(section.customers.map { it.id }.toSet()) }
                                 } else {

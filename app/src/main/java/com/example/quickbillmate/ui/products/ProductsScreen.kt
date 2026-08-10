@@ -276,6 +276,9 @@ fun ProductsScreen(
                             GroupSectionHeader(
                                 title = section.title,
                                 showTopDivider = groupIndex > 0,
+                                allSelected =
+                                    section.products.isNotEmpty() &&
+                                        section.products.all { it.id in viewModel.selectedIds },
                                 onSelectGroup = if (viewModel.selectionMode) {
                                     { viewModel.selectGroup(section.products.map { it.id }.toSet()) }
                                 } else {

@@ -15,12 +15,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 
-/** 分组小标题：组与组之间用一条细分割线隔开；多选模式下可传入 onSelectGroup 显示"全选"。 */
+/** 分组小标题：组与组之间用一条细分割线隔开；多选模式下可传入 onSelectGroup 显示"全选/取消全选"。 */
 @Composable
 fun GroupSectionHeader(
     title: String,
     showTopDivider: Boolean,
     onSelectGroup: (() -> Unit)? = null,
+    allSelected: Boolean = false,
 ) {
     if (showTopDivider) {
         HorizontalDivider(
@@ -46,7 +47,7 @@ fun GroupSectionHeader(
             TextButton(
                 onClick = onSelectGroup,
                 modifier = Modifier.testTag("select_group"),
-            ) { Text("全选") }
+            ) { Text(if (allSelected) "取消全选" else "全选") }
         }
     }
 }
