@@ -82,6 +82,7 @@ import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
+import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.util.Money
 import java.time.Instant
@@ -182,13 +183,27 @@ fun EditorScreen(
                         onSelect = viewModel::selectSuggestion,
                     )
                     Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "客户电话",
-                        value = s.customerPhone,
-                        onChange = viewModel::onCustomerPhoneChange,
-                        keyboardType = KeyboardType.Phone,
-                        modifier = Modifier.fillMaxWidth(),
+                    Text("客户电话", style = MaterialTheme.typography.titleSmall)
+                    val editorPhones = remember(s.customerPhone) {
+                        val parts = s.customerPhone.split(",").map { it.trim() }
+                        if (parts.all { it.isEmpty() }) listOf("") else parts
+                    }
+                    PhoneListEditor(
+                        phones = editorPhones,
+                        onChange = { list -> viewModel.onCustomerPhoneChange(list.joinToString(",")) },
                     )
+                    val phoneHint = when {
+                        editorPhones.size == 1 -> "可添加多个电话"
+                        editorPhones.size > 1 && !s.showMultiPhones -> "仅显示第一个电话（可在右上角设置开启全部）"
+                        else -> null
+                    }
+                    if (phoneHint != null) {
+                        Text(
+                            phoneHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 // 客单信息
@@ -321,6 +336,7 @@ fun EditorScreen(
             showManager = s.showManager,
             showRemark = s.showRemark,
             showWatermark = s.showWatermark,
+            showMultiPhones = s.showMultiPhones,
             company = s.companyName,
             phone = s.contactPhone,
             manager = s.salesManager,
@@ -344,6 +360,7 @@ fun EditorScreen(
             onShowManagerChange = viewModel::onShowManagerChange,
             onShowRemarkChange = viewModel::onShowRemarkChange,
             onShowWatermarkChange = viewModel::onShowWatermarkChange,
+            onShowMultiPhonesChange = viewModel::onShowMultiPhonesChange,
             onDismiss = { showActionsDialog = false },
         )
     }
@@ -494,6 +511,7 @@ private fun EditorActionsDialog(
     showManager: Boolean,
     showRemark: Boolean,
     showWatermark: Boolean,
+    showMultiPhones: Boolean,
     company: String,
     phone: String,
     manager: String,
@@ -509,6 +527,7 @@ private fun EditorActionsDialog(
     onShowManagerChange: (Boolean) -> Unit,
     onShowRemarkChange: (Boolean) -> Unit,
     onShowWatermarkChange: (Boolean) -> Unit,
+    onShowMultiPhonesChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var companyExpanded by remember { mutableStateOf(false) }
@@ -585,6 +604,7 @@ private fun EditorActionsDialog(
                 LabeledSwitch("显示业务经理", showManager, onShowManagerChange)
                 LabeledSwitch("显示备注", showRemark, onShowRemarkChange)
                 LabeledSwitch("显示水印", showWatermark, onShowWatermarkChange)
+                LabeledSwitch("显示多个电话", showMultiPhones, onShowMultiPhonesChange)
             }
         },
         confirmButton = {

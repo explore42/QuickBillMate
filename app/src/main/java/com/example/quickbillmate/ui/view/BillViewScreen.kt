@@ -53,6 +53,7 @@ import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.ui.editor.presetDisplayName
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.PhoneUtil
 
 @Composable
 fun BillViewScreen(
@@ -184,7 +185,10 @@ fun BillViewScreen(
 
                 SectionCard("客户信息") {
                     InfoLine("客户名称", bill.customerName.ifBlank { "—" })
-                    InfoLine("客户电话", bill.customerPhone.ifBlank { "—" })
+                    InfoLine(
+                        "客户电话",
+                        PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones).ifBlank { "—" },
+                    )
                 }
 
                 SectionCard("客单信息") {
@@ -279,6 +283,7 @@ fun BillViewScreen(
                     InfoLine("显示业务经理", if (bill.showManager) "开" else "关")
                     InfoLine("显示备注", if (bill.showRemark) "开" else "关")
                     InfoLine("显示水印", if (bill.showWatermark) "开" else "关")
+                    InfoLine("显示多个电话", if (bill.showMultiPhones) "开" else "关")
                 }
                 Spacer(Modifier.height(8.dp))
             }

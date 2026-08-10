@@ -73,6 +73,7 @@ fun SettingsScreen(
         defaultShowManager = viewModel.defaultShowManager,
         defaultShowRemark = viewModel.defaultShowRemark,
         defaultShowWatermark = viewModel.defaultShowWatermark,
+        defaultShowMultiPhones = viewModel.defaultShowMultiPhones,
         defaultDocCode = viewModel.defaultDocCode,
         defaultTitleSuffix = viewModel.defaultTitleSuffix,
         defaultDisclaimer = viewModel.defaultDisclaimer,
@@ -88,8 +89,8 @@ fun SettingsScreen(
             viewModel.updateManager(manager)
         },
         onPresetChange = viewModel::updateDefaultPreset,
-        onShowOptionsSave = { manager, remark, watermark ->
-            viewModel.updateShowOptions(manager, remark, watermark)
+        onShowOptionsSave = { manager, remark, watermark, multi ->
+            viewModel.updateShowOptions(manager, remark, watermark, multi)
         },
         onBillDefaultsSave = { docCode, titleSuffix, disclaimer ->
             viewModel.updateBillDefaults(docCode, titleSuffix, disclaimer)
@@ -112,6 +113,7 @@ fun SettingsContent(
     defaultShowManager: Boolean,
     defaultShowRemark: Boolean,
     defaultShowWatermark: Boolean,
+    defaultShowMultiPhones: Boolean,
     defaultDocCode: String,
     defaultTitleSuffix: String,
     defaultDisclaimer: String,
@@ -120,7 +122,7 @@ fun SettingsContent(
     onThemeModeChange: (String) -> Unit,
     onCompanySave: (String, String, String) -> Unit,
     onPresetChange: (String) -> Unit,
-    onShowOptionsSave: (Boolean, Boolean, Boolean) -> Unit,
+    onShowOptionsSave: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onBillDefaultsSave: (String, String, String) -> Unit,
     onManagePresets: () -> Unit,
     onOpenUrl: (String) -> Unit,
@@ -246,6 +248,7 @@ fun SettingsContent(
                     "业务经理 ${if (defaultShowManager) "开" else "关"}",
                     "备注 ${if (defaultShowRemark) "开" else "关"}",
                     "水印 ${if (defaultShowWatermark) "开" else "关"}",
+                    "多电话 ${if (defaultShowMultiPhones) "开" else "关"}",
                 ).joinToString(" · "),
                 onClick = { showShowOptionsDialog = true },
             )
@@ -289,8 +292,9 @@ fun SettingsContent(
             showManager = defaultShowManager,
             showRemark = defaultShowRemark,
             showWatermark = defaultShowWatermark,
-            onSave = { manager, remark, watermark ->
-                onShowOptionsSave(manager, remark, watermark)
+            showMultiPhones = defaultShowMultiPhones,
+            onSave = { manager, remark, watermark, multi ->
+                onShowOptionsSave(manager, remark, watermark, multi)
                 showShowOptionsDialog = false
             },
             onDismiss = { showShowOptionsDialog = false },
@@ -348,12 +352,14 @@ private fun ShowOptionsDialog(
     showManager: Boolean,
     showRemark: Boolean,
     showWatermark: Boolean,
-    onSave: (Boolean, Boolean, Boolean) -> Unit,
+    showMultiPhones: Boolean,
+    onSave: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var manager by remember { mutableStateOf(showManager) }
     var remark by remember { mutableStateOf(showRemark) }
     var watermark by remember { mutableStateOf(showWatermark) }
+    var multiPhones by remember { mutableStateOf(showMultiPhones) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -363,10 +369,11 @@ private fun ShowOptionsDialog(
                 LabeledSwitch("显示业务经理", manager, { manager = it })
                 LabeledSwitch("显示备注", remark, { remark = it })
                 LabeledSwitch("显示水印", watermark, { watermark = it })
+                LabeledSwitch("显示多个电话", multiPhones, { multiPhones = it })
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(manager, remark, watermark) }) { Text("保存") }
+            TextButton(onClick = { onSave(manager, remark, watermark, multiPhones) }) { Text("保存") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消") }

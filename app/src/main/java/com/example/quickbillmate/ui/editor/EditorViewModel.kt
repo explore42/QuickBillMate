@@ -22,6 +22,7 @@ import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.PhoneUtil
 import com.example.quickbillmate.util.Pinyin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,6 +74,7 @@ data class EditorUiState(
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
     val showWatermark: Boolean = false,
+    val showMultiPhones: Boolean = false,
     val favorite: Boolean = false,
     val presetKey: String = "classic",
     val items: List<ItemRow> = listOf(ItemRow()),
@@ -137,6 +139,7 @@ class EditorViewModel(
                 showManager = settings.defaultShowManager,
                 showRemark = settings.defaultShowRemark,
                 showWatermark = settings.defaultShowWatermark,
+                showMultiPhones = settings.defaultShowMultiPhones,
             )
             isNewDraft = true
             originalBill = draft
@@ -206,6 +209,7 @@ class EditorViewModel(
             showManager = bill.showManager,
             showRemark = bill.showRemark,
             showWatermark = bill.showWatermark,
+            showMultiPhones = bill.showMultiPhones,
             favorite = bill.favorite,
             presetKey = bill.presetKey,
             items = items.map { it.toRow() }.ifEmpty { listOf(ItemRow()) },
@@ -295,6 +299,8 @@ class EditorViewModel(
     fun onShowManagerChange(value: Boolean) = update { copy(showManager = value) }
     fun onShowRemarkChange(value: Boolean) = update { copy(showRemark = value) }
     fun onShowWatermarkChange(value: Boolean) = update { copy(showWatermark = value) }
+
+    fun onShowMultiPhonesChange(value: Boolean) = update { copy(showMultiPhones = value) }
 
     fun onFavoriteChange(value: Boolean) = update { copy(favorite = value) }
 
@@ -536,7 +542,7 @@ private fun ItemRow.toEntity(billId: Long, order: Int): BillItem = BillItem(
 private fun EditorUiState.toBill(serial: String): Bill = Bill(
     id = billId,
     customerName = customerName.trim(),
-    customerPhone = customerPhone.trim(),
+    customerPhone = customerPhone.trim().trimEnd(','),
     companyName = companyName.trim(),
     contactPhone = contactPhone.trim(),
     salesManager = salesManager.trim(),
@@ -550,6 +556,7 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     showManager = showManager,
     showRemark = showRemark,
     showWatermark = showWatermark,
+    showMultiPhones = showMultiPhones,
     favorite = favorite,
     presetKey = presetKey,
     status = status,
@@ -558,7 +565,7 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
 
 fun EditorUiState.toRenderInvoice(): RenderInvoice = RenderInvoice(
     customerName = customerName,
-    customerPhone = customerPhone,
+    customerPhone = PhoneUtil.displayPhones(customerPhone, showMultiPhones),
     companyName = companyName,
     contactPhone = contactPhone,
     salesManager = salesManager,

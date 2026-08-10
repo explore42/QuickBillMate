@@ -23,6 +23,7 @@ data class Bill(
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
     val showWatermark: Boolean = false,
+    val showMultiPhones: Boolean = false,
     val favorite: Boolean = false,
     val presetKey: String = "classic",
     val status: String = "草稿",

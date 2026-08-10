@@ -2,6 +2,7 @@ package com.example.quickbillmate.importexport
 
 import android.content.Context
 import android.provider.ContactsContract
+import com.example.quickbillmate.util.PhoneUtil
 
 object ContactsImporter {
     data class Candidate(val name: String, val phone: String)
@@ -24,7 +25,7 @@ object ContactsImporter {
             val numIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
             while (cursor.moveToNext()) {
                 val name = cursor.getString(nameIdx)?.trim().orEmpty()
-                val number = cursor.getString(numIdx)?.replace(" ", "")?.trim().orEmpty()
+                val number = PhoneUtil.normalizePhone(cursor.getString(numIdx).orEmpty())
                 if (name.isNotBlank() && number.isNotBlank()) {
                     result.add(Candidate(name, number))
                 }

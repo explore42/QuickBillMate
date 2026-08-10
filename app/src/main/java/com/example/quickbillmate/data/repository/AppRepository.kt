@@ -23,6 +23,7 @@ import com.example.quickbillmate.render.InvoiceRenderer
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StyleParams
+import com.example.quickbillmate.util.PhoneUtil
 import com.example.quickbillmate.util.Pinyin
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.BillNumber
@@ -106,6 +107,7 @@ class AppRepository(
         showManager: Boolean = true,
         showRemark: Boolean = true,
         showWatermark: Boolean = false,
+        showMultiPhones: Boolean = false,
     ): Bill {
         val serial = generateUniqueSerial(docCode, docDate)
         val bill = Bill(
@@ -120,6 +122,7 @@ class AppRepository(
             showManager = showManager,
             showRemark = showRemark,
             showWatermark = showWatermark,
+            showMultiPhones = showMultiPhones,
             presetKey = settings.defaultPresetKey,
         )
         val id = billDao.insert(bill)
@@ -228,14 +231,13 @@ class AppRepository(
         }
         var inserted = 0
         var merged = 0
-        candidates.forEach { candidate ->
+        candidates.forEach { rawCandidate ->
+            // 无论调用方是否已规范化，统一再规范一次
+            val candidate = rawCandidate.copy(phone = PhoneUtil.normalizePhone(rawCandidate.phone))
             val existing = customerDao.findByName(candidate.name)
             if (existing != null) {
-                val phones = existing.phone
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .toMutableList()
+                // 老数据可能未规范化，比较与追加统一用规范化号码
+                val phones = PhoneUtil.splitPhones(existing.phone).toMutableList()
                 if (candidate.phone !in phones) {
                     phones.add(candidate.phone)
                     customerDao.update(
@@ -373,7 +375,7 @@ class AppRepository(
 
     fun buildRenderInvoice(bill: Bill, items: List<BillItem>): RenderInvoice = RenderInvoice(
         customerName = bill.customerName,
-        customerPhone = bill.customerPhone,
+        customerPhone = PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones),
         companyName = bill.companyName,
         contactPhone = bill.contactPhone,
         salesManager = bill.salesManager,

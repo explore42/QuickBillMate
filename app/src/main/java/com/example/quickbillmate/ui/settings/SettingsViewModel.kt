@@ -33,6 +33,8 @@ class SettingsViewModel(
         private set
     var defaultShowWatermark by mutableStateOf(repo.settings.defaultShowWatermark)
         private set
+    var defaultShowMultiPhones by mutableStateOf(repo.settings.defaultShowMultiPhones)
+        private set
     var defaultDocCode by mutableStateOf(repo.settings.defaultDocCode)
         private set
     var defaultTitleSuffix by mutableStateOf(repo.settings.defaultTitleSuffix)
@@ -75,13 +77,20 @@ class SettingsViewModel(
         repo.settings.defaultPresetKey = key
     }
 
-    fun updateShowOptions(showManager: Boolean, showRemark: Boolean, showWatermark: Boolean) {
+    fun updateShowOptions(
+        showManager: Boolean,
+        showRemark: Boolean,
+        showWatermark: Boolean,
+        showMultiPhones: Boolean,
+    ) {
         defaultShowManager = showManager
         defaultShowRemark = showRemark
         defaultShowWatermark = showWatermark
+        defaultShowMultiPhones = showMultiPhones
         repo.settings.defaultShowManager = showManager
         repo.settings.defaultShowRemark = showRemark
         repo.settings.defaultShowWatermark = showWatermark
+        repo.settings.defaultShowMultiPhones = showMultiPhones
     }
 
     fun updateBillDefaults(docCode: String, titleSuffix: String, disclaimer: String) {

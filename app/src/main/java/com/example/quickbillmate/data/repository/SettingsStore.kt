@@ -38,6 +38,10 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_WATERMARK, false)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_WATERMARK, value).apply()
 
+    var defaultShowMultiPhones: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_MULTI_PHONES, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_MULTI_PHONES, value).apply()
+
     var defaultDocCode: String
         get() = prefs.getString(KEY_DOC_CODE, "PH") ?: "PH"
         set(value) = prefs.edit().putString(KEY_DOC_CODE, value).apply()
@@ -63,6 +67,7 @@ class SettingsStore(context: Context) {
         private const val KEY_SHOW_MANAGER = "default_show_manager"
         private const val KEY_SHOW_REMARK = "default_show_remark"
         private const val KEY_SHOW_WATERMARK = "default_show_watermark"
+        private const val KEY_SHOW_MULTI_PHONES = "default_show_multi_phones"
         private const val KEY_DOC_CODE = "default_doc_code"
         private const val KEY_TITLE_SUFFIX = "default_title_suffix"
         private const val KEY_DISCLAIMER = "default_disclaimer"

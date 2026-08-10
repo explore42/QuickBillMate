@@ -63,8 +63,8 @@ fun SectionCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
@@ -228,16 +228,17 @@ fun SearchableTopBar(
 
 /** 紧凑搜索框：40dp 高、14sp 文字，文字完整显示不被裁剪。 */
 @Composable
-private fun CompactSearchField(
+fun CompactSearchField(
     query: String,
     placeholder: String,
     onQueryChange: (String) -> Unit,
     focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(40.dp),
     ) {

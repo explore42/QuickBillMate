@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilterChip
@@ -37,7 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Customer
@@ -50,7 +51,9 @@ import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LabeledSwitch
+import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.util.PhoneUtil
 
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
@@ -261,7 +264,11 @@ private fun CustomerEditDialog(
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf(initial.name) }
-    var phone by remember { mutableStateOf(initial.phone) }
+    var phones by remember(initial.phone) {
+        mutableStateOf(
+            initial.phone.split(",").map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf("") }
+        )
+    }
     var type by remember { mutableStateOf(initial.type) }
     var remark by remember { mutableStateOf(initial.remark) }
     var favorite by remember { mutableStateOf(initial.favorite) }
@@ -274,12 +281,8 @@ private fun CustomerEditDialog(
             Column {
                 LabeledField("姓名*", name, { name = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField(
-                    "电话（多个用逗号分隔）",
-                    phone,
-                    { phone = it },
-                    keyboardType = KeyboardType.Phone,
-                )
+                Text("电话", style = MaterialTheme.typography.titleSmall)
+                PhoneListEditor(phones = phones, onChange = { phones = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledField("客户类型", type, { type = it })
                 Spacer(Modifier.height(8.dp))
@@ -305,12 +308,22 @@ private fun CustomerEditDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                error = if (name.isBlank()) "姓名不能为空" else null
+                error = when {
+                    name.isBlank() -> "姓名不能为空"
+                    else -> {
+                        val invalidIndex = phones.indexOfFirst { p ->
+                            p.isNotBlank() && !PhoneUtil.isValidPhone(PhoneUtil.normalizePhone(p))
+                        }
+                        if (invalidIndex >= 0) "第 ${invalidIndex + 1} 个电话格式不正确" else null
+                    }
+                }
                 if (error == null) {
                     onSave(
                         initial.copy(
                             name = name.trim(),
-                            phone = phone.trim(),
+                            phone = phones.map { PhoneUtil.normalizePhone(it) }
+                                .filter { it.isNotEmpty() }
+                                .joinToString(","),
                             type = type.trim(),
                             remark = remark.trim(),
                             favorite = favorite,

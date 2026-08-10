@@ -5,9 +5,9 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -26,9 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,12 +37,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.CompactSearchField
 import com.example.quickbillmate.ui.common.EmptyState
+import com.example.quickbillmate.ui.common.GroupSectionHeader
+import com.example.quickbillmate.ui.common.InitialCircle
+import com.example.quickbillmate.ui.common.IndexSection
+import com.example.quickbillmate.ui.common.LetterIndexBar
 
 @Composable
 fun ContactsImportScreen(
@@ -67,6 +72,23 @@ fun ContactsImportScreen(
     LaunchedEffect(Unit) {
         permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
     }
+
+    val sections = viewModel.sections()
+    val firstBySection = remember(sections) {
+        buildMap {
+            var index = 0
+            sections.forEach { section ->
+                put(section.key, index)
+                index += 1 + section.items.size
+            }
+        }
+    }
+    val indexSections = remember(sections) {
+        sections.map { section ->
+            if (section.imported) IndexSection("✓", "已导入") else IndexSection(section.key, section.key)
+        }
+    }
+    val listState = rememberLazyListState()
 
     Scaffold(
         topBar = {
@@ -99,25 +121,25 @@ fun ContactsImportScreen(
             } else if (viewModel.candidates.isEmpty()) {
                 EmptyState(Icons.Default.Search, "通讯录中没有有电话号码的联系人")
             } else {
-                val filtered = viewModel.filtered
-                OutlinedTextField(
-                    value = viewModel.query,
-                    onValueChange = viewModel::onQueryChange,
-                    label = { Text("搜索姓名/号码") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                val importableFiltered = viewModel.filtered.filterNot { viewModel.isImported(it) }
+                val searchFocusRequester = remember { FocusRequester() }
+                CompactSearchField(
+                    query = viewModel.query,
+                    placeholder = "搜索姓名/号码",
+                    onQueryChange = viewModel::onQueryChange,
+                    focusRequester = searchFocusRequester,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(
-                        checked = filtered.isNotEmpty() && filtered.all {
-                            "${it.name}\u0000${it.phone}" in viewModel.selected
+                        checked = importableFiltered.isNotEmpty() && importableFiltered.all {
+                            keyOf(it) in viewModel.selected
                         },
                         onCheckedChange = { checked ->
-                            viewModel.toggleAll(filtered, checked)
+                            viewModel.toggleAll(viewModel.filtered, checked)
                         },
                     )
                     Text("全选（仅当前筛选结果）", style = MaterialTheme.typography.bodyMedium)
@@ -128,35 +150,34 @@ fun ContactsImportScreen(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(filtered, key = { it.name + it.phone }) { candidate ->
-                        val key = "${candidate.name}\u0000${candidate.phone}"
-                        val checked = key in viewModel.selected
-                        val merge = viewModel.isMergeCandidate(candidate)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.toggle(key, !checked) }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(checked = checked, onCheckedChange = { viewModel.toggle(key, it) })
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(candidate.name, style = MaterialTheme.typography.bodyLarge)
-                                    if (merge) {
-                                        Spacer(Modifier.width(8.dp))
-                                        MergeBadge()
-                                    }
-                                }
-                                Text(
-                                    candidate.phone,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        sections.forEachIndexed { groupIndex, section ->
+                            item(key = "header_${section.key}", contentType = { "sectionHeader" }) {
+                                GroupSectionHeader(
+                                    title = section.title,
+                                    showTopDivider = groupIndex > 0,
+                                )
+                            }
+                            items(section.items, key = { keyOf(it) }) { candidate ->
+                                ImportRow(
+                                    candidate = candidate,
+                                    imported = section.imported,
+                                    checked = keyOf(candidate) in viewModel.selected,
+                                    onToggle = { viewModel.toggle(keyOf(candidate), keyOf(candidate) !in viewModel.selected) },
                                 )
                             }
                         }
                     }
+                    LetterIndexBar(
+                        state = listState,
+                        sections = indexSections,
+                        firstIndexOf = { firstBySection[it] ?: -1 },
+                    )
                 }
             }
         }
@@ -207,16 +228,36 @@ fun ContactsImportScreen(
 }
 
 @Composable
-private fun MergeBadge() {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
+private fun ImportRow(
+    candidate: ContactsImporter.Candidate,
+    imported: Boolean,
+    checked: Boolean,
+    onToggle: () -> Unit,
+) {
+    val grey = MaterialTheme.colorScheme.outline
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "合并",
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
+        Checkbox(checked = checked, onCheckedChange = { onToggle() }, enabled = !imported)
+        Spacer(Modifier.width(8.dp))
+        InitialCircle(candidate.name.trim().firstOrNull()?.toString() ?: "?")
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                candidate.name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (imported) grey else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                candidate.phone,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (imported) grey else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
+
+private fun keyOf(candidate: ContactsImporter.Candidate): String = "${candidate.name}\u0000${candidate.phone}"
