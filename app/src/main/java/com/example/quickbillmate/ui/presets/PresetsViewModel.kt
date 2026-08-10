@@ -9,16 +9,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
-import com.example.quickbillmate.render.InvoiceRenderer
+import com.example.quickbillmate.render.InvoiceRenderBus
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StylePresets
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class PresetsViewModel(
     private val app: Application,
@@ -56,15 +54,13 @@ class PresetsViewModel(
         viewModelScope.launch {
             val customs = repo.getPresets()
             val keys = StylePresets.builtIns.map { it.key } + customs.map { "custom:${it.id}" }
-            val map = withContext(Dispatchers.Default) {
-                val renderer = InvoiceRenderer()
-                keys.associateWith { key ->
-                    val params = StylePresets.resolve(key, customs)
-                    runCatching {
-                        renderer.render(sampleInvoice, params, 240)
-                    }.getOrNull()
-                }.filterValues { it != null }.mapValues { it.value!! }
+            val paramsByKey = keys.associateWith { key -> StylePresets.resolve(key, customs) }
+            val map = keys.mapNotNull { key ->
+                val id = InvoiceRenderBus.enqueue(sampleInvoice, paramsByKey.getValue(key))
+                val bitmap = InvoiceRenderBus.await(id) ?: return@mapNotNull null
+                key to bitmap
             }
+                .toMap()
             previews = map
         }
     }

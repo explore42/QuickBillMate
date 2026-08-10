@@ -8,14 +8,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.quickbillmate.data.db.Bill
-import com.example.quickbillmate.render.InvoiceRenderer
+import com.example.quickbillmate.render.InvoiceBitmapCapture
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.StylePresets
@@ -39,17 +42,18 @@ fun ThemePreview() {
 fun InvoicePreview() {
     QuickBillMateTheme {
         Box(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-            val bitmap = remember {
-                InvoiceRenderer().render(
-                    invoice = sampleInvoice(),
-                    params = StylePresets.classic.params,
-                    widthPx = 800,
+            var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = "单据预览",
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "单据预览",
-                modifier = Modifier.fillMaxWidth(),
+            InvoiceBitmapCapture(
+                invoice = sampleInvoice(),
+                params = StylePresets.classic.params,
+                onBitmap = { bitmap = it },
             )
         }
     }
@@ -127,15 +131,16 @@ fun SettingsContentPreview() {
             defaultShowRemark = true,
             defaultShowWatermark = false,
             defaultShowMultiPhones = false,
+            defaultShowAd = false,
             defaultDocCode = "PH",
             defaultTitleSuffix = "单据",
-            defaultDisclaimer = "收到货物当日点清，如有问题请在2日内联系：",
+            defaultAdText = "",
             versionName = "1.0",
             presets = emptyList(),
             onThemeModeChange = {},
             onCompanySave = { _, _, _ -> },
             onPresetChange = {},
-            onShowOptionsSave = { _, _, _, _ -> },
+            onShowOptionsSave = { _, _, _, _, _ -> },
             onBillDefaultsSave = { _, _, _ -> },
             onManagePresets = {},
             onOpenUrl = {},

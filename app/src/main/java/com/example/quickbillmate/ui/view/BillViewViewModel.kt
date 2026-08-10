@@ -12,6 +12,8 @@ import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.db.BillItem
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.render.InvoiceRenderBus
+import com.example.quickbillmate.render.StylePresets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,29 +49,33 @@ class BillViewViewModel(
             val bill = repo.getBill(billId) ?: return@launch
             val items = repo.getItems(billId)
             val presets = repo.getPresets()
-            val preview = withContext(Dispatchers.Default) {
-                repo.renderBillPreview(bill, items, 1600)
-            }
             state = BillViewState(
                 loaded = true,
                 bill = bill,
                 items = items,
                 presets = presets,
-                preview = preview,
             )
+            val id = InvoiceRenderBus.enqueue(
+                repo.buildRenderInvoice(bill, items),
+                StylePresets.resolve(bill.presetKey, presets),
+            )
+            val preview = InvoiceRenderBus.await(id)
+            if (preview != null) {
+                state = state.copy(preview = preview)
+            }
         }
     }
 
     fun exportToGallery() {
         val bill = state.bill ?: return
+        val preview = state.preview ?: return
         if (state.exporting) return
         viewModelScope.launch {
             state = state.copy(exporting = true)
-            val items = state.items
             val ok = withContext(Dispatchers.IO) {
-                repo.exportBillToGallery(app, bill, items)
+                repo.exportBitmapToGallery(app, bill, preview)
             }
-            val shareUri = repo.shareBill(app, bill, items)
+            val shareUri = repo.shareBill(app, bill, preview)
             state = state.copy(
                 exporting = false,
                 exportOutcome = ViewOutcome(
@@ -84,12 +90,12 @@ class BillViewViewModel(
 
     fun shareNow() {
         val bill = state.bill ?: return
+        val preview = state.preview ?: return
         if (state.exporting) return
         viewModelScope.launch {
             state = state.copy(exporting = true)
-            val items = state.items
             val uri = withContext(Dispatchers.IO) {
-                repo.shareBill(app, bill, items)
+                repo.shareBill(app, bill, preview)
             }
             state = state.copy(
                 exporting = false,

@@ -52,6 +52,7 @@ import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.editor.presetDisplayName
+import com.example.quickbillmate.util.InputLimits
 
 private const val PROJECT_URL = "https://github.com/explore42/QuickBillMate"
 
@@ -74,9 +75,10 @@ fun SettingsScreen(
         defaultShowRemark = viewModel.defaultShowRemark,
         defaultShowWatermark = viewModel.defaultShowWatermark,
         defaultShowMultiPhones = viewModel.defaultShowMultiPhones,
+        defaultShowAd = viewModel.defaultShowAd,
         defaultDocCode = viewModel.defaultDocCode,
         defaultTitleSuffix = viewModel.defaultTitleSuffix,
-        defaultDisclaimer = viewModel.defaultDisclaimer,
+        defaultAdText = viewModel.defaultAdText,
         versionName = viewModel.versionName,
         presets = presets,
         onThemeModeChange = { mode ->
@@ -89,11 +91,11 @@ fun SettingsScreen(
             viewModel.updateManager(manager)
         },
         onPresetChange = viewModel::updateDefaultPreset,
-        onShowOptionsSave = { manager, remark, watermark, multi ->
-            viewModel.updateShowOptions(manager, remark, watermark, multi)
+        onShowOptionsSave = { manager, remark, watermark, multi, showAd ->
+            viewModel.updateShowOptions(manager, remark, watermark, multi, showAd)
         },
-        onBillDefaultsSave = { docCode, titleSuffix, disclaimer ->
-            viewModel.updateBillDefaults(docCode, titleSuffix, disclaimer)
+        onBillDefaultsSave = { docCode, titleSuffix, adText ->
+            viewModel.updateBillDefaults(docCode, titleSuffix, adText)
         },
         onManagePresets = onManagePresets,
         onOpenUrl = { url ->
@@ -114,15 +116,16 @@ fun SettingsContent(
     defaultShowRemark: Boolean,
     defaultShowWatermark: Boolean,
     defaultShowMultiPhones: Boolean,
+    defaultShowAd: Boolean,
     defaultDocCode: String,
     defaultTitleSuffix: String,
-    defaultDisclaimer: String,
+    defaultAdText: String,
     versionName: String,
     presets: List<StylePreset>,
     onThemeModeChange: (String) -> Unit,
     onCompanySave: (String, String, String) -> Unit,
     onPresetChange: (String) -> Unit,
-    onShowOptionsSave: (Boolean, Boolean, Boolean, Boolean) -> Unit,
+    onShowOptionsSave: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit,
     onBillDefaultsSave: (String, String, String) -> Unit,
     onManagePresets: () -> Unit,
     onOpenUrl: (String) -> Unit,
@@ -245,8 +248,9 @@ fun SettingsContent(
                 icon = { Text("☑", style = MaterialTheme.typography.titleMedium) },
                 title = "默认显示选项",
                 subtitle = listOf(
-                    "业务经理 ${if (defaultShowManager) "开" else "关"}",
+                    "客户经理 ${if (defaultShowManager) "开" else "关"}",
                     "备注 ${if (defaultShowRemark) "开" else "关"}",
+                    "广告 ${if (defaultShowAd) "开" else "关"}",
                     "水印 ${if (defaultShowWatermark) "开" else "关"}",
                     "多电话 ${if (defaultShowMultiPhones) "开" else "关"}",
                 ).joinToString(" · "),
@@ -293,8 +297,9 @@ fun SettingsContent(
             showRemark = defaultShowRemark,
             showWatermark = defaultShowWatermark,
             showMultiPhones = defaultShowMultiPhones,
-            onSave = { manager, remark, watermark, multi ->
-                onShowOptionsSave(manager, remark, watermark, multi)
+            showAd = defaultShowAd,
+            onSave = { manager, remark, watermark, multi, showAd ->
+                onShowOptionsSave(manager, remark, watermark, multi, showAd)
                 showShowOptionsDialog = false
             },
             onDismiss = { showShowOptionsDialog = false },
@@ -305,9 +310,9 @@ fun SettingsContent(
         BillDefaultsDialog(
             docCode = defaultDocCode,
             titleSuffix = defaultTitleSuffix,
-            disclaimer = defaultDisclaimer,
-            onSave = { docCode, titleSuffix, disclaimer ->
-                onBillDefaultsSave(docCode, titleSuffix, disclaimer)
+            adText = defaultAdText,
+            onSave = { docCode, titleSuffix, adText ->
+                onBillDefaultsSave(docCode, titleSuffix, adText)
                 showBillDefaultsDialog = false
             },
             onDismiss = { showBillDefaultsDialog = false },
@@ -353,27 +358,30 @@ private fun ShowOptionsDialog(
     showRemark: Boolean,
     showWatermark: Boolean,
     showMultiPhones: Boolean,
-    onSave: (Boolean, Boolean, Boolean, Boolean) -> Unit,
+    showAd: Boolean,
+    onSave: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var manager by remember { mutableStateOf(showManager) }
     var remark by remember { mutableStateOf(showRemark) }
     var watermark by remember { mutableStateOf(showWatermark) }
     var multiPhones by remember { mutableStateOf(showMultiPhones) }
+    var ad by remember { mutableStateOf(showAd) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("默认显示选项") },
         text = {
             Column {
-                LabeledSwitch("显示业务经理", manager, { manager = it })
+                LabeledSwitch("显示客户经理", manager, { manager = it })
                 LabeledSwitch("显示备注", remark, { remark = it })
+                LabeledSwitch("显示广告", ad, { ad = it })
                 LabeledSwitch("显示水印", watermark, { watermark = it })
                 LabeledSwitch("显示多个电话", multiPhones, { multiPhones = it })
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(manager, remark, watermark, multiPhones) }) { Text("保存") }
+            TextButton(onClick = { onSave(manager, remark, watermark, multiPhones, ad) }) { Text("保存") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消") }
@@ -385,29 +393,29 @@ private fun ShowOptionsDialog(
 private fun BillDefaultsDialog(
     docCode: String,
     titleSuffix: String,
-    disclaimer: String,
+    adText: String,
     onSave: (String, String, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var docCodeText by remember { mutableStateOf(docCode) }
     var titleSuffixText by remember { mutableStateOf(titleSuffix) }
-    var disclaimerText by remember { mutableStateOf(disclaimer) }
+    var adTextText by remember { mutableStateOf(adText) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("默认客单信息") },
         text = {
             Column {
-                LabeledField("默认编号代码", docCodeText, { docCodeText = it })
+                LabeledField("默认编号代码", docCodeText, { if (it.length <= InputLimits.CODE) docCodeText = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField("默认标题后缀", titleSuffixText, { titleSuffixText = it })
+                LabeledField("默认标题后缀", titleSuffixText, { if (it.length <= InputLimits.CODE) titleSuffixText = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField("默认底部说明文案", disclaimerText, { disclaimerText = it })
+                LabeledField("默认广告文案", adTextText, { if (it.length <= InputLimits.AD) adTextText = it })
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onSave(docCodeText.trim(), titleSuffixText.trim(), disclaimerText.trim())
+                onSave(docCodeText.trim(), titleSuffixText.trim(), adTextText.trim())
             }) { Text("保存") }
         },
         dismissButton = {
@@ -503,7 +511,7 @@ private fun CompanyDefaultsDialog(
         title = { Text("默认公司信息") },
         text = {
             Column {
-                LabeledField("默认公司名称", companyText, { companyText = it })
+                LabeledField("默认公司名称", companyText, { if (it.length <= InputLimits.COMPANY) companyText = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledField(
                     "默认联系电话",
@@ -512,7 +520,7 @@ private fun CompanyDefaultsDialog(
                     keyboardType = KeyboardType.Phone,
                 )
                 Spacer(Modifier.height(8.dp))
-                LabeledField("默认业务经理", managerText, { managerText = it })
+                LabeledField("默认客户经理", managerText, { if (it.length <= InputLimits.MANAGER) managerText = it })
             }
         },
         confirmButton = {

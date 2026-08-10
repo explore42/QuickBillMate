@@ -19,6 +19,7 @@ import com.example.quickbillmate.data.repository.AppRepository
 import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
+import com.example.quickbillmate.render.InvoiceRenderBus
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
@@ -57,7 +58,6 @@ data class EditorUiState(
     val loaded: Boolean = false,
     val billId: Long = 0L,
     val createdAt: Long = 0L,
-    val status: String = "草稿",
     val customerName: String = "",
     val customerPhone: String = "",
     val companyName: String = "",
@@ -70,13 +70,14 @@ data class EditorUiState(
     val discountText: String = "0.00",
     val remark: String = "",
     val titleSuffix: String = "单据",
-    val disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
+    val adText: String = "",
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
+    val showAd: Boolean = false,
     val showWatermark: Boolean = false,
     val showMultiPhones: Boolean = false,
     val favorite: Boolean = false,
-    val presetKey: String = "classic",
+    val presetKey: String = "classic_plain",
     val items: List<ItemRow> = listOf(ItemRow()),
     val preview: Bitmap? = null,
     val customers: List<Customer> = emptyList(),
@@ -135,9 +136,10 @@ class EditorViewModel(
                 contactPhone = settings.defaultPhone,
                 salesManager = settings.defaultManager,
                 titleSuffix = settings.defaultTitleSuffix,
-                disclaimer = settings.defaultDisclaimer,
+                adText = settings.defaultAdText,
                 showManager = settings.defaultShowManager,
                 showRemark = settings.defaultShowRemark,
+                showAd = settings.defaultShowAd,
                 showWatermark = settings.defaultShowWatermark,
                 showMultiPhones = settings.defaultShowMultiPhones,
             )
@@ -193,7 +195,6 @@ class EditorViewModel(
             loaded = true,
             billId = bill.id,
             createdAt = bill.createdAt,
-            status = bill.status,
             customerName = bill.customerName,
             customerPhone = bill.customerPhone,
             companyName = bill.companyName,
@@ -205,9 +206,10 @@ class EditorViewModel(
             discountText = Money.format(bill.discount),
             remark = bill.remark,
             titleSuffix = bill.titleSuffix,
-            disclaimer = bill.disclaimer,
+            adText = bill.adText,
             showManager = bill.showManager,
             showRemark = bill.showRemark,
+            showAd = bill.showAd,
             showWatermark = bill.showWatermark,
             showMultiPhones = bill.showMultiPhones,
             favorite = bill.favorite,
@@ -295,9 +297,10 @@ class EditorViewModel(
     fun onDiscountChange(value: String) = update { copy(discountText = value) }
     fun onRemarkChange(value: String) = update { copy(remark = value) }
     fun onTitleSuffixChange(value: String) = update { copy(titleSuffix = value) }
-    fun onDisclaimerChange(value: String) = update { copy(disclaimer = value) }
+    fun onAdTextChange(value: String) = update { copy(adText = value) }
     fun onShowManagerChange(value: Boolean) = update { copy(showManager = value) }
     fun onShowRemarkChange(value: Boolean) = update { copy(showRemark = value) }
+    fun onShowAdChange(value: Boolean) = update { copy(showAd = value) }
     fun onShowWatermarkChange(value: Boolean) = update { copy(showWatermark = value) }
 
     fun onShowMultiPhonesChange(value: Boolean) = update { copy(showMultiPhones = value) }
@@ -439,7 +442,7 @@ class EditorViewModel(
                 discountText = "0.00",
                 remark = "客户自提",
                 titleSuffix = "单据",
-                disclaimer = "收到货物当日点清，如有问题请在2日内联系：",
+                adText = "",
                 items = sampleItems(),
             )
         }
@@ -509,10 +512,14 @@ class EditorViewModel(
             delay(300)
             val s = state
             if (!s.loaded) return@launch
-            val bitmap = withContext(Dispatchers.Default) {
-                repo.renderInvoice(s.toRenderInvoice(), s.presetKey, 1600)
+            val id = InvoiceRenderBus.enqueue(
+                s.toRenderInvoice(),
+                StylePresets.resolve(s.presetKey, s.presets),
+            )
+            val bitmap = InvoiceRenderBus.await(id)
+            if (bitmap != null) {
+                state = state.copy(preview = bitmap)
             }
-            state = state.copy(preview = bitmap)
         }
     }
 }
@@ -552,14 +559,14 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     discount = discountText.toDoubleOrNull()?.let { Money.round2(it) } ?: 0.0,
     remark = remark,
     titleSuffix = titleSuffix.trim().ifBlank { "单据" },
-    disclaimer = disclaimer,
+    adText = adText,
     showManager = showManager,
     showRemark = showRemark,
+    showAd = showAd,
     showWatermark = showWatermark,
     showMultiPhones = showMultiPhones,
     favorite = favorite,
     presetKey = presetKey,
-    status = status,
     createdAt = createdAt,
 )
 
@@ -575,9 +582,10 @@ fun EditorUiState.toRenderInvoice(): RenderInvoice = RenderInvoice(
     discount = discountText.toDoubleOrNull()?.let { Money.round2(it) } ?: 0.0,
     remark = remark,
     titleSuffix = titleSuffix,
-    disclaimer = disclaimer,
+    adText = adText,
     showManager = showManager,
     showRemark = showRemark,
+    showAd = showAd,
     showWatermark = showWatermark,
     items = items.map {
         RenderItem(

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -12,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.compose.rememberNavController
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.navigation.QuickBillMateAppNavHost
+import com.example.quickbillmate.render.InvoiceRenderEngine
 import com.example.quickbillmate.ui.theme.QuickBillMateTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,14 +30,18 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             QuickBillMateTheme(darkTheme = darkTheme) {
-                val navController = rememberNavController()
-                QuickBillMateAppNavHost(
-                    navController = navController,
-                    onThemeModeChange = { mode ->
-                        themeMode = mode
-                        settings.themeMode = mode
-                    },
-                )
+                Box {
+                    val navController = rememberNavController()
+                    QuickBillMateAppNavHost(
+                        navController = navController,
+                        onThemeModeChange = { mode ->
+                            themeMode = mode
+                            settings.themeMode = mode
+                        },
+                    )
+                    // 全局单据渲染引擎：离屏 1×1，不占布局，持续消费渲染请求
+                    InvoiceRenderEngine()
+                }
             }
         }
     }

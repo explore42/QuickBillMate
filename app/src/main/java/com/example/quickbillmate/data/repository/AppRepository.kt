@@ -20,13 +20,10 @@ import com.example.quickbillmate.importexport.GalleryWriter
 import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.importexport.ProductJsonException
-import com.example.quickbillmate.render.InvoiceRenderer
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
-import com.example.quickbillmate.render.StyleParams
 import com.example.quickbillmate.util.PhoneUtil
 import com.example.quickbillmate.util.Pinyin
-import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +64,6 @@ class AppRepository(
     private val productDao = database.productDao()
     private val customerDao = database.customerDao()
     private val presetDao = database.stylePresetDao()
-    private val renderer = InvoiceRenderer()
 
     // ---------- 单据 ----------
 
@@ -104,9 +100,10 @@ class AppRepository(
         contactPhone: String,
         salesManager: String,
         titleSuffix: String = "单据",
-        disclaimer: String = "收到货物当日点清，如有问题请在2日内联系：",
+        adText: String = "",
         showManager: Boolean = true,
         showRemark: Boolean = true,
+        showAd: Boolean = false,
         showWatermark: Boolean = false,
         showMultiPhones: Boolean = false,
     ): Bill {
@@ -119,9 +116,10 @@ class AppRepository(
             docSerial = serial,
             docDate = docDate,
             titleSuffix = titleSuffix,
-            disclaimer = disclaimer,
+            adText = adText,
             showManager = showManager,
             showRemark = showRemark,
+            showAd = showAd,
             showWatermark = showWatermark,
             showMultiPhones = showMultiPhones,
             presetKey = settings.defaultPresetKey,
@@ -139,16 +137,7 @@ class AppRepository(
         }
     }
 
-    /** 更新单据状态（草稿 / 已导出）。 */
-    suspend fun updateBillStatus(billId: Long, status: String) {
-        billDao.getBill(billId)?.let { bill ->
-            if (bill.status != status) {
-                billDao.update(bill.copy(status = status, updatedAt = System.currentTimeMillis()))
-            }
-        }
-    }
-
-    /** 复制单据（含商品行），新流水号、状态为草稿；返回新单据 id。 */
+    /** 复制单据（含商品行），新流水号；返回新单据 id。 */
     suspend fun copyBill(billId: Long): Long? {
         val bill = billDao.getBill(billId) ?: return null
         val items = itemDao.getItems(billId)
@@ -157,7 +146,6 @@ class AppRepository(
         val copy = bill.copy(
             id = 0,
             docSerial = serial,
-            status = "草稿",
             createdAt = now,
             updatedAt = now,
         )
@@ -392,15 +380,7 @@ class AppRepository(
         }
     }
 
-    // ---------- 图片渲染 / 导出 / 分享 ----------
-
-    suspend fun renderInvoice(invoice: RenderInvoice, presetKey: String?, widthPx: Int): Bitmap {
-        val params = resolveParams(presetKey, presetDao.getAll())
-        return renderer.render(invoice, params, widthPx)
-    }
-
-    suspend fun resolveParams(presetKey: String?, presets: List<StylePreset>): StyleParams =
-        StylePresets.resolve(presetKey, presets)
+    // ---------- 图片导出 / 分享 ----------
 
     fun buildRenderInvoice(bill: Bill, items: List<BillItem>): RenderInvoice = RenderInvoice(
         customerName = bill.customerName,
@@ -414,9 +394,10 @@ class AppRepository(
         discount = bill.discount,
         remark = bill.remark,
         titleSuffix = bill.titleSuffix,
-        disclaimer = bill.disclaimer,
+        adText = bill.adText,
         showManager = bill.showManager,
         showRemark = bill.showRemark,
+        showAd = bill.showAd,
         showWatermark = bill.showWatermark,
         items = items.map {
             RenderItem(
@@ -431,26 +412,17 @@ class AppRepository(
         },
     )
 
-    suspend fun renderBillPreview(bill: Bill, items: List<BillItem>, widthPx: Int): Bitmap {
-        val params = resolveParams(bill.presetKey, presetDao.getAll())
-        return renderer.render(buildRenderInvoice(bill, items), params, widthPx)
-    }
-
     fun billFileName(bill: Bill): String =
         "单据_${BillNumber.build(bill.docCode, bill.docDate, bill.docSerial)}.png"
 
-    /** 渲染并保存单据图片到相册；成功后把单据状态置为“已导出”。 */
-    suspend fun exportBillToGallery(context: Context, bill: Bill, items: List<BillItem>): Boolean {
-        val bitmap = renderBillPreview(bill, items, 1600)
+    /** 渲染并保存单据图片到相册。 */
+    suspend fun exportBitmapToGallery(context: Context, bill: Bill, bitmap: Bitmap): Boolean {
         val ok = GalleryWriter.save(context, bitmap, billFileName(bill))
-        if (ok) updateBillStatus(bill.id, "已导出")
         return ok
     }
 
-    suspend fun shareBill(context: Context, bill: Bill, items: List<BillItem>): Uri {
-        val bitmap = renderBillPreview(bill, items, 1600)
-        return GalleryWriter.shareUri(context, bitmap, billFileName(bill))
-    }
+    suspend fun shareBill(context: Context, bill: Bill, bitmap: Bitmap): Uri =
+        GalleryWriter.shareUri(context, bitmap, billFileName(bill))
 
     fun saveInvoiceToGallery(context: Context, bitmap: Bitmap, fileName: String): Boolean =
         GalleryWriter.save(context, bitmap, fileName)

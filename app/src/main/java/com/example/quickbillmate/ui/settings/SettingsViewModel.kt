@@ -39,7 +39,9 @@ class SettingsViewModel(
         private set
     var defaultTitleSuffix by mutableStateOf(repo.settings.defaultTitleSuffix)
         private set
-    var defaultDisclaimer by mutableStateOf(repo.settings.defaultDisclaimer)
+    var defaultAdText by mutableStateOf(repo.settings.defaultAdText)
+        private set
+    var defaultShowAd by mutableStateOf(repo.settings.defaultShowAd)
         private set
     var versionName by mutableStateOf("")
 
@@ -82,23 +84,26 @@ class SettingsViewModel(
         showRemark: Boolean,
         showWatermark: Boolean,
         showMultiPhones: Boolean,
+        showAd: Boolean,
     ) {
         defaultShowManager = showManager
         defaultShowRemark = showRemark
         defaultShowWatermark = showWatermark
         defaultShowMultiPhones = showMultiPhones
+        defaultShowAd = showAd
         repo.settings.defaultShowManager = showManager
         repo.settings.defaultShowRemark = showRemark
         repo.settings.defaultShowWatermark = showWatermark
         repo.settings.defaultShowMultiPhones = showMultiPhones
+        repo.settings.defaultShowAd = showAd
     }
 
-    fun updateBillDefaults(docCode: String, titleSuffix: String, disclaimer: String) {
+    fun updateBillDefaults(docCode: String, titleSuffix: String, adText: String) {
         defaultDocCode = docCode
         defaultTitleSuffix = titleSuffix
-        defaultDisclaimer = disclaimer
+        defaultAdText = adText
         repo.settings.defaultDocCode = docCode
         repo.settings.defaultTitleSuffix = titleSuffix
-        repo.settings.defaultDisclaimer = disclaimer
+        repo.settings.defaultAdText = adText
     }
 }

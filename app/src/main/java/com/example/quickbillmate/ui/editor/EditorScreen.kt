@@ -85,6 +85,7 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.InputLimits
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -249,7 +250,7 @@ fun EditorScreen(
                     LabeledField(
                         label = "备注",
                         value = s.remark,
-                        onChange = viewModel::onRemarkChange,
+                        onChange = { if (it.length <= InputLimits.REMARK) viewModel.onRemarkChange(it) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))
@@ -337,12 +338,13 @@ fun EditorScreen(
             showRemark = s.showRemark,
             showWatermark = s.showWatermark,
             showMultiPhones = s.showMultiPhones,
+            showAd = s.showAd,
             company = s.companyName,
             phone = s.contactPhone,
             manager = s.salesManager,
             docCode = s.docCode,
             titleSuffix = s.titleSuffix,
-            disclaimer = s.disclaimer,
+            adText = s.adText,
             presetKey = s.presetKey,
             presets = s.presets,
             onSample = { viewModel.loadSample() },
@@ -351,16 +353,17 @@ fun EditorScreen(
                 viewModel.onContactPhoneChange(phone)
                 viewModel.onManagerChange(manager)
             },
-            onBillDefaultsSave = { docCode, titleSuffix, disclaimer ->
+            onBillDefaultsSave = { docCode, titleSuffix, adText ->
                 viewModel.onDocCodeChange(docCode)
                 viewModel.onTitleSuffixChange(titleSuffix)
-                viewModel.onDisclaimerChange(disclaimer)
+                viewModel.onAdTextChange(adText)
             },
             onSelectPreset = viewModel::selectPreset,
             onShowManagerChange = viewModel::onShowManagerChange,
             onShowRemarkChange = viewModel::onShowRemarkChange,
             onShowWatermarkChange = viewModel::onShowWatermarkChange,
             onShowMultiPhonesChange = viewModel::onShowMultiPhonesChange,
+            onShowAdChange = viewModel::onShowAdChange,
             onSave = { viewModel.saveNow { showActionsDialog = false } },
             onDismiss = { showActionsDialog = false },
         )
@@ -411,8 +414,10 @@ private fun CustomerField(
             OutlinedTextField(
                 value = value,
                 onValueChange = {
-                    onChange(it)
-                    expanded = true
+                    if (it.length <= InputLimits.NAME) {
+                        onChange(it)
+                        expanded = true
+                    }
                 },
                 label = { Text("客户名称") },
                 modifier = Modifier
@@ -513,12 +518,13 @@ private fun EditorActionsDialog(
     showRemark: Boolean,
     showWatermark: Boolean,
     showMultiPhones: Boolean,
+    showAd: Boolean,
     company: String,
     phone: String,
     manager: String,
     docCode: String,
     titleSuffix: String,
-    disclaimer: String,
+    adText: String,
     presetKey: String,
     presets: List<StylePreset>,
     onSample: () -> Unit,
@@ -529,6 +535,7 @@ private fun EditorActionsDialog(
     onShowRemarkChange: (Boolean) -> Unit,
     onShowWatermarkChange: (Boolean) -> Unit,
     onShowMultiPhonesChange: (Boolean) -> Unit,
+    onShowAdChange: (Boolean) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -577,9 +584,9 @@ private fun EditorActionsDialog(
                     BillDefaultsInlineEditor(
                         docCode = docCode,
                         titleSuffix = titleSuffix,
-                        disclaimer = disclaimer,
-                        onSave = { code, suffix, bottom ->
-                            onBillDefaultsSave(code, suffix, bottom)
+                        adText = adText,
+                        onSave = { code, suffix, ad ->
+                            onBillDefaultsSave(code, suffix, ad)
                             billDefaultsExpanded = false
                         },
                         onCancel = { billDefaultsExpanded = false },
@@ -603,8 +610,9 @@ private fun EditorActionsDialog(
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-                LabeledSwitch("显示业务经理", showManager, onShowManagerChange)
+                LabeledSwitch("显示客户经理", showManager, onShowManagerChange)
                 LabeledSwitch("显示备注", showRemark, onShowRemarkChange)
+                LabeledSwitch("显示广告", showAd, onShowAdChange)
                 LabeledSwitch("显示水印", showWatermark, onShowWatermarkChange)
                 LabeledSwitch("显示多个电话", showMultiPhones, onShowMultiPhonesChange)
             }
@@ -650,7 +658,7 @@ private fun CompanyInlineEditor(
     var managerText by remember(manager) { mutableStateOf(manager) }
 
     Column(modifier = Modifier.padding(start = 4.dp)) {
-        LabeledField("公司名称", companyText, { companyText = it })
+        LabeledField("公司名称", companyText, { if (it.length <= InputLimits.COMPANY) companyText = it })
         Spacer(Modifier.height(6.dp))
         LabeledField(
             "联系电话",
@@ -659,7 +667,7 @@ private fun CompanyInlineEditor(
             keyboardType = KeyboardType.Phone,
         )
         Spacer(Modifier.height(6.dp))
-        LabeledField("业务经理", managerText, { managerText = it })
+        LabeledField("客户经理", managerText, { if (it.length <= InputLimits.MANAGER) managerText = it })
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onCancel) { Text("取消") }
@@ -705,25 +713,25 @@ private fun PresetInlineList(
 private fun BillDefaultsInlineEditor(
     docCode: String,
     titleSuffix: String,
-    disclaimer: String,
+    adText: String,
     onSave: (String, String, String) -> Unit,
     onCancel: () -> Unit,
 ) {
     var docCodeText by remember(docCode) { mutableStateOf(docCode) }
     var titleSuffixText by remember(titleSuffix) { mutableStateOf(titleSuffix) }
-    var disclaimerText by remember(disclaimer) { mutableStateOf(disclaimer) }
+    var adTextText by remember(adText) { mutableStateOf(adText) }
 
     Column(modifier = Modifier.padding(start = 4.dp)) {
-        LabeledField("编号代码", docCodeText, { docCodeText = it })
+        LabeledField("编号代码", docCodeText, { if (it.length <= InputLimits.CODE) docCodeText = it })
         Spacer(Modifier.height(6.dp))
-        LabeledField("标题后缀", titleSuffixText, { titleSuffixText = it })
+        LabeledField("标题后缀", titleSuffixText, { if (it.length <= InputLimits.CODE) titleSuffixText = it })
         Spacer(Modifier.height(6.dp))
-        LabeledField("底部说明文案", disclaimerText, { disclaimerText = it })
+        LabeledField("广告文案", adTextText, { if (it.length <= InputLimits.AD) adTextText = it })
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onCancel) { Text("取消") }
             TextButton(onClick = {
-                onSave(docCodeText.trim(), titleSuffixText.trim(), disclaimerText.trim())
+                onSave(docCodeText.trim(), titleSuffixText.trim(), adTextText.trim())
             }) { Text("保存") }
         }
     }
@@ -790,13 +798,13 @@ private fun ItemRowEditor(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            RowField("名称", row.name, { onUpdate(row.copy(name = it)) }, Modifier.width(130.dp))
-            RowField("规格", row.spec, { onUpdate(row.copy(spec = it)) }, Modifier.width(100.dp))
-            RowField("单位", row.unit, { onUpdate(row.copy(unit = it)) }, Modifier.width(70.dp))
+            RowField("名称", row.name, { if (it.length <= InputLimits.NAME) onUpdate(row.copy(name = it)) }, Modifier.width(130.dp))
+            RowField("规格", row.spec, { if (it.length <= InputLimits.SPEC) onUpdate(row.copy(spec = it)) }, Modifier.width(100.dp))
+            RowField("单位", row.unit, { if (it.length <= InputLimits.UNIT) onUpdate(row.copy(unit = it)) }, Modifier.width(70.dp))
             RowField("数量", row.qtyText, { onUpdate(row.copy(qtyText = it)) }, Modifier.width(80.dp), KeyboardType.Decimal)
             RowField("单价", row.priceText, { onUpdate(row.copy(priceText = it)) }, Modifier.width(90.dp), KeyboardType.Decimal)
-            RowField("包装", row.pack, { onUpdate(row.copy(pack = it)) }, Modifier.width(100.dp))
-            RowField("备注", row.note, { onUpdate(row.copy(note = it)) }, Modifier.width(100.dp))
+            RowField("包装", row.pack, { if (it.length <= InputLimits.PACK) onUpdate(row.copy(pack = it)) }, Modifier.width(100.dp))
+            RowField("备注", row.note, { if (it.length <= InputLimits.REMARK) onUpdate(row.copy(note = it)) }, Modifier.width(100.dp))
             Column(modifier = Modifier.width(90.dp)) {
                 Text(
                     text = "金额",

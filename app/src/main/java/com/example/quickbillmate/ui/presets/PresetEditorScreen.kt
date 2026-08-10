@@ -17,6 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -45,6 +50,9 @@ import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.SectionCard
+import com.example.quickbillmate.render.DEFAULT_COLUMNS
+import com.example.quickbillmate.render.DEFAULT_ORDER
+import com.example.quickbillmate.render.DEFAULT_WEIGHTS
 
 @Composable
 fun PresetEditorScreen(
@@ -111,6 +119,67 @@ fun PresetEditorScreen(
                             onClick = { viewModel.updateParams { it.copy(fontFamily = "system_sans") } },
                             label = { Text("黑体（无衬线）") },
                         )
+                    }
+                }
+
+                SectionCard("表格列") {
+                    TextButton(onClick = {
+                        viewModel.updateParams { it.copy(columnOrder = emptyList(), columnWeights = emptyList()) }
+                    }) { Text("重置为默认") }
+                    val order = p.columnOrder.ifEmpty { DEFAULT_ORDER }
+                    val weights = p.columnWeights.ifEmpty { DEFAULT_WEIGHTS }
+                    order.forEachIndexed { index, id ->
+                        val spec = DEFAULT_COLUMNS[id]
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    viewModel.updateParams {
+                                        it.copy(
+                                            columnOrder = move(order, index, index - 1),
+                                            columnWeights = move(weights, index, index - 1),
+                                        )
+                                    }
+                                },
+                                enabled = index > 0,
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                            }
+                            IconButton(
+                                onClick = {
+                                    viewModel.updateParams {
+                                        it.copy(
+                                            columnOrder = move(order, index, index + 1),
+                                            columnWeights = move(weights, index, index + 1),
+                                        )
+                                    }
+                                },
+                                enabled = index < order.lastIndex,
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                            }
+                            Text(spec.label, modifier = Modifier.width(56.dp))
+                            Slider(
+                                value = weights[index],
+                                onValueChange = { newValue ->
+                                    viewModel.updateParams { params ->
+                                        val list = params.columnWeights.ifEmpty { DEFAULT_WEIGHTS }.toMutableList()
+                                        list[index] = newValue
+                                        params.copy(columnWeights = list)
+                                    }
+                                },
+                                valueRange = 0.5f..5f,
+                                steps = 44,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                String.format("%.1f", weights[index]),
+                                modifier = Modifier.width(40.dp),
+                                textAlign = TextAlign.End,
+                            )
+                        }
                     }
                 }
 
@@ -276,4 +345,13 @@ private fun ColorField(
             }
         }
     }
+}
+
+/** 把列表中 from 位置的元素移动到 to 位置（用于列重排）。 */
+private fun <T> move(list: List<T>, from: Int, to: Int): List<T> {
+    val m = list.toMutableList()
+    if (from < 0 || from >= m.size || to < 0 || to >= m.size) return m
+    val item = m.removeAt(from)
+    m.add(to, item)
+    return m
 }

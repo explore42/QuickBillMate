@@ -28,6 +28,10 @@ data class StyleParams(
     val footerTextSizeSp: Int = 13,
     val infoLabelWidthPx: Int = 90,
     val amountBold: Boolean = false,
+    /** 表格列顺序（列 id 0..8 的排列）；空列表表示使用默认顺序。 */
+    val columnOrder: List<Int> = emptyList(),
+    /** 表格列权重（与 columnOrder 一一对应）；空列表表示使用默认权重。 */
+    val columnWeights: List<Float> = emptyList(),
 ) {
     fun toJson(): String = StylePresets.json.encodeToString(this)
 
@@ -51,6 +55,15 @@ object StylePresets {
     val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
     val classic = BuiltinPreset("classic", "经典单据", StyleParams())
+
+    val classicPlain = BuiltinPreset(
+        key = "classic_plain",
+        name = "经典单据（简洁）",
+        params = StyleParams(
+            headerBgColor = "#FFFFFF",
+            totalRowBgColor = "#FFFFFF",
+        ),
+    )
 
     val modern = BuiltinPreset(
         key = "modern",
@@ -78,7 +91,7 @@ object StylePresets {
         ),
     )
 
-    val builtIns: List<BuiltinPreset> = listOf(classic, modern, business)
+    val builtIns: List<BuiltinPreset> = listOf(classic, classicPlain, modern, business)
 
     fun builtInByKey(key: String): BuiltinPreset? = builtIns.firstOrNull { it.key == key }
 

@@ -23,7 +23,7 @@ class SettingsStore(context: Context) {
         set(value) = prefs.edit().putString(KEY_MANAGER, value).apply()
 
     var defaultPresetKey: String
-        get() = prefs.getString(KEY_PRESET, "classic") ?: "classic"
+        get() = prefs.getString(KEY_PRESET, "classic_plain") ?: "classic_plain"
         set(value) = prefs.edit().putString(KEY_PRESET, value).apply()
 
     var defaultShowManager: Boolean
@@ -50,9 +50,13 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_TITLE_SUFFIX, "单据") ?: "单据"
         set(value) = prefs.edit().putString(KEY_TITLE_SUFFIX, value).apply()
 
-    var defaultDisclaimer: String
-        get() = prefs.getString(KEY_DISCLAIMER, DISCLAIMER_DEFAULT) ?: DISCLAIMER_DEFAULT
-        set(value) = prefs.edit().putString(KEY_DISCLAIMER, value).apply()
+    var defaultAdText: String
+        get() = prefs.getString(KEY_AD_TEXT, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_AD_TEXT, value).apply()
+
+    var defaultShowAd: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_AD, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_AD, value).apply()
 
     companion object {
         const val THEME_SYSTEM = "system"
@@ -70,7 +74,7 @@ class SettingsStore(context: Context) {
         private const val KEY_SHOW_MULTI_PHONES = "default_show_multi_phones"
         private const val KEY_DOC_CODE = "default_doc_code"
         private const val KEY_TITLE_SUFFIX = "default_title_suffix"
-        private const val KEY_DISCLAIMER = "default_disclaimer"
-        private const val DISCLAIMER_DEFAULT = "收到货物当日点清，如有问题请在2日内联系："
+        private const val KEY_AD_TEXT = "default_ad_text"
+        private const val KEY_SHOW_AD = "default_show_ad"
     }
 }

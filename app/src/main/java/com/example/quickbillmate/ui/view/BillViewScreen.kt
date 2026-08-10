@@ -11,10 +11,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,8 +36,9 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -72,6 +78,7 @@ import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BillViewScreen(
     billId: Long,
@@ -87,6 +94,7 @@ fun BillViewScreen(
     val context = LocalContext.current
     var storageDenied by remember { mutableStateOf(false) }
     var previewFull by remember { mutableStateOf(false) }
+    var showPreviewMenu by remember { mutableStateOf(false) }
 
     fun dial(phone: String) {
         context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
@@ -185,22 +193,39 @@ fun BillViewScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text(
-                            "单据预览",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                s.preview?.let { bitmap ->
+                    Box {
+                        // 图片自带轻微卡片观感（圆角 + 阴影），仅显示层，不影响导出位图
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "单据预览",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(2.dp, RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(8.dp))
+                                .combinedClickable(
+                                    onClick = { previewFull = true },
+                                    onLongClick = { showPreviewMenu = true },
+                                )
+                                .testTag("view_preview"),
                         )
-                        Spacer(Modifier.height(10.dp))
-                        s.preview?.let { bitmap ->
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "单据预览",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { previewFull = true }
-                                    .testTag("view_preview"),
+                        DropdownMenu(
+                            expanded = showPreviewMenu,
+                            onDismissRequest = { showPreviewMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("导出图片") },
+                                onClick = {
+                                    showPreviewMenu = false
+                                    viewModel.exportToGallery()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("分享图片") },
+                                onClick = {
+                                    showPreviewMenu = false
+                                    viewModel.shareNow()
+                                },
                             )
                         }
                     }
@@ -208,13 +233,25 @@ fun BillViewScreen(
 
                 SectionCard("客户信息") {
                     InfoLine("客户名称", bill.customerName.ifBlank { "—" })
-                    val dialPhone = PhoneUtil.splitPhones(bill.customerPhone).firstOrNull()
-                    InfoLine(
-                        "客户电话",
-                        PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones).ifBlank { "—" },
-                        onValueClick = dialPhone?.let { { dial(it) } },
-                        valueTag = true,
-                    )
+                    val phones = PhoneUtil.splitPhones(bill.customerPhone)
+                    val dialPhones = if (bill.showMultiPhones) phones else phones.take(1)
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Text(
+                            "客户电话",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(110.dp),
+                        )
+                        if (dialPhones.isEmpty()) {
+                            Text("—", style = MaterialTheme.typography.bodyMedium)
+                        } else {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                dialPhones.forEach { phone ->
+                                    PhoneTag(phone = phone, onClick = { dial(phone) })
+                                }
+                            }
+                        }
+                    }
                 }
 
                 SectionCard("客单信息") {
@@ -226,9 +263,8 @@ fun BillViewScreen(
                     InfoLine("优惠金额", Money.format(bill.discount))
                     if (bill.remark.isNotBlank()) InfoLine("备注", bill.remark)
                     InfoLine("标题后缀", bill.titleSuffix)
-                    if (bill.disclaimer.isNotBlank()) InfoLine("底部说明", bill.disclaimer)
+                    if (bill.adText.isNotBlank()) InfoLine("广告文案", bill.adText)
                     InfoLine("图片样式", presetDisplayName(bill.presetKey, s.presets))
-                    InfoLine("状态", bill.status)
                 }
 
                 SectionCard("商品信息") {
@@ -302,12 +338,13 @@ fun BillViewScreen(
                 SectionCard("公司信息") {
                     InfoLine("公司名称", bill.companyName.ifBlank { "—" })
                     InfoLine("联系电话", bill.contactPhone.ifBlank { "—" })
-                    InfoLine("业务经理", bill.salesManager.ifBlank { "—" })
+                    InfoLine("客户经理", bill.salesManager.ifBlank { "—" })
                 }
 
                 SectionCard("显示选项") {
-                    InfoLine("显示业务经理", if (bill.showManager) "开" else "关")
+                    InfoLine("显示客户经理", if (bill.showManager) "开" else "关")
                     InfoLine("显示备注", if (bill.showRemark) "开" else "关")
+                    InfoLine("显示广告", if (bill.showAd) "开" else "关")
                     InfoLine("显示水印", if (bill.showWatermark) "开" else "关")
                     InfoLine("显示多个电话", if (bill.showMultiPhones) "开" else "关")
                 }
@@ -317,7 +354,14 @@ fun BillViewScreen(
     }
 
     if (previewFull) {
-        s.preview?.let { FullPreviewDialog(it, onDismiss = { previewFull = false }) }
+        s.preview?.let {
+            FullPreviewDialog(
+                bitmap = it,
+                onDismiss = { previewFull = false },
+                onExport = viewModel::exportToGallery,
+                onShare = viewModel::shareNow,
+            )
+        }
     }
 
     if (storageDenied) {
@@ -361,7 +405,6 @@ private fun InfoLine(
     label: String,
     value: String,
     onValueClick: (() -> Unit)? = null,
-    valueTag: Boolean = false,
 ) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(
@@ -370,76 +413,124 @@ private fun InfoLine(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(110.dp),
         )
-        if (valueTag && onValueClick != null && value.isNotBlank() && value != "—") {
-            // 标签样式提示可点击：浅色圆角胶囊 + 电话图标
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(percent = 50))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable { onValueClick() }
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Default.Call,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(14.dp),
-                )
-                Spacer(Modifier.width(5.dp))
-                Text(
-                    value,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        } else {
-            Text(
-                value,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = if (onValueClick != null) {
-                    Modifier.clickable { onValueClick() }
-                } else {
-                    Modifier
-                },
-            )
-        }
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = if (onValueClick != null) {
+                Modifier.clickable { onValueClick() }
+            } else {
+                Modifier
+            },
+        )
     }
 }
 
-/** 全屏预览：支持双指缩放，点击右上角或返回关闭。 */
+/** 电话标签：浅色圆角胶囊 + 电话图标，点击拨号。 */
 @Composable
-private fun FullPreviewDialog(bitmap: android.graphics.Bitmap, onDismiss: () -> Unit) {
+private fun PhoneTag(phone: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.Call,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            phone,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+}
+
+/** 全屏预览：支持双指缩放；点击图片外黑暗背景、右上角或返回关闭；长按图片弹出导出/分享菜单。 */
+@Composable
+private fun FullPreviewDialog(
+    bitmap: android.graphics.Bitmap,
+    onDismiss: () -> Unit,
+    onExport: () -> Unit,
+    onShare: () -> Unit,
+) {
     BackHandler(onBack = onDismiss)
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        var showMenu by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black),
+                .background(Color.Black)
+                // 点击图片实际绘制区域之外的黑暗背景关闭（图片按 Fit 缩放后居中留边）
+                .pointerInput(bitmap) {
+                    detectTapGestures(
+                        onTap = { tap ->
+                            val cw = size.width.toFloat()
+                            val ch = size.height.toFloat()
+                            val fit = Math.min(cw / bitmap.width, ch / bitmap.height)
+                            val dw = bitmap.width * fit
+                            val dh = bitmap.height * fit
+                            val left = (cw - dw) / 2f
+                            val top = (ch - dh) / 2f
+                            if (tap.x < left || tap.x > left + dw || tap.y < top || tap.y > top + dh) {
+                                onDismiss()
+                            }
+                        },
+                        onLongPress = {
+                            showMenu = true
+                        }
+                    )
+                },
         ) {
             var scale by remember { mutableFloatStateOf(1f) }
             var offset by remember { mutableStateOf(Offset.Zero) }
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "单据预览",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offset.x
-                        translationY = offset.y
-                    }
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(1f, 4f)
-                            offset += pan
+            Box(modifier = Modifier.fillMaxSize()) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "单据预览",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offset.x
+                            translationY = offset.y
                         }
-                    },
-            )
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                scale = (scale * zoom).coerceIn(1f, 4f)
+                                offset += pan
+                            }
+                        },
+                )
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("导出图片") },
+                        onClick = {
+                            showMenu = false
+                            onExport()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("分享图片") },
+                        onClick = {
+                            showMenu = false
+                            onShare()
+                        },
+                    )
+                }
+            }
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier

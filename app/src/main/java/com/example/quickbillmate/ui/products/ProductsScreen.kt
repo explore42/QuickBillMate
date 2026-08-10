@@ -69,6 +69,7 @@ import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.util.Money
+import com.example.quickbillmate.util.InputLimits
 
 
 /** 商品分组：title 为分组标题（收藏 / 字母 / #）。 */
@@ -577,13 +578,13 @@ private fun ProductEditDialog(
                 LabeledField(
                     "名称*",
                     name,
-                    { name = it },
+                    { if (it.length <= InputLimits.NAME) name = it },
                     modifier = Modifier.testTag("product_name"),
                 )
                 Spacer(Modifier.height(8.dp))
-                LabeledField("规格", spec, { spec = it })
+                LabeledField("规格", spec, { if (it.length <= InputLimits.SPEC) spec = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField("单位", unit, { unit = it })
+                LabeledField("单位", unit, { if (it.length <= InputLimits.UNIT) unit = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledField(
                     "单价*",
@@ -593,9 +594,9 @@ private fun ProductEditDialog(
                     keyboardType = KeyboardType.Decimal,
                 )
                 Spacer(Modifier.height(8.dp))
-                LabeledField("包装规格", pack, { pack = it })
+                LabeledField("包装规格", pack, { if (it.length <= InputLimits.PACK) pack = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField("备注", note, { note = it })
+                LabeledField("备注", note, { if (it.length <= InputLimits.REMARK) note = it })
                 Spacer(Modifier.height(8.dp))
                 LabeledSwitch("收藏", favorite, { favorite = it })
                 error?.let {

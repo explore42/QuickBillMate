@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -34,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,6 +66,7 @@ import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.util.PhoneUtil
+import com.example.quickbillmate.util.InputLimits
 
 
 private val CUSTOMER_TYPES = listOf("全屋整装", "装修队", "家装公司", "个人")
@@ -397,11 +398,18 @@ private fun CustomerCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(customer.name, style = MaterialTheme.typography.titleSmall)
                     if (customer.type.isNotBlank()) {
-                        Spacer(Modifier.width(4.dp))
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(customer.type) },
-                        )
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Text(
+                                customer.type,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            )
+                        }
                     }
 
                 }
@@ -440,12 +448,12 @@ private fun CustomerEditDialog(
         title = { Text(if (initial.id == 0L) "新增客户" else "编辑客户") },
         text = {
             Column {
-                LabeledField("姓名*", name, { name = it })
+                LabeledField("姓名*", name, { if (it.length <= InputLimits.NAME) name = it })
                 Spacer(Modifier.height(8.dp))
                 Text("电话", style = MaterialTheme.typography.titleSmall)
                 PhoneListEditor(phones = phones, onChange = { phones = it })
                 Spacer(Modifier.height(8.dp))
-                LabeledField("客户类型", type, { type = it })
+                LabeledField("客户类型", type, { if (it.length <= InputLimits.CUSTOMER_TYPE) type = it })
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     CUSTOMER_TYPES.forEach { preset ->
@@ -458,7 +466,7 @@ private fun CustomerEditDialog(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                LabeledField("备注", remark, { remark = it })
+                LabeledField("备注", remark, { if (it.length <= InputLimits.REMARK) remark = it })
                 Spacer(Modifier.height(4.dp))
                 LabeledSwitch("收藏", favorite, { favorite = it })
                 error?.let {

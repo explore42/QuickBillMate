@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.db.BillItem
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.render.InvoiceRenderBus
+import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
@@ -190,15 +192,21 @@ class HomeViewModel(
     fun exportSelected() {
         val ids = selectedIds
         viewModelScope.launch {
+            val bills = ids.mapNotNull { id -> repo.getBill(id)?.let { it to repo.getItems(id) } }
+            val presets = repo.getPresets()
+            val rendered = bills.mapNotNull { (bill, items) ->
+                val id = InvoiceRenderBus.enqueue(
+                    repo.buildRenderInvoice(bill, items),
+                    StylePresets.resolve(bill.presetKey, presets),
+                )
+                val bitmap = InvoiceRenderBus.await(id) ?: return@mapNotNull null
+                bill to bitmap
+            }
             var ok = 0
-            var fail = 0
+            var fail = bills.size - rendered.size
             withContext(Dispatchers.IO) {
-                ids.forEach { id ->
-                    val bill = repo.getBill(id)
-                    if (bill != null) {
-                        val items = repo.getItems(id)
-                        if (repo.exportBillToGallery(app, bill, items)) ok++ else fail++
-                    }
+                rendered.forEach { (bill, bitmap) ->
+                    if (repo.exportBitmapToGallery(app, bill, bitmap)) ok++ else fail++
                 }
             }
             exportMessage = if (fail > 0) {
