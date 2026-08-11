@@ -1,6 +1,8 @@
 package com.example.quickbillmate.ui.common
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -43,15 +46,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import com.example.quickbillmate.R
+
+/** 应用小 Logo：使用 APP 图标同款 PNG。 */
+@Composable
+fun AppLogo(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(R.drawable.ic_app_logo),
+        contentDescription = null,
+        modifier = modifier.clearAndSetSemantics { },
+    )
+}
 
 /** 可折叠式分区卡片。 */
 @Composable
@@ -156,9 +173,20 @@ fun AppTopBar(
     modifier: Modifier = Modifier,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    showLogo: Boolean = false,
 ) {
     TopAppBar(
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = {
+            if (showLogo) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppLogo(Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Text(title, fontWeight = FontWeight.Bold)
+            }
+        },
         navigationIcon = {
             if (navigationIcon != null) {
                 navigationIcon()
@@ -217,7 +245,11 @@ fun SearchableTopBar(
                     focusRequester = focusRequester,
                 )
             } else {
-                Text(title, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppLogo(Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, fontWeight = FontWeight.Bold)
+                }
             }
         },
         navigationIcon = {

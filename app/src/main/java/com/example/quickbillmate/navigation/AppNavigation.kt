@@ -8,7 +8,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -21,8 +25,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -43,13 +49,10 @@ import com.example.quickbillmate.ui.presets.PresetsScreen
 import com.example.quickbillmate.ui.products.ProductsScreen
 import com.example.quickbillmate.ui.settings.SettingsScreen
 import com.example.quickbillmate.ui.view.BillViewScreen
+import kotlinx.coroutines.launch
 
+private const val TABS = "tabs"
 private const val SLIDE_DURATION_MS = 320
-private const val TAB_SLIDE_DURATION_MS = 240
-private const val TAB_FADE_DURATION_MS = 150
-
-/** 底部导航标签页之间切换时使用轻量动画，二级页面保持全屏滑动。 */
-private fun isTabRoute(route: String?): Boolean = route in Routes.tabRoutes
 
 @Composable
 fun QuickBillMateAppNavHost(
@@ -58,65 +61,39 @@ fun QuickBillMateAppNavHost(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val pagerState = rememberPagerState(pageCount = { 4 })
+    val scope = rememberCoroutineScope()
+
     var homeSelectionActive by remember { mutableStateOf(false) }
     var productsSelectionActive by remember { mutableStateOf(false) }
     var customersSelectionActive by remember { mutableStateOf(false) }
-    var homeScrollTicks by remember { mutableStateOf(0) }
-    var productsScrollTicks by remember { mutableStateOf(0) }
-    var customersScrollTicks by remember { mutableStateOf(0) }
+    var homeScrollTicks by remember { mutableIntStateOf(0) }
+    var productsScrollTicks by remember { mutableIntStateOf(0) }
+    var customersScrollTicks by remember { mutableIntStateOf(0) }
+
+    val selectionActive = when (pagerState.currentPage) {
+        0 -> homeSelectionActive
+        1 -> productsSelectionActive
+        2 -> customersSelectionActive
+        else -> false
+    }
 
     Scaffold(
-        // 顶部边距由各页面自己的标题栏处理，外层不再额外让出状态栏高度
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            val selectionActive =
-                (currentRoute == Routes.HOME && homeSelectionActive) ||
-                    (currentRoute == Routes.PRODUCTS && productsSelectionActive) ||
-                    (currentRoute == Routes.CUSTOMERS && customersSelectionActive)
-            if (currentRoute in Routes.tabRoutes && !selectionActive) {
+            if (currentRoute == TABS && !selectionActive) {
                 NavigationBar {
-                    TabItem(Icons.Default.Home, "单据", currentRoute == Routes.HOME) {
-                        if (currentRoute == Routes.HOME) {
-                            // 已在单据页：点击导航栏回到列表顶部
-                            homeScrollTicks++
-                        } else {
-                            navController.navigate(Routes.HOME) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                    TabItem(Icons.Default.Home, "单据", pagerState.currentPage == 0) {
+                        if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
                     }
-                    TabItem(Icons.Default.List, "商品", currentRoute == Routes.PRODUCTS) {
-                        if (currentRoute == Routes.PRODUCTS) {
-                            // 已在商品页：点击导航栏回到列表顶部
-                            productsScrollTicks++
-                        } else {
-                            navController.navigate(Routes.PRODUCTS) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                    TabItem(Icons.Default.List, "商品", pagerState.currentPage == 1) {
+                        if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
                     }
-                    TabItem(Icons.Default.Person, "客户", currentRoute == Routes.CUSTOMERS) {
-                        if (currentRoute == Routes.CUSTOMERS) {
-                            // 已在客户页：点击导航栏回到列表顶部
-                            customersScrollTicks++
-                        } else {
-                            navController.navigate(Routes.CUSTOMERS) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                    TabItem(Icons.Default.Person, "客户", pagerState.currentPage == 2) {
+                        if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
                     }
-                    TabItem(Icons.Default.Settings, "设置", currentRoute == Routes.SETTINGS) {
-                        navController.navigate(Routes.SETTINGS) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                    TabItem(Icons.Default.Settings, "设置", pagerState.currentPage == 3) {
+                        if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
                     }
                 }
             }
@@ -124,30 +101,19 @@ fun QuickBillMateAppNavHost(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.HOME,
+            startDestination = TABS,
             modifier = Modifier.padding(padding),
             enterTransition = {
-                if (isTabRoute(initialState.destination.route) && isTabRoute(targetState.destination.route)) {
-                    slideInHorizontally(
-                        initialOffsetX = { it / 3 },
-                        animationSpec = tween(TAB_SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                    )
-                } else {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                    )
-                }
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
             },
             exitTransition = {
-                if (isTabRoute(initialState.destination.route) && isTabRoute(targetState.destination.route)) {
-                    fadeOut(animationSpec = tween(TAB_FADE_DURATION_MS))
-                } else {
-                    slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                    )
-                }
+                slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                )
             },
             popEnterTransition = {
                 slideInHorizontally(
@@ -162,32 +128,23 @@ fun QuickBillMateAppNavHost(
                 )
             },
         ) {
-            composable(Routes.HOME) {
-                HomeScreen(
+            composable(TABS) {
+                TabPagerHost(
+                    pagerState = pagerState,
+                    userScrollEnabled = !selectionActive,
+                    homeScrollTicks = homeScrollTicks,
+                    productsScrollTicks = productsScrollTicks,
+                    customersScrollTicks = customersScrollTicks,
+                    onSelectionModeChange = { tab, active ->
+                        when (tab) {
+                            0 -> homeSelectionActive = active
+                            1 -> productsSelectionActive = active
+                            2 -> customersSelectionActive = active
+                        }
+                    },
                     onNewBill = { navController.navigate(Routes.editor(0)) },
                     onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
-                    onSelectionModeChange = { active -> homeSelectionActive = active },
-                    scrollToTopTick = homeScrollTicks,
-                )
-            }
-
-            composable(Routes.PRODUCTS) {
-                ProductsScreen(
-                    onSelectionModeChange = { active -> productsSelectionActive = active },
-                    scrollToTopTick = productsScrollTicks,
-                )
-            }
-
-            composable(Routes.CUSTOMERS) {
-                CustomersScreen(
                     onImportContacts = { navController.navigate(Routes.CONTACTS_IMPORT) },
-                    onSelectionModeChange = { active -> customersSelectionActive = active },
-                    scrollToTopTick = customersScrollTicks,
-                )
-            }
-
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
                     onThemeModeChange = onThemeModeChange,
                     onManagePresets = { navController.navigate(Routes.PRESETS) },
                 )
@@ -262,6 +219,50 @@ fun QuickBillMateAppNavHost(
     }
 }
 
+/** 四个底部标签页容器：左右滑动切换，底部导航同步。 */
+@Composable
+private fun TabPagerHost(
+    pagerState: PagerState,
+    userScrollEnabled: Boolean,
+    homeScrollTicks: Int,
+    productsScrollTicks: Int,
+    customersScrollTicks: Int,
+    onSelectionModeChange: (Int, Boolean) -> Unit,
+    onNewBill: () -> Unit,
+    onOpenBill: (Long) -> Unit,
+    onImportContacts: () -> Unit,
+    onThemeModeChange: (String) -> Unit,
+    onManagePresets: () -> Unit,
+) {
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize(),
+        userScrollEnabled = userScrollEnabled,
+    ) { page ->
+        when (page) {
+            0 -> HomeScreen(
+                onNewBill = onNewBill,
+                onOpenBill = onOpenBill,
+                onSelectionModeChange = { onSelectionModeChange(0, it) },
+                scrollToTopTick = homeScrollTicks,
+            )
+            1 -> ProductsScreen(
+                onSelectionModeChange = { onSelectionModeChange(1, it) },
+                scrollToTopTick = productsScrollTicks,
+            )
+            2 -> CustomersScreen(
+                onImportContacts = onImportContacts,
+                onSelectionModeChange = { onSelectionModeChange(2, it) },
+                scrollToTopTick = customersScrollTicks,
+            )
+            3 -> SettingsScreen(
+                onThemeModeChange = onThemeModeChange,
+                onManagePresets = onManagePresets,
+            )
+        }
+    }
+}
+
 @Composable
 private fun RowScope.TabItem(
     icon: ImageVector,
@@ -269,7 +270,6 @@ private fun RowScope.TabItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    // 选中项图标轻微放大
     val iconScale by animateFloatAsState(
         targetValue = if (selected) 1.18f else 1f,
         animationSpec = tween(200, easing = FastOutSlowInEasing),

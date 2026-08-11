@@ -21,6 +21,7 @@ import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.InvoiceRenderBus
 import com.example.quickbillmate.render.StylePresets
+import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil
@@ -75,6 +76,8 @@ data class EditorUiState(
     val showRemark: Boolean = true,
     val showAd: Boolean = false,
     val showWatermark: Boolean = false,
+    val watermarkText: String = "",
+    val showContactPhone: Boolean = true,
     val showMultiPhones: Boolean = false,
     val favorite: Boolean = false,
     val presetKey: String = "classic_plain",
@@ -136,11 +139,14 @@ class EditorViewModel(
                 contactPhone = settings.defaultPhone,
                 salesManager = settings.defaultManager,
                 titleSuffix = settings.defaultTitleSuffix,
+                remark = settings.defaultRemark,
                 adText = settings.defaultAdText,
                 showManager = settings.defaultShowManager,
                 showRemark = settings.defaultShowRemark,
                 showAd = settings.defaultShowAd,
                 showWatermark = settings.defaultShowWatermark,
+                watermarkText = settings.defaultWatermarkText,
+                showContactPhone = settings.defaultShowContactPhone,
                 showMultiPhones = settings.defaultShowMultiPhones,
             )
             isNewDraft = true
@@ -211,6 +217,8 @@ class EditorViewModel(
             showRemark = bill.showRemark,
             showAd = bill.showAd,
             showWatermark = bill.showWatermark,
+            watermarkText = bill.watermarkText,
+            showContactPhone = bill.showContactPhone,
             showMultiPhones = bill.showMultiPhones,
             favorite = bill.favorite,
             presetKey = bill.presetKey,
@@ -302,8 +310,31 @@ class EditorViewModel(
     fun onShowRemarkChange(value: Boolean) = update { copy(showRemark = value) }
     fun onShowAdChange(value: Boolean) = update { copy(showAd = value) }
     fun onShowWatermarkChange(value: Boolean) = update { copy(showWatermark = value) }
+    fun onShowContactPhoneChange(value: Boolean) = update { copy(showContactPhone = value) }
 
     fun onShowMultiPhonesChange(value: Boolean) = update { copy(showMultiPhones = value) }
+
+    /** 用“默认信息”表单值更新当前单据（局部修改，不影响全局）。 */
+    fun applyDefaultInfoValues(values: DefaultInfoValues) {
+        update {
+            copy(
+                titleSuffix = values.titleSuffix,
+                docCode = values.docCode,
+                showMultiPhones = values.showMultiPhones,
+                companyName = values.companyName,
+                salesManager = values.manager,
+                showManager = values.showManager,
+                contactPhone = values.contactPhone,
+                showContactPhone = values.showContactPhone,
+                showRemark = values.showRemark,
+                remark = values.remark,
+                showAd = values.showAd,
+                adText = values.adText,
+                watermarkText = values.watermarkText,
+                showWatermark = values.showWatermark,
+            )
+        }
+    }
 
     fun onFavoriteChange(value: Boolean) = update { copy(favorite = value) }
 
@@ -427,38 +458,7 @@ class EditorViewModel(
         }
     }
 
-    // ---------- 示例 / 自动保存 / 手动保存 / 预览 ----------
-
-    fun loadSample() {
-        update {
-            copy(
-                customerName = "示例客户",
-                customerPhone = "13800000000",
-                companyName = "示例建材有限公司",
-                contactPhone = "13800138000",
-                salesManager = "李经理",
-                docCode = "PH",
-                docDate = DateUtils.today(),
-                discountText = "0.00",
-                remark = "客户自提",
-                titleSuffix = "单据",
-                adText = "",
-                items = sampleItems(),
-            )
-        }
-    }
-
-    private fun sampleItems(): List<ItemRow> = listOf(
-        ItemRow("腻子粉", "YGP800 20kg", "袋", "10", "35.00", "20袋/托", ""),
-        ItemRow("墙衬", "YGP400 20kg", "袋", "5", "28.00", "20袋/托", ""),
-        ItemRow("蓝和纸墙面保护膜", "3m*18m", "卷", "2", "350.00", "50卷/件", "现货"),
-        ItemRow("乳胶漆", "净味五合一 18L", "桶", "3", "420.00", "4桶/件", ""),
-        ItemRow("腻子粉", "YGP800 20kg", "袋", "4", "35.00", "20袋/托", "补单"),
-        ItemRow("防水涂料", "JS-II 20kg", "桶", "2", "260.00", "4桶/件", ""),
-        ItemRow("瓷砖胶", "C2 20kg", "袋", "8", "45.00", "20袋/托", ""),
-        ItemRow("美缝剂", "瓷白色 400ml", "支", "12", "38.00", "50支/箱", ""),
-        ItemRow("玻璃胶", "透明 300ml", "支", "6", "15.00", "50支/箱", ""),
-    )
+    // ---------- 自动保存 / 手动保存 / 预览 ----------
 
     private fun scheduleSave() {
         if (!loaded) return
@@ -528,7 +528,7 @@ private fun BillItem.toRow(): ItemRow = ItemRow(
     name = name,
     spec = spec,
     unit = unit,
-    qtyText = Money.format(qty),
+    qtyText = qty.toLong().toString(),
     priceText = Money.format(price),
     pack = pack,
     note = note,
@@ -564,6 +564,8 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     showRemark = showRemark,
     showAd = showAd,
     showWatermark = showWatermark,
+    watermarkText = watermarkText,
+    showContactPhone = showContactPhone,
     showMultiPhones = showMultiPhones,
     favorite = favorite,
     presetKey = presetKey,
@@ -587,6 +589,8 @@ fun EditorUiState.toRenderInvoice(): RenderInvoice = RenderInvoice(
     showRemark = showRemark,
     showAd = showAd,
     showWatermark = showWatermark,
+    watermarkText = watermarkText,
+    showContactPhone = showContactPhone,
     items = items.map {
         RenderItem(
             name = it.name,
@@ -607,3 +611,20 @@ fun presetDisplayName(presetKey: String, presets: List<StylePreset>): String {
     }
     return StylePresets.builtInName(presetKey)
 }
+
+/** 当前单据字段 → 默认信息表单值。 */
+fun EditorUiState.toDefaultInfoValues(): DefaultInfoValues = DefaultInfoValues(
+    titleSuffix = titleSuffix,
+    docCode = docCode,
+    showMultiPhones = showMultiPhones,
+    companyName = companyName,
+    manager = salesManager,
+    showManager = showManager,
+    contactPhone = contactPhone,
+    showContactPhone = showContactPhone,
+    showRemark = showRemark,
+    showAd = showAd,
+    adText = adText,
+    watermarkText = watermarkText,
+    showWatermark = showWatermark,
+)

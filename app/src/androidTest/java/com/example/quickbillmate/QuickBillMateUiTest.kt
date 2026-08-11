@@ -59,14 +59,14 @@ class QuickBillMateUiTest {
     }
 
     @Test
-    fun newBillOpensEditorAndSampleLoadsPreview() {
+    fun newBillOpensEditorAndShowsPreview() {
+        val name = "预览客户${System.currentTimeMillis() % 100000}"
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
-        // 右上角设置 → 应用示例
-        composeRule.onNodeWithContentDescription("设置").performClick()
-        waitFor { composeRule.onAllNodesWithText("应用示例").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("应用示例").performClick()
+        // 填写客户名称后，实时预览渲染
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("editor_preview").performScrollTo().assertIsDisplayed()
     }
@@ -197,20 +197,20 @@ class QuickBillMateUiTest {
 
     @Test
     fun billViewShowsDetailsAndEditNavigates() {
-        // 新建一张单据并载入示例
+        val name = "详情客户${System.currentTimeMillis() % 100000}"
+        // 新建一张单据并填写客户名称
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithContentDescription("设置").performClick()
-        waitFor { composeRule.onAllNodesWithText("应用示例").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("应用示例").performClick()
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
         // 保存后自动返回单据列表
         composeRule.onNodeWithText("保存").performClick()
         waitHomeReady()
 
         // 点击第一条单据（最新）→ 查看页
-        waitFor { composeRule.onAllNodesWithText("示例客户").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onAllNodesWithText("示例客户")[0].performClick()
+        waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onAllNodesWithText(name)[0].performClick()
         waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("单据详情").assertIsDisplayed()
 

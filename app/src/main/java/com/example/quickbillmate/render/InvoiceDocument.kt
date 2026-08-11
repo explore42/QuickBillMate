@@ -68,6 +68,8 @@ data class RenderInvoice(
     val showManager: Boolean = true,
     val showRemark: Boolean = true,
     val showAd: Boolean = false,
+    val showContactPhone: Boolean = false,
+    val watermarkText: String = "",
     val showWatermark: Boolean = true,
     val items: List<RenderItem> = emptyList(),
 ) {
@@ -237,7 +239,7 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
                             1 -> item.name
                             2 -> item.spec
                             3 -> item.unit
-                            4 -> Money.format(item.qty)
+                            4 -> item.qty.toLong().toString()
                             5 -> Money.format(item.price)
                             6 -> item.pack
                             7 -> item.note
@@ -272,7 +274,7 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
             if (invoice.discount != 0.0) {
                 TotalRow(
                     columns = columns,
-                    label = "优惠金额",
+                    label = "优惠",
                     totalText = Money.format(invoice.discount),
                     fontSize = bodySize,
                     fontFamily = fontFamily,
@@ -313,8 +315,14 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
             )
         }
         if (invoice.showManager && invoice.salesManager.isNotBlank()) {
+            val contactSuffix =
+                if (invoice.showContactPhone && invoice.contactPhone.isNotBlank()) {
+                    "　联系电话：${invoice.contactPhone}"
+                } else {
+                    ""
+                }
             Text(
-                text = "客户经理：${invoice.salesManager}",
+                text = "客户经理：${invoice.salesManager}$contactSuffix",
                 fontSize = params.footerTextSizeSp.sp,
                 color = Color.Black,
                 fontFamily = fontFamily,
@@ -327,7 +335,7 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
             Spacer(Modifier.height(8.dp))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
-                    text = params.watermarkText,
+                    text = invoice.watermarkText.ifBlank { params.watermarkText },
                     fontSize = params.watermarkFontSizeSp.sp,
                     color = parseColor(params.watermarkColor),
                     fontFamily = fontFamily,
@@ -413,7 +421,7 @@ private fun TableRow(
     }
 }
 
-/** 汇总行：序号列写标签，中间列合并，金额列写数值（合计 / 优惠金额）。 */
+/** 汇总行：序号列写标签，中间列合并，金额列写数值（合计 / 优惠）。 */
 @Composable
 private fun TotalRow(
     columns: List<ColumnSpec>,

@@ -100,11 +100,14 @@ class AppRepository(
         contactPhone: String,
         salesManager: String,
         titleSuffix: String = "单据",
+        remark: String = "",
         adText: String = "",
         showManager: Boolean = true,
         showRemark: Boolean = true,
         showAd: Boolean = false,
         showWatermark: Boolean = false,
+        watermarkText: String = "",
+        showContactPhone: Boolean = true,
         showMultiPhones: Boolean = false,
     ): Bill {
         val serial = generateUniqueSerial(docCode, docDate)
@@ -116,11 +119,14 @@ class AppRepository(
             docSerial = serial,
             docDate = docDate,
             titleSuffix = titleSuffix,
+            remark = remark,
             adText = adText,
             showManager = showManager,
             showRemark = showRemark,
             showAd = showAd,
             showWatermark = showWatermark,
+            watermarkText = watermarkText,
+            showContactPhone = showContactPhone,
             showMultiPhones = showMultiPhones,
             presetKey = settings.defaultPresetKey,
         )
@@ -399,6 +405,8 @@ class AppRepository(
         showRemark = bill.showRemark,
         showAd = bill.showAd,
         showWatermark = bill.showWatermark,
+        watermarkText = bill.watermarkText,
+        showContactPhone = bill.showContactPhone,
         items = items.map {
             RenderItem(
                 name = it.name,

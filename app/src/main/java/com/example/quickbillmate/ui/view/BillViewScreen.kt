@@ -260,7 +260,6 @@ fun BillViewScreen(
                         BillNumber.build(bill.docCode, bill.docDate, bill.docSerial).ifBlank { "—" },
                     )
                     InfoLine("单据日期", bill.docDate.ifBlank { "—" })
-                    InfoLine("优惠金额", Money.format(bill.discount))
                     if (bill.remark.isNotBlank()) InfoLine("备注", bill.remark)
                     InfoLine("标题后缀", bill.titleSuffix)
                     if (bill.adText.isNotBlank()) InfoLine("广告文案", bill.adText)
@@ -301,7 +300,7 @@ fun BillViewScreen(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        "${Money.format(item.qty)} × ${Money.format(item.price)}",
+                                        "${item.qty.toLong()} × ${Money.format(item.price)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -320,18 +319,23 @@ fun BillViewScreen(
                             if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
                         }
                         val receivable = Math.max(0.0, Money.round2(total - bill.discount))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "合计：${Money.format(total)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        if (bill.discount != 0.0) {
                             Text(
-                                "合计：${Money.format(total)}",
+                                "优惠：${Money.format(bill.discount)}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                "应收：${Money.format(receivable)}",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 4.dp),
                             )
                         }
+                        Text(
+                            "应收：${Money.format(receivable)}（${Money.toChineseAmount(receivable)}）",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
                 }
 

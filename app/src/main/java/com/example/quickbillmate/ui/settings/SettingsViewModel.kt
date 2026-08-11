@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.ui.common.DefaultInfoValues
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -43,6 +44,12 @@ class SettingsViewModel(
         private set
     var defaultShowAd by mutableStateOf(repo.settings.defaultShowAd)
         private set
+    var defaultRemark by mutableStateOf(repo.settings.defaultRemark)
+        private set
+    var defaultWatermarkText by mutableStateOf(repo.settings.defaultWatermarkText)
+        private set
+    var defaultShowContactPhone by mutableStateOf(repo.settings.defaultShowContactPhone)
+        private set
     var versionName by mutableStateOf("")
 
     val presets: StateFlow<List<StylePreset>> = repo.observePresets()
@@ -59,51 +66,41 @@ class SettingsViewModel(
         repo.settings.themeMode = mode
     }
 
-    fun updateCompany(value: String) {
-        defaultCompany = value
-        repo.settings.defaultCompany = value
-    }
-
-    fun updatePhone(value: String) {
-        defaultPhone = value
-        repo.settings.defaultPhone = value
-    }
-
-    fun updateManager(value: String) {
-        defaultManager = value
-        repo.settings.defaultManager = value
-    }
-
     fun updateDefaultPreset(key: String) {
         defaultPresetKey = key
         repo.settings.defaultPresetKey = key
     }
 
-    fun updateShowOptions(
-        showManager: Boolean,
-        showRemark: Boolean,
-        showWatermark: Boolean,
-        showMultiPhones: Boolean,
-        showAd: Boolean,
-    ) {
-        defaultShowManager = showManager
-        defaultShowRemark = showRemark
-        defaultShowWatermark = showWatermark
-        defaultShowMultiPhones = showMultiPhones
-        defaultShowAd = showAd
-        repo.settings.defaultShowManager = showManager
-        repo.settings.defaultShowRemark = showRemark
-        repo.settings.defaultShowWatermark = showWatermark
-        repo.settings.defaultShowMultiPhones = showMultiPhones
-        repo.settings.defaultShowAd = showAd
-    }
-
-    fun updateBillDefaults(docCode: String, titleSuffix: String, adText: String) {
-        defaultDocCode = docCode
-        defaultTitleSuffix = titleSuffix
-        defaultAdText = adText
-        repo.settings.defaultDocCode = docCode
-        repo.settings.defaultTitleSuffix = titleSuffix
-        repo.settings.defaultAdText = adText
+    /** 保存“默认信息”：全部写入全局默认值。 */
+    fun updateDefaults(values: DefaultInfoValues) {
+        defaultTitleSuffix = values.titleSuffix
+        defaultDocCode = values.docCode
+        defaultShowMultiPhones = values.showMultiPhones
+        defaultCompany = values.companyName
+        defaultManager = values.manager
+        defaultShowManager = values.showManager
+        defaultPhone = values.contactPhone
+        defaultShowContactPhone = values.showContactPhone
+        defaultShowRemark = values.showRemark
+        defaultShowAd = values.showAd
+        defaultRemark = values.remark
+        defaultAdText = values.adText
+        defaultWatermarkText = values.watermarkText
+        defaultShowWatermark = values.showWatermark
+        val s = repo.settings
+        s.defaultTitleSuffix = values.titleSuffix
+        s.defaultDocCode = values.docCode
+        s.defaultShowMultiPhones = values.showMultiPhones
+        s.defaultCompany = values.companyName
+        s.defaultManager = values.manager
+        s.defaultShowManager = values.showManager
+        s.defaultPhone = values.contactPhone
+        s.defaultShowContactPhone = values.showContactPhone
+        s.defaultShowRemark = values.showRemark
+        s.defaultShowAd = values.showAd
+        s.defaultRemark = values.remark
+        s.defaultAdText = values.adText
+        s.defaultWatermarkText = values.watermarkText
+        s.defaultShowWatermark = values.showWatermark
     }
 }

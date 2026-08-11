@@ -58,6 +58,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_AD, false)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_AD, value).apply()
 
+    var defaultRemark: String
+        get() = prefs.getString(KEY_REMARK, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REMARK, value).apply()
+
+    var defaultWatermarkText: String
+        get() = prefs.getString(KEY_WATERMARK_TEXT, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_WATERMARK_TEXT, value).apply()
+
+    var defaultShowContactPhone: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_CONTACT_PHONE, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_CONTACT_PHONE, value).apply()
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -76,5 +88,8 @@ class SettingsStore(context: Context) {
         private const val KEY_TITLE_SUFFIX = "default_title_suffix"
         private const val KEY_AD_TEXT = "default_ad_text"
         private const val KEY_SHOW_AD = "default_show_ad"
+        private const val KEY_REMARK = "default_remark"
+        private const val KEY_WATERMARK_TEXT = "default_watermark_text"
+        private const val KEY_SHOW_CONTACT_PHONE = "default_show_contact_phone"
     }
 }

@@ -79,6 +79,8 @@ import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.DefaultInfoForm
+import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
@@ -105,7 +107,8 @@ fun EditorScreen(
     val s = viewModel.state
     val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
-    var showActionsDialog by remember { mutableStateOf(false) }
+    var showPresetDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showProductPicker by remember { mutableStateOf(false) }
 
@@ -127,7 +130,10 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showActionsDialog = true }) {
+                    TextButton(onClick = { showPresetDialog = true }) {
+                        Text("图片样式")
+                    }
+                    IconButton(onClick = { showSettingsDialog = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 },
@@ -209,7 +215,10 @@ fun EditorScreen(
 
                 // 客单信息
                 SectionCard("客单信息") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         LabeledField(
                             label = "流水号",
                             value = s.docSerial,
@@ -239,26 +248,42 @@ fun EditorScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "优惠金额",
-                        value = s.discountText,
-                        onChange = viewModel::onDiscountChange,
-                        keyboardType = KeyboardType.Decimal,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LabeledField(
-                        label = "备注",
-                        value = s.remark,
-                        onChange = { if (it.length <= InputLimits.REMARK) viewModel.onRemarkChange(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
                     LabeledSwitch("收藏", s.favorite, viewModel::onFavoriteChange)
                 }
 
                 // 商品信息
                 SectionCard("商品信息") {
+                    val totalCents = s.items.sumOf { Math.round(it.amount() * 100.0) }
+                    val discountCents = Math.round((s.discountText.toDoubleOrNull() ?: 0.0) * 100.0)
+                    val receivableCents = totalCents - discountCents
+                    val jiaoFenCents = receivableCents % 100
+                    val yuanOnesCents = receivableCents % 1000
+                    val currentDiscount = s.discountText.toDoubleOrNull() ?: 0.0
+                    // 三步抹零：先抹分/角，再抹元，最后清除抹零
+                    val roundDownLabel: String
+                    val roundDownAction: (() -> Unit)?
+                    when {
+                        jiaoFenCents != 0L -> {
+                            roundDownLabel = "抹分角"
+                            roundDownAction = {
+                                viewModel.onDiscountChange(Money.format((discountCents + jiaoFenCents) / 100.0))
+                            }
+                        }
+                        yuanOnesCents != 0L -> {
+                            roundDownLabel = "抹元"
+                            roundDownAction = {
+                                viewModel.onDiscountChange(Money.format((discountCents + yuanOnesCents) / 100.0))
+                            }
+                        }
+                        currentDiscount != 0.0 -> {
+                            roundDownLabel = "清除抹零"
+                            roundDownAction = { viewModel.onDiscountChange(Money.format(0.0)) }
+                        }
+                        else -> {
+                            roundDownLabel = "抹零"
+                            roundDownAction = null
+                        }
+                    }
                     s.items.forEachIndexed { index, row ->
                         ItemRowEditor(
                             row = row,
@@ -290,6 +315,25 @@ fun EditorScreen(
                                 .testTag("editor_add_from_library"),
                         ) {
                             Text("从商品库添加")
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        LabeledField(
+                            label = "优惠",
+                            value = s.discountText,
+                            onChange = viewModel::onDiscountChange,
+                            keyboardType = KeyboardType.Decimal,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedButton(
+                            onClick = { roundDownAction?.invoke() },
+                            enabled = roundDownAction != null,
+                        ) {
+                            Text(roundDownLabel)
                         }
                     }
                 }
@@ -332,40 +376,30 @@ fun EditorScreen(
         }
     }
 
-    if (showActionsDialog) {
-        EditorActionsDialog(
-            showManager = s.showManager,
-            showRemark = s.showRemark,
-            showWatermark = s.showWatermark,
-            showMultiPhones = s.showMultiPhones,
-            showAd = s.showAd,
-            company = s.companyName,
-            phone = s.contactPhone,
-            manager = s.salesManager,
-            docCode = s.docCode,
-            titleSuffix = s.titleSuffix,
-            adText = s.adText,
-            presetKey = s.presetKey,
+    if (showPresetDialog) {
+        PresetPickerDialog(
+            currentKey = s.presetKey,
             presets = s.presets,
-            onSample = { viewModel.loadSample() },
-            onCompanySave = { company, phone, manager ->
-                viewModel.onCompanyNameChange(company)
-                viewModel.onContactPhoneChange(phone)
-                viewModel.onManagerChange(manager)
+            onSelect = { key ->
+                viewModel.selectPreset(key)
+                showPresetDialog = false
             },
-            onBillDefaultsSave = { docCode, titleSuffix, adText ->
-                viewModel.onDocCodeChange(docCode)
-                viewModel.onTitleSuffixChange(titleSuffix)
-                viewModel.onAdTextChange(adText)
+            onManage = {
+                showPresetDialog = false
+                onManagePresets()
             },
-            onSelectPreset = viewModel::selectPreset,
-            onShowManagerChange = viewModel::onShowManagerChange,
-            onShowRemarkChange = viewModel::onShowRemarkChange,
-            onShowWatermarkChange = viewModel::onShowWatermarkChange,
-            onShowMultiPhonesChange = viewModel::onShowMultiPhonesChange,
-            onShowAdChange = viewModel::onShowAdChange,
-            onSave = { viewModel.saveNow { showActionsDialog = false } },
-            onDismiss = { showActionsDialog = false },
+            onDismiss = { showPresetDialog = false },
+        )
+    }
+
+    if (showSettingsDialog) {
+        EditorDefaultInfoDialog(
+            values = s.toDefaultInfoValues(),
+            onSave = { values ->
+                viewModel.applyDefaultInfoValues(values)
+                viewModel.saveNow { showSettingsDialog = false }
+            },
+            onDismiss = { showSettingsDialog = false },
         )
     }
 
@@ -511,171 +545,60 @@ private fun SuggestionTag(text: String) {
     }
 }
 
-/** 右上角设置对话框：应用示例为按钮，其余项内联展开。 */
+/** 右上角“图片样式”选择弹窗：选择预设，可进入管理页。 */
 @Composable
-private fun EditorActionsDialog(
-    showManager: Boolean,
-    showRemark: Boolean,
-    showWatermark: Boolean,
-    showMultiPhones: Boolean,
-    showAd: Boolean,
-    company: String,
-    phone: String,
-    manager: String,
-    docCode: String,
-    titleSuffix: String,
-    adText: String,
-    presetKey: String,
+private fun PresetPickerDialog(
+    currentKey: String,
     presets: List<StylePreset>,
-    onSample: () -> Unit,
-    onCompanySave: (String, String, String) -> Unit,
-    onBillDefaultsSave: (String, String, String) -> Unit,
-    onSelectPreset: (String) -> Unit,
-    onShowManagerChange: (Boolean) -> Unit,
-    onShowRemarkChange: (Boolean) -> Unit,
-    onShowWatermarkChange: (Boolean) -> Unit,
-    onShowMultiPhonesChange: (Boolean) -> Unit,
-    onShowAdChange: (Boolean) -> Unit,
-    onSave: () -> Unit,
+    onSelect: (String) -> Unit,
+    onManage: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var companyExpanded by remember { mutableStateOf(false) }
-    var billDefaultsExpanded by remember { mutableStateOf(false) }
-    var presetExpanded by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择图片样式") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                PresetInlineList(
+                    currentKey = currentKey,
+                    presets = presets,
+                    onSelect = onSelect,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+        dismissButton = {
+            TextButton(onClick = onManage) { Text("管理") }
+        },
+    )
+}
+
+/** 右上角“设置”弹窗：复用默认信息表单，仅修改当前单据。 */
+@Composable
+private fun EditorDefaultInfoDialog(
+    values: DefaultInfoValues,
+    onSave: (DefaultInfoValues) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var local by remember(values) { mutableStateOf(values) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("设置") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                FilledTonalButton(
-                    onClick = {
-                        onSample()
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("应用示例")
-                }
-
-                ExpandableHeader("公司信息", companyExpanded) {
-                    companyExpanded = !companyExpanded
-                    presetExpanded = false
-                }
-                if (companyExpanded) {
-                    CompanyInlineEditor(
-                        company = company,
-                        phone = phone,
-                        manager = manager,
-                        onSave = { c, p, m ->
-                            onCompanySave(c, p, m)
-                            companyExpanded = false
-                        },
-                        onCancel = { companyExpanded = false },
-                    )
-                }
-
-                ExpandableHeader("客单信息", billDefaultsExpanded) {
-                    billDefaultsExpanded = !billDefaultsExpanded
-                    companyExpanded = false
-                    presetExpanded = false
-                }
-                if (billDefaultsExpanded) {
-                    BillDefaultsInlineEditor(
-                        docCode = docCode,
-                        titleSuffix = titleSuffix,
-                        adText = adText,
-                        onSave = { code, suffix, ad ->
-                            onBillDefaultsSave(code, suffix, ad)
-                            billDefaultsExpanded = false
-                        },
-                        onCancel = { billDefaultsExpanded = false },
-                    )
-                }
-
-                ExpandableHeader("选择图片样式", presetExpanded) {
-                    presetExpanded = !presetExpanded
-                    companyExpanded = false
-                    billDefaultsExpanded = false
-                }
-                if (presetExpanded) {
-                    PresetInlineList(
-                        currentKey = presetKey,
-                        presets = presets,
-                        onSelect = { key ->
-                            onSelectPreset(key)
-                            presetExpanded = false
-                        },
-                    )
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-                LabeledSwitch("显示客户经理", showManager, onShowManagerChange)
-                LabeledSwitch("显示备注", showRemark, onShowRemarkChange)
-                LabeledSwitch("显示广告", showAd, onShowAdChange)
-                LabeledSwitch("显示水印", showWatermark, onShowWatermarkChange)
-                LabeledSwitch("显示多个电话", showMultiPhones, onShowMultiPhonesChange)
+                DefaultInfoForm(values = local, onChange = { local = it })
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave) { Text("保存") }
+            TextButton(onClick = { onSave(local) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
         },
     )
-}
-
-@Composable
-private fun ExpandableHeader(
-    title: String,
-    expanded: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Icon(
-            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
-        )
-    }
-}
-
-@Composable
-private fun CompanyInlineEditor(
-    company: String,
-    phone: String,
-    manager: String,
-    onSave: (String, String, String) -> Unit,
-    onCancel: () -> Unit,
-) {
-    var companyText by remember(company) { mutableStateOf(company) }
-    var phoneText by remember(phone) { mutableStateOf(phone) }
-    var managerText by remember(manager) { mutableStateOf(manager) }
-
-    Column(modifier = Modifier.padding(start = 4.dp)) {
-        LabeledField("公司名称", companyText, { if (it.length <= InputLimits.COMPANY) companyText = it })
-        Spacer(Modifier.height(6.dp))
-        LabeledField(
-            "联系电话",
-            phoneText,
-            { phoneText = it },
-            keyboardType = KeyboardType.Phone,
-        )
-        Spacer(Modifier.height(6.dp))
-        LabeledField("客户经理", managerText, { if (it.length <= InputLimits.MANAGER) managerText = it })
-        Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onCancel) { Text("取消") }
-            TextButton(onClick = {
-                onSave(companyText.trim(), phoneText.trim(), managerText.trim())
-            }) { Text("保存") }
-        }
-    }
 }
 
 @Composable
@@ -705,34 +628,6 @@ private fun PresetInlineList(
                     onClick = { onSelect("custom:${preset.id}") },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun BillDefaultsInlineEditor(
-    docCode: String,
-    titleSuffix: String,
-    adText: String,
-    onSave: (String, String, String) -> Unit,
-    onCancel: () -> Unit,
-) {
-    var docCodeText by remember(docCode) { mutableStateOf(docCode) }
-    var titleSuffixText by remember(titleSuffix) { mutableStateOf(titleSuffix) }
-    var adTextText by remember(adText) { mutableStateOf(adText) }
-
-    Column(modifier = Modifier.padding(start = 4.dp)) {
-        LabeledField("编号代码", docCodeText, { if (it.length <= InputLimits.CODE) docCodeText = it })
-        Spacer(Modifier.height(6.dp))
-        LabeledField("标题后缀", titleSuffixText, { if (it.length <= InputLimits.CODE) titleSuffixText = it })
-        Spacer(Modifier.height(6.dp))
-        LabeledField("广告文案", adTextText, { if (it.length <= InputLimits.AD) adTextText = it })
-        Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onCancel) { Text("取消") }
-            TextButton(onClick = {
-                onSave(docCodeText.trim(), titleSuffixText.trim(), adTextText.trim())
-            }) { Text("保存") }
         }
     }
 }
@@ -801,7 +696,13 @@ private fun ItemRowEditor(
             RowField("名称", row.name, { if (it.length <= InputLimits.NAME) onUpdate(row.copy(name = it)) }, Modifier.width(130.dp))
             RowField("规格", row.spec, { if (it.length <= InputLimits.SPEC) onUpdate(row.copy(spec = it)) }, Modifier.width(100.dp))
             RowField("单位", row.unit, { if (it.length <= InputLimits.UNIT) onUpdate(row.copy(unit = it)) }, Modifier.width(70.dp))
-            RowField("数量", row.qtyText, { onUpdate(row.copy(qtyText = it)) }, Modifier.width(80.dp), KeyboardType.Decimal)
+            RowField(
+                "数量",
+                row.qtyText,
+                { value -> onUpdate(row.copy(qtyText = value.filter(Char::isDigit))) },
+                Modifier.width(80.dp),
+                KeyboardType.Number,
+            )
             RowField("单价", row.priceText, { onUpdate(row.copy(priceText = it)) }, Modifier.width(90.dp), KeyboardType.Decimal)
             RowField("包装", row.pack, { if (it.length <= InputLimits.PACK) onUpdate(row.copy(pack = it)) }, Modifier.width(100.dp))
             RowField("备注", row.note, { if (it.length <= InputLimits.REMARK) onUpdate(row.copy(note = it)) }, Modifier.width(100.dp))
@@ -841,37 +742,22 @@ private fun RowField(
 
 @Composable
 private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
-    var expanded by remember { mutableStateOf(true) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = if (expanded) "单据预览（点击折叠）" else "单据预览（点击展开）",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
+            Text(
+                text = "单据预览",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(10.dp))
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = "单据预览",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("editor_preview"),
                 )
-                Icon(
-                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                )
-            }
-            if (expanded) {
-                Spacer(Modifier.height(10.dp))
-                bitmap?.let {
-                    Image(
-                        bitmap = it.asImageBitmap(),
-                        contentDescription = "单据预览",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("editor_preview"),
-                    )
-                }
             }
         }
     }
