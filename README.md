@@ -1,5 +1,7 @@
 # 快贝智单（QuickBillMate）
 
+<p align="center"><img src="docs/logo.png" width="96" alt="快贝智单 Logo"></p>
+
 快贝智单是一款面向小微商户和建材/日杂销售场景的 **Android 销售清单生成器**。在手机上填写客户与单据信息、勾选商品，即可实时预览销售清单，并一键导出为高清 PNG 图片——保存到相册或直接分享给微信、QQ 等。
 
 ## 核心功能
@@ -12,6 +14,16 @@
 - **客户库**：增删改查、收藏、多电话支持、通讯录导入、拼音排序、按字母索引。
 - **本地崩溃日志**：崩溃信息记录在应用私有目录，设置页可查看 / 复制 / 清除；不联网、无第三方 SDK。
 - **更多**：长按多选与分组全选、单据详情多电话逐个拨打、深色 / 浅色主题。
+
+## 截图预览
+
+| 单据列表 | 单据编辑（实时预览） | 单据详情 |
+| :-: | :-: | :-: |
+| ![单据列表](docs/screenshots/home.png) | ![单据编辑](docs/screenshots/editor.png) | ![单据详情](docs/screenshots/detail.png) |
+
+| 商品库 | 设置 |
+| :-: | :-: |
+| ![商品库](docs/screenshots/products.png) | ![设置](docs/screenshots/settings.png) |
 
 ## 技术栈
 
