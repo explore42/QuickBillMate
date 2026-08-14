@@ -1,6 +1,9 @@
 import java.io.FileInputStream
 import java.util.Properties
 
+// 正式产物命名：QuickBillMate-v<versionName>-<buildType>.apk（如 QuickBillMate-v1.0.0-release.apk）
+val appVersionName = "1.0.0"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -42,7 +45,7 @@ android {
         // - versionName 遵循 MAJOR.MINOR.PATCH，首个正式版 1.0.0
         // - MAJOR=破坏性变更 / MINOR=新增功能 / PATCH=修复；预发布用 -beta.N 后缀
         // - 每次对外发布 versionCode 严格 +1，且不回退
-        versionName = "1.0.0"
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -80,6 +83,14 @@ android {
     sourceSets {
         getByName("androidTest") {
             assets.directories.add("$projectDir/schemas")
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("QuickBillMate-v$appVersionName-${variant.buildType}.apk")
         }
     }
 }
