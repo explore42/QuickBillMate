@@ -372,7 +372,7 @@ QuickBillMate（MainActivity）
 
 ## 5. 数据模型（Room）
 
-数据库 `quickbillmate.db`，当前版本 1；仅首次安装由 Room 自动建表，不提供升级路径（项目未发布，结构变更通过卸载重装解决）。
+数据库 `quickbillmate.db`，当前版本 1（首个正式版基线）。启用 Room 迁移机制：`exportSchema=true`，schema JSON 提交于 `app/schemas/`；发布后任何结构变更必须新增 `Migration(n, n+1)` 并在 `Migrations.ALL` 注册、同步递增 `@Database version`，新增列须在迁移 SQL 中提供默认值；不启用 `fallbackToDestructiveMigration`（避免发布后静默丢数据）。开发期结构变更仍可通过卸载重装处理，但首个正式版发布后一律走迁移。
 
 ### 5.1 实体关系
 
@@ -806,6 +806,7 @@ app/src/main/java/com/example/quickbillmate/
 - 通讯录导入合并（同名不同号/同名同号）（`ContactImportMergeTest`）。
 - 电话规范化与拼音入库持久化（`PhonePersistenceTest`、`PinyinPersistenceTest`）。
 - 崩溃日志 UI：设置页可见记录、弹窗展示、清除后空态（`CrashLogUiTest`）。
+- Room 迁移：按导出的 v1 schema 建库、插入数据、迁移到最新版本后校验 schema 与数据完整（`MigrationTest`）。
 
 ### 13.3 端到端验收
 
@@ -822,6 +823,7 @@ app/src/main/java/com/example/quickbillmate/
 
 - v1.0 已实现并覆盖本文档全部章节；本文档由实际代码反向校对，作为实现基线。
 - 数据库仅首次安装自动建表（version=1），不提供迁移脚本；结构变更需卸载重装，正式发布前需冻结 schema 或补充迁移。
+- 数据库启用 Room 迁移机制：v1 为首个正式版基线，schema JSON 随仓库维护于 `app/schemas/`；发布后结构变更必须写 `Migration` 并递增版本，配套 `MigrationTest` 校验数据完整；不启用 destructive 兜底。
 - 原前端 DEMO 参考文件与参考图不随仓库分发；商品 JSON 模板随仓库维护于 `docs/products_template.json`。
 - 崩溃监控采用本地日志方案（不联网、无第三方 SDK、无 INTERNET 权限）；性能监控（启动耗时/卡顿率/APM）暂未接入，后续按需评估。
 

@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [Bill::class, BillItem::class, Product::class, Customer::class, StylePreset::class],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun billDao(): BillDao
@@ -28,8 +28,12 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "quickbillmate.db",
                 )
-                    // 未发布版本：仅首次安装由 Room 自动建表，不提供升级路径；
-                    // 结构变更需卸载重装或清除应用数据。
+                    // 数据库升级规范：
+                    // - v1 为首个正式版基线（当前未发布），schema JSON 提交于 app/schemas/
+                    // - 发布后任何结构变更必须新增 Migration(n, n+1) 并在 Migrations.ALL 注册，
+                    //   同时递增 @Database version，禁止直接改实体不升版本
+                    // - 不启用 fallbackToDestructiveMigration，避免发布后静默丢数据
+                    .addMigrations(*Migrations.ALL)
                     .build()
                     .also { instance = it }
             }

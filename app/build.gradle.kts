@@ -75,6 +75,19 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // 迁移测试需要读取导出的 schema JSON（app/schemas）
+    sourceSets {
+        getByName("androidTest") {
+            assets.directories.add("$projectDir/schemas")
+        }
+    }
+}
+
+ksp {
+    // Room schema 导出目录：首次构建生成 app/schemas/.../1.json 并提交入库，
+    // 供编写 Migration 与 MigrationTestHelper 校验使用。
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -99,6 +112,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
