@@ -204,6 +204,29 @@ class ProductsViewModel(
         }
     }
 
+    /** 从剪贴板文本导入商品：空文本或格式错误均复用“导入失败”弹窗。 */
+    fun importFromClipboard(text: String) {
+        viewModelScope.launch {
+            importing = true
+            importResult = null
+            importError = null
+            if (text.isBlank()) {
+                importError = "剪贴板为空或不是文本"
+                importing = false
+                return@launch
+            }
+            try {
+                importResult = withContext(Dispatchers.IO) {
+                    repo.importProductsFromText(text)
+                }
+            } catch (e: ProductJsonException) {
+                importError = e.message
+            } finally {
+                importing = false
+            }
+        }
+    }
+
     fun exportProducts() {
         viewModelScope.launch {
             exporting = true

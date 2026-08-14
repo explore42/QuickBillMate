@@ -1,6 +1,7 @@
 package com.example.quickbillmate.render
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +29,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +76,8 @@ data class RenderInvoice(
     val showContactPhone: Boolean = false,
     val watermarkText: String = "",
     val showWatermark: Boolean = true,
+    /** 全局微信二维码（设置页上传并裁剪后的方形位图）；null 表示单据不显示二维码。 */
+    val qrBitmap: Bitmap? = null,
     val items: List<RenderItem> = emptyList(),
 ) {
     fun total(): Double = items.sumOf { it.amount() }
@@ -101,6 +107,10 @@ internal val DEFAULT_COLUMNS: List<ColumnSpec> = listOf(
 
 internal val DEFAULT_ORDER: List<Int> = DEFAULT_COLUMNS.map { it.id }
 internal val DEFAULT_WEIGHTS: List<Float> = DEFAULT_COLUMNS.map { it.defaultWeight }
+
+/** 单据左上角二维码边长与标题预留间距。 */
+private val QR_SIZE_DP = 96.dp
+private val QR_GAP_DP = 16.dp
 
 /** 根据样式预设解析生效的列定义；配置非法时回退默认。 */
 internal fun effectiveColumns(params: StyleParams): List<ColumnSpec> {
@@ -143,29 +153,50 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
             if (invoice.companyName.isNotBlank()) append(invoice.companyName)
             append(invoice.titleSuffix)
         }
-        if (titleText.isNotBlank()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = titleText,
-                        fontSize = params.titleFontSizeSp.sp,
-                        fontWeight = if (params.titleBold) FontWeight.Bold else FontWeight.Normal,
-                        letterSpacing = params.titleLetterSpacing.sp,
-                        color = Color.Black,
-                        fontFamily = fontFamily,
-                        maxLines = 1,
+        if (titleText.isNotBlank() || invoice.qrBitmap != null) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // 左上角微信二维码：仅占左侧区域，标题左右对称留白避免重叠；无二维码时布局与现状一致。
+                invoice.qrBitmap?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .size(QR_SIZE_DP)
+                            .background(Color.White),
                     )
-                    if (params.titleUnderline) {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 7.dp)
-                                .height(1.6.dp)
-                                .fillMaxWidth()
-                                .background(parseColor(params.titleUnderlineColor)),
-                        )
+                }
+                if (titleText.isNotBlank()) {
+                    val qrPad = if (invoice.qrBitmap != null) {
+                        Modifier.padding(start = QR_SIZE_DP + QR_GAP_DP, end = QR_SIZE_DP + QR_GAP_DP)
+                    } else {
+                        Modifier
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxWidth().then(qrPad),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = titleText,
+                                fontSize = params.titleFontSizeSp.sp,
+                                fontWeight = if (params.titleBold) FontWeight.Bold else FontWeight.Normal,
+                                letterSpacing = params.titleLetterSpacing.sp,
+                                color = Color.Black,
+                                fontFamily = fontFamily,
+                                maxLines = 1,
+                            )
+                            if (params.titleUnderline) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 7.dp)
+                                        .height(1.6.dp)
+                                        .fillMaxWidth()
+                                        .background(parseColor(params.titleUnderlineColor)),
+                                )
+                            }
+                        }
                     }
                 }
             }

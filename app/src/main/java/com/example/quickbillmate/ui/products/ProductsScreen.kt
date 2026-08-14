@@ -232,6 +232,19 @@ fun ProductsScreen(
                                 showImportDialog = true
                             },
                         )
+                        DropdownMenuItem(
+                            text = { Text("从剪贴板导入") },
+                            onClick = {
+                                showMenu = false
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val text = cm.primaryClip
+                                    ?.getItemAt(0)
+                                    ?.coerceToText(context)
+                                    ?.toString()
+                                    ?.trim()
+                                viewModel.importFromClipboard(text.orEmpty())
+                            },
+                        )
                     }
                 },
             )

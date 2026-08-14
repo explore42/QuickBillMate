@@ -55,8 +55,9 @@ class BillViewViewModel(
                 items = items,
                 presets = presets,
             )
+            val qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
             val id = InvoiceRenderBus.enqueue(
-                repo.buildRenderInvoice(bill, items),
+                repo.buildRenderInvoice(bill, items, qrBitmap),
                 StylePresets.resolve(bill.presetKey, presets),
             )
             val preview = InvoiceRenderBus.await(id)

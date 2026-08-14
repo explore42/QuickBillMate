@@ -1,6 +1,8 @@
 package com.example.quickbillmate.ui.settings
 
 import android.app.Application
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,10 +10,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.QrImageStore
 import com.example.quickbillmate.ui.common.DefaultInfoValues
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(
     private val app: Application,
@@ -50,6 +56,10 @@ class SettingsViewModel(
         private set
     var defaultShowContactPhone by mutableStateOf(repo.settings.defaultShowContactPhone)
         private set
+    var qrBitmap by mutableStateOf<Bitmap?>(null)
+        private set
+    var pendingCrop by mutableStateOf<Bitmap?>(null)
+        private set
     var versionName by mutableStateOf("")
 
     val presets: StateFlow<List<StylePreset>> = repo.observePresets()
@@ -59,6 +69,9 @@ class SettingsViewModel(
         versionName = runCatching {
             app.packageManager.getPackageInfo(app.packageName, 0).versionName ?: ""
         }.getOrElse { "" }
+        viewModelScope.launch {
+            qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
+        }
     }
 
     fun updateThemeMode(mode: String) {
@@ -102,5 +115,34 @@ class SettingsViewModel(
         s.defaultAdText = values.adText
         s.defaultWatermarkText = values.watermarkText
         s.defaultShowWatermark = values.showWatermark
+    }
+
+    /** 图片选择器返回后：后台采样解码，成功后打开裁剪对话框。 */
+    fun onQrImagePicked(uri: Uri) {
+        viewModelScope.launch {
+            pendingCrop = withContext(Dispatchers.IO) {
+                QrImageStore.decodeSampled(app, uri)
+            }
+        }
+    }
+
+    /** 裁剪保存：写入内部存储并刷新设置页预览。 */
+    fun saveQrImage(bitmap: Bitmap) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { repo.qrImages.save(bitmap) }
+            qrBitmap = bitmap
+            pendingCrop = null
+        }
+    }
+
+    fun removeQrImage() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { repo.qrImages.clear() }
+            qrBitmap = null
+        }
+    }
+
+    fun consumeCrop() {
+        pendingCrop = null
     }
 }

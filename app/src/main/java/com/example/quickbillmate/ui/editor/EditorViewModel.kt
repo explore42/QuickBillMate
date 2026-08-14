@@ -512,8 +512,9 @@ class EditorViewModel(
             delay(300)
             val s = state
             if (!s.loaded) return@launch
+            val qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
             val id = InvoiceRenderBus.enqueue(
-                s.toRenderInvoice(),
+                s.toRenderInvoice().copy(qrBitmap = qrBitmap),
                 StylePresets.resolve(s.presetKey, s.presets),
             )
             val bitmap = InvoiceRenderBus.await(id)

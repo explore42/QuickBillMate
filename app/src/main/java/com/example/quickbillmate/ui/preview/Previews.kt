@@ -140,10 +140,16 @@ fun SettingsContentPreview() {
             defaultAdText = "",
             versionName = "1.0",
             presets = emptyList(),
+            qrBitmap = null,
+            pendingCropBitmap = null,
             onThemeModeChange = {},
             onPresetChange = {},
             onDefaultsSave = {},
             onManagePresets = {},
+            onPickQrImage = {},
+            onRemoveQrImage = {},
+            onCropSave = {},
+            onCropCancel = {},
             onOpenUrl = {},
         )
     }

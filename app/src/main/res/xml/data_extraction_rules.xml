@@ -3,9 +3,11 @@
     <cloud-backup>
         <include domain="database" path="."/>
         <include domain="sharedpref" path="."/>
+        <include domain="file" path="qr_code.png"/>
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="."/>
         <include domain="sharedpref" path="."/>
+        <include domain="file" path="qr_code.png"/>
     </device-transfer>
 </data-extraction-rules>

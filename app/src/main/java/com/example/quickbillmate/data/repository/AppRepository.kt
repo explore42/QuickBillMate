@@ -55,6 +55,7 @@ internal fun Product.withPinyin(): Product =
 class AppRepository(
     private val database: AppDatabase,
     val settings: SettingsStore,
+    val qrImages: QrImageStore,
 ) {
     private val billDao = database.billDao()
     private val itemDao = database.billItemDao()
@@ -293,6 +294,11 @@ class AppRepository(
 
     suspend fun importProductsFromUri(context: Context, uri: Uri): ProductImportResult {
         val text = readText(context, uri)
+        return importProductsFromText(text)
+    }
+
+    /** 从 JSON 文本导入商品（文件与剪贴板共用入口）。 */
+    suspend fun importProductsFromText(text: String): ProductImportResult {
         val existing = productDao.getAll()
         val result = ProductJsonCodec.parse(text, existing)
         if (result.imported.isNotEmpty()) {
@@ -362,7 +368,14 @@ class AppRepository(
 
     // ---------- 图片导出 / 分享 ----------
 
-    fun buildRenderInvoice(bill: Bill, items: List<BillItem>): RenderInvoice = RenderInvoice(
+    /** 读取已保存的全局微信二维码位图（无则返回 null）。 */
+    fun loadQrBitmap(): Bitmap? = qrImages.load()
+
+    fun buildRenderInvoice(
+        bill: Bill,
+        items: List<BillItem>,
+        qrBitmap: Bitmap? = null,
+    ): RenderInvoice = RenderInvoice(
         customerName = bill.customerName,
         customerPhone = PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones),
         companyName = bill.companyName,
@@ -381,6 +394,7 @@ class AppRepository(
         showWatermark = bill.showWatermark,
         watermarkText = bill.watermarkText,
         showContactPhone = bill.showContactPhone,
+        qrBitmap = qrBitmap,
         items = items.map {
             RenderItem(
                 name = it.name,

@@ -194,9 +194,10 @@ class HomeViewModel(
         viewModelScope.launch {
             val bills = ids.mapNotNull { id -> repo.getBill(id)?.let { it to repo.getItems(id) } }
             val presets = repo.getPresets()
+            val qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
             val rendered = bills.mapNotNull { (bill, items) ->
                 val id = InvoiceRenderBus.enqueue(
-                    repo.buildRenderInvoice(bill, items),
+                    repo.buildRenderInvoice(bill, items, qrBitmap),
                     StylePresets.resolve(bill.presetKey, presets),
                 )
                 val bitmap = InvoiceRenderBus.await(id) ?: return@mapNotNull null

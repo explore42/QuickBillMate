@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.quickbillmate.data.db.AppDatabase
 import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.QrImageStore
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.importexport.ContactsImporter
 import kotlinx.coroutines.runBlocking
@@ -28,7 +29,7 @@ class PhonePersistenceTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = AppRepository(db, SettingsStore(context))
+        repo = AppRepository(db, SettingsStore(context), QrImageStore(context))
     }
 
     @After

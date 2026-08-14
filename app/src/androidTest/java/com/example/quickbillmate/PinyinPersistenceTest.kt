@@ -9,6 +9,7 @@ import com.example.quickbillmate.data.db.AppDatabase
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.QrImageStore
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.importexport.ContactsImporter
 import kotlinx.coroutines.runBlocking
@@ -32,7 +33,7 @@ class PinyinPersistenceTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repo = AppRepository(db, SettingsStore(context))
+        repo = AppRepository(db, SettingsStore(context), QrImageStore(context))
     }
 
     @After
