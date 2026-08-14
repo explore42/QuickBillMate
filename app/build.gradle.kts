@@ -38,7 +38,11 @@ android {
         minSdk = 29
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        // 版本规范（语义化版本）：
+        // - versionName 遵循 MAJOR.MINOR.PATCH，首个正式版 1.0.0
+        // - MAJOR=破坏性变更 / MINOR=新增功能 / PATCH=修复；预发布用 -beta.N 后缀
+        // - 每次对外发布 versionCode 严格 +1，且不回退
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -1,6 +1,9 @@
 package com.example.quickbillmate.ui.settings
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.runtime.getValue
@@ -12,6 +15,8 @@ import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
 import com.example.quickbillmate.data.repository.QrImageStore
 import com.example.quickbillmate.ui.common.DefaultInfoValues
+import com.example.quickbillmate.util.CrashRecord
+import com.example.quickbillmate.util.LocalCrashLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +65,8 @@ class SettingsViewModel(
         private set
     var pendingCrop by mutableStateOf<Bitmap?>(null)
         private set
+    var crashLogs by mutableStateOf<List<CrashRecord>>(emptyList())
+        private set
     var versionName by mutableStateOf("")
 
     val presets: StateFlow<List<StylePreset>> = repo.observePresets()
@@ -71,6 +78,9 @@ class SettingsViewModel(
         }.getOrElse { "" }
         viewModelScope.launch {
             qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
+        }
+        viewModelScope.launch {
+            crashLogs = withContext(Dispatchers.Default) { LocalCrashLogger.listLogs(app) }
         }
     }
 
@@ -144,5 +154,31 @@ class SettingsViewModel(
 
     fun consumeCrop() {
         pendingCrop = null
+    }
+
+    /** 刷新本地崩溃日志列表（打开设置页时调用）。 */
+    fun refreshCrashLogs() {
+        viewModelScope.launch {
+            crashLogs = withContext(Dispatchers.Default) { LocalCrashLogger.listLogs(app) }
+        }
+    }
+
+    /** 清除全部本地崩溃日志。 */
+    fun clearCrashLogs() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { LocalCrashLogger.clearLogs(app) }
+            crashLogs = emptyList()
+        }
+    }
+
+    /** 复制全部崩溃日志文本到剪贴板。 */
+    fun copyCrashLogs() {
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) { LocalCrashLogger.fullText(app) }
+            if (text.isBlank()) return@launch
+            val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("崩溃日志", text))
+            android.widget.Toast.makeText(app, "已复制崩溃日志", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 }

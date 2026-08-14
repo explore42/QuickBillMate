@@ -142,6 +142,7 @@ fun SettingsContentPreview() {
             presets = emptyList(),
             qrBitmap = null,
             pendingCropBitmap = null,
+            crashLogs = emptyList(),
             onThemeModeChange = {},
             onPresetChange = {},
             onDefaultsSave = {},
@@ -150,6 +151,8 @@ fun SettingsContentPreview() {
             onRemoveQrImage = {},
             onCropSave = {},
             onCropCancel = {},
+            onClearCrashLogs = {},
+            onCopyCrashLogs = {},
             onOpenUrl = {},
         )
     }

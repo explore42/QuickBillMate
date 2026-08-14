@@ -49,7 +49,7 @@ v1.0 全部功能均已实现，按模块划分如下：
 | 图片样式 | 4 套内置预设 + 自定义预设；参数化配置列顺序/列宽/字体/颜色等；缩略预览                  |
 | 商品库   | 增删改查、收藏、拼音分组索引、搜索、JSON 批量导入/导出（文件/剪贴板）、导入模板说明     |
 | 客户库   | 增删改查、收藏、多电话、拼音分组索引、搜索、通讯录导入、客户 JSON 导出                 |
-| 设置     | 深色/浅色/跟随系统、默认单据信息（含微信二维码上传/裁剪）、默认图片样式、关于           |
+| 设置     | 深色/浅色/跟随系统、默认单据信息（含微信二维码上传/裁剪）、默认图片样式、本地崩溃日志、关于 |
 | 其他     | 长按多选与分组全选、快速索引栏、通讯录授权引导、删除二次确认                             |
 
 ---
@@ -80,7 +80,7 @@ QuickBillMate（MainActivity）
 | 单据         | 单据列表、新建、收藏/月份分组、搜索、多选操作         | 底部导航第 1 项                   |
 | 商品         | 商品库管理、JSON 导入/导出                            | 底部导航第 2 项                   |
 | 客户         | 客户库管理、通讯录导入、客户 JSON 导出                | 底部导航第 3 项                   |
-| 设置         | 主题、默认单据信息（含微信二维码）、默认图片样式、关于 | 底部导航第 4 项                   |
+| 设置         | 主题、默认单据信息（含微信二维码）、默认图片样式、本地崩溃日志、关于 | 底部导航第 4 项                   |
 | 单据编辑     | 填写并实时预览清单、保存/不保存                       | 单据页 FAB 或详情页【修改】       |
 | 单据详情     | 查看大图、导出/分享、电话拨号                         | 点击单据卡片                      |
 | 图片样式管理 | 查看/复制/编辑/删除自定义预设、缩略预览               | 编辑页样式弹窗【管理】或设置页入口 |
@@ -357,6 +357,7 @@ QuickBillMate（MainActivity）
 | 默认图片样式 | 内置 + 自定义预设列表，可进入样式管理页     | 经典单据（简洁） |
 | 默认信息     | 标题后缀、编号代码、公司名称、客户经理、联系电话、备注、广告文案、水印文案及对应显示开关 | 标题后缀“单据”、编号代码“PH”等 |
 | 微信二维码   | 上传收款码图片 → 方形裁剪 → 全局显示；可移除 | 未设置           |
+| 崩溃日志     | 查看/复制/清除本地崩溃记录（无联网）          | 无               |
 | 关于         | 版本号、开源协议（Apache License 2.0）、GitHub 地址 | —          |
 
 **说明**：
@@ -365,6 +366,7 @@ QuickBillMate（MainActivity）
 - 设置页为无缝列表：行间用分割线分隔，无卡片背景/圆角/阴影；深色模式行使用 Material 月亮图标。
 - “默认信息”用于新建单据时带入：`titleSuffix=单据`、`docCode=PH`、公司/经理/电话为空、显示经理/备注/联系电话开、多电话/广告/水印关。
 - “默认信息”弹窗底部可上传微信收款码：选图后进入全屏方形裁剪页（拖动 + 双指缩放 1–4 倍，初始定位图片顶部，适配 1094×1625 收款码），保存后写入内部存储 `filesDir/qr_code.png`，所有单据（含历史单据）左上角显示；未上传不显示，可随时移除。
+- “崩溃日志”展示本地记录（时间 + 异常摘要），支持复制全部与二次确认后清除；无记录时显示“暂无崩溃记录”。
 
 ---
 
@@ -747,7 +749,19 @@ app/src/main/java/com/example/quickbillmate/
 
 - `READ_CONTACTS`：通讯录导入/编辑页联想时运行时申请。
 - `FileProvider`：authority `com.example.quickbillmate.fileprovider`，路径指向缓存 `shared` 目录。
-- 无需 INTERNET 权限。
+- 无需 INTERNET 权限（应用不联网，崩溃日志仅本地记录）。
+
+### 11.6 本地崩溃日志（无联网）
+
+- 机制：`QuickBillMateApp.onCreate` 调用 `LocalCrashLogger.init`，注册 `Thread.setDefaultUncaughtExceptionHandler`；崩溃时先写日志，再链式调用原处理器，保持系统默认崩溃行为。全程无网络请求。
+- 文件位置：应用私有目录 `filesDir/crash_logs/crash_yyyyMMdd_HHmmss.txt`；内容仅含时间、应用版本（versionName/versionCode）、设备型号/厂商、Android 版本、线程名与异常堆栈，**不含客户/单据/商品等业务数据**。
+- 保留策略：最多 10 个文件且总大小 ≤1MB，写入时裁剪最旧文件；写日志自身失败静默忽略（避免处理器内二次崩溃）。
+- 查看入口：设置页【崩溃日志】弹窗（时间 + 异常摘要），支持【复制全部】与二次确认【清除】；崩溃日志不随系统备份。
+
+### 11.7 版本规范
+
+- `versionName` 遵循语义化版本 `MAJOR.MINOR.PATCH`：MAJOR=破坏性变更、MINOR=新增功能、PATCH=修复；预发布用 `-beta.N` 后缀。首个正式版为 `1.0.0`。
+- `versionCode` 每次对外发布严格 +1 且不回退；设置页“关于”自动读取 packageManager 显示版本号。
 
 ---
 
@@ -782,6 +796,7 @@ app/src/main/java/com/example/quickbillmate/
 - 拼音首字母/全拼/排序（`PinyinFullTest`、`PinyinSortTest`）。
 - 商品 JSON：合法/非法/缺字段/负数价格/重复/空 name 行/2MB 限制（`ProductJsonTest`）。
 - 客户 JSON 导出解析（`CustomerJsonCodecTest`）。
+- 本地崩溃日志：格式化内容、保留策略裁剪、列表排序与摘要解析（`LocalCrashLoggerTest`）。
 - 分组与索引：单据/商品/客户/通讯录分组（`BillGroupTest`、`HomeBillsTest`、`ProductGroupTest`、`CustomerGroupTest`、`ContactGroupTest`、`IndexSectionsTest`）。
 
 ### 13.2 界面 / 仪器测试（`app/src/androidTest`）
@@ -790,6 +805,7 @@ app/src/main/java/com/example/quickbillmate/
 - 客户功能 UI（增删改、电话、类型等）（`CustomerFeaturesUiTest`）。
 - 通讯录导入合并（同名不同号/同名同号）（`ContactImportMergeTest`）。
 - 电话规范化与拼音入库持久化（`PhonePersistenceTest`、`PinyinPersistenceTest`）。
+- 崩溃日志 UI：设置页可见记录、弹窗展示、清除后空态（`CrashLogUiTest`）。
 
 ### 13.3 端到端验收
 
@@ -807,6 +823,7 @@ app/src/main/java/com/example/quickbillmate/
 - v1.0 已实现并覆盖本文档全部章节；本文档由实际代码反向校对，作为实现基线。
 - 数据库仅首次安装自动建表（version=1），不提供迁移脚本；结构变更需卸载重装，正式发布前需冻结 schema 或补充迁移。
 - 原前端 DEMO 参考文件与参考图不随仓库分发；商品 JSON 模板随仓库维护于 `docs/products_template.json`。
+- 崩溃监控采用本地日志方案（不联网、无第三方 SDK、无 INTERNET 权限）；性能监控（启动耗时/卡顿率/APM）暂未接入，后续按需评估。
 
 ---
 

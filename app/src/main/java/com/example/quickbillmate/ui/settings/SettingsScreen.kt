@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
@@ -57,9 +58,14 @@ import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.editor.presetDisplayName
+import com.example.quickbillmate.util.CrashRecord
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val PROJECT_URL = "https://github.com/explore42/QuickBillMate"
 
@@ -98,6 +104,7 @@ fun SettingsScreen(
         presets = presets,
         qrBitmap = viewModel.qrBitmap,
         pendingCropBitmap = viewModel.pendingCrop,
+        crashLogs = viewModel.crashLogs,
         onThemeModeChange = { mode ->
             viewModel.updateThemeMode(mode)
             onThemeModeChange(mode)
@@ -109,6 +116,8 @@ fun SettingsScreen(
         onRemoveQrImage = viewModel::removeQrImage,
         onCropSave = viewModel::saveQrImage,
         onCropCancel = viewModel::consumeCrop,
+        onClearCrashLogs = viewModel::clearCrashLogs,
+        onCopyCrashLogs = viewModel::copyCrashLogs,
         onOpenUrl = { url ->
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },
@@ -138,6 +147,7 @@ fun SettingsContent(
     presets: List<StylePreset>,
     qrBitmap: Bitmap?,
     pendingCropBitmap: Bitmap?,
+    crashLogs: List<CrashRecord>,
     onThemeModeChange: (String) -> Unit,
     onPresetChange: (String) -> Unit,
     onDefaultsSave: (DefaultInfoValues) -> Unit,
@@ -146,11 +156,15 @@ fun SettingsContent(
     onRemoveQrImage: () -> Unit,
     onCropSave: (Bitmap) -> Unit,
     onCropCancel: () -> Unit,
+    onClearCrashLogs: () -> Unit,
+    onCopyCrashLogs: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
     var showThemeMenu by remember { mutableStateOf(false) }
     var showPresetPanel by remember { mutableStateOf(false) }
     var showDefaultsDialog by remember { mutableStateOf(false) }
+    var showCrashLogsDialog by remember { mutableStateOf(false) }
+    var showClearCrashConfirm by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
     val themeLabel = when (themeMode) {
@@ -255,6 +269,15 @@ fun SettingsContent(
             )
             HorizontalDivider()
 
+            // 崩溃日志（本地，无联网）
+            SettingRow(
+                icon = { Icon(Icons.Filled.BugReport, contentDescription = null) },
+                title = "崩溃日志",
+                subtitle = if (crashLogs.isEmpty()) "无" else "最近 ${crashLogs.size} 条",
+                onClick = { showCrashLogsDialog = true },
+            )
+            HorizontalDivider()
+
             // 关于
             SettingRow(
                 icon = { Icon(Icons.Default.Info, contentDescription = null) },
@@ -326,6 +349,61 @@ fun SettingsContent(
         )
     }
 
+    if (showCrashLogsDialog) {
+        AlertDialog(
+            onDismissRequest = { showCrashLogsDialog = false },
+            title = { Text("崩溃日志") },
+            text = {
+                if (crashLogs.isEmpty()) {
+                    Text("暂无崩溃记录")
+                } else {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        crashLogs.forEachIndexed { index, record ->
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Text(
+                                    record.timeMillis.toCrashTimeText(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(record.summary, style = MaterialTheme.typography.bodySmall)
+                            }
+                            if (index != crashLogs.lastIndex) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                        }
+                        TextButton(
+                            onClick = onCopyCrashLogs,
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text("复制全部")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCrashLogsDialog = false }) { Text("关闭") }
+            },
+            dismissButton = {
+                if (crashLogs.isNotEmpty()) {
+                    TextButton(onClick = { showClearCrashConfirm = true }) { Text("清除") }
+                }
+            },
+        )
+    }
+
+    if (showClearCrashConfirm) {
+        ConfirmDialog(
+            title = "清除崩溃日志",
+            text = "确定清除全部 ${crashLogs.size} 条崩溃日志吗？",
+            confirmText = "确认清除",
+            onConfirm = {
+                onClearCrashLogs()
+                showClearCrashConfirm = false
+            },
+            onDismiss = { showClearCrashConfirm = false },
+        )
+    }
+
     pendingCropBitmap?.let { bitmap ->
         QrCropDialog(
             bitmap = bitmap,
@@ -334,6 +412,10 @@ fun SettingsContent(
         )
     }
 }
+
+/** 毫秒时间戳 → 本地时间文本（崩溃日志弹窗展示）。 */
+private fun Long.toCrashTimeText(): String =
+    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(this))
 
 @Composable
 private fun DefaultInfoDialog(
