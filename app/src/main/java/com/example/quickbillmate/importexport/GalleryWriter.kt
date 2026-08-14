@@ -29,8 +29,14 @@ object GalleryWriter {
             if (ok) {
                 values.clear()
                 values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                context.contentResolver.update(uri, values, null, null)
-                true
+                val updated = context.contentResolver.update(uri, values, null, null)
+                if (updated > 0) {
+                    true
+                } else {
+                    // 提交失败（文件仍处于 Pending）：删除残留，避免不可见文件
+                    context.contentResolver.delete(uri, null, null)
+                    false
+                }
             } else {
                 // 压缩失败（返回 false 不抛异常）：删除残留的空文件
                 context.contentResolver.delete(uri, null, null)
