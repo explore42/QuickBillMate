@@ -33,6 +33,9 @@ abstract class AppDatabase : RoomDatabase() {
                     // - 发布后任何结构变更必须新增 Migration(n, n+1) 并在 Migrations.ALL 注册，
                     //   同时递增 @Database version，禁止直接改实体不升版本
                     // - 不启用 fallbackToDestructiveMigration，避免发布后静默丢数据
+                    // - 使用 TRUNCATE journal（非 WAL）：主库文件始终包含最新数据，
+                    //   保证系统备份/恢复时不会因 -wal 未合并而丢失或损坏数据
+                    .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .addMigrations(*Migrations.ALL)
                     .build()
                     .also { instance = it }

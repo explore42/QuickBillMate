@@ -26,6 +26,7 @@ import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil
 import com.example.quickbillmate.util.Pinyin
+import com.example.quickbillmate.util.shrinkForPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -562,7 +563,8 @@ class EditorViewModel(
             )
             val bitmap = InvoiceRenderBus.await(id)
             if (bitmap != null) {
-                state = state.copy(preview = bitmap)
+                // 预览仅用于屏幕展示：降采样控制常驻内存，导出时另行全分辨率渲染
+                state = state.copy(preview = bitmap.shrinkForPreview())
             }
         }
     }

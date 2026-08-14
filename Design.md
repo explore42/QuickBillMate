@@ -373,7 +373,7 @@ QuickBillMate（MainActivity）
 
 ## 5. 数据模型（Room）
 
-数据库 `quickbillmate.db`，当前版本 1（首个正式版基线）。启用 Room 迁移机制：`exportSchema=true`，schema JSON 提交于 `app/schemas/`；发布后任何结构变更必须新增 `Migration(n, n+1)` 并在 `Migrations.ALL` 注册、同步递增 `@Database version`，新增列须在迁移 SQL 中提供默认值；不启用 `fallbackToDestructiveMigration`（避免发布后静默丢数据）。开发期结构变更仍可通过卸载重装处理，但首个正式版发布后一律走迁移。
+数据库 `quickbillmate.db`，当前版本 1（首个正式版基线）。启用 Room 迁移机制：`exportSchema=true`，schema JSON 提交于 `app/schemas/`；发布后任何结构变更必须新增 `Migration(n, n+1)` 并在 `Migrations.ALL` 注册、同步递增 `@Database version`，新增列须在迁移 SQL 中提供默认值；不启用 `fallbackToDestructiveMigration`（避免发布后静默丢数据）。数据库使用 `TRUNCATE` journal（非 WAL），主库文件始终包含最新数据，保证系统备份/恢复一致。开发期结构变更仍可通过卸载重装处理，但首个正式版发布后一律走迁移。
 
 ### 5.1 实体关系
 
@@ -606,6 +606,7 @@ name 为空的对象跳过；解析供测试/工具使用，客户 JSON 目前�
 - 画布基础宽度 `paperWidthDp`（默认 800dp），实际像素 = dp × 设备密度；高度随内容自然增高，不切页、不缩放。
 - 渲染背景恒白、文字恒黑系，不随 APP 深浅色主题变化。
 - 全局微信二维码：渲染前从内部存储 `filesDir/qr_code.png` 加载（未上传则为空），编辑器预览、单据详情、首页多选批量导出共用同一渲染管线，统一绘制在单据左上角；设置页更换/移除二维码后，下次渲染自动生效。
+- 预览位图降采样存储（显示宽度 ≤1200px）控制常驻内存；导出/分享时按当前单据重新渲染全分辨率位图，版式与预览一致。
 
 ### 9.2 版式（默认“经典单据”）
 
@@ -810,6 +811,7 @@ app/src/main/java/com/example/quickbillmate/
 - 电话规范化与拼音入库持久化（`PhonePersistenceTest`、`PinyinPersistenceTest`）。
 - 崩溃日志 UI：设置页可见记录、弹窗展示、清除后空态（`CrashLogUiTest`）。
 - Room 迁移：按导出的 v1 schema 建库、插入数据、迁移到最新版本后校验 schema 与数据完整（`MigrationTest`）。
+- 相册写入与数据库配置：导出非空 PNG、TRUNCATE journal 模式（`GalleryWriterTest`、`DatabaseConfigTest`）。
 
 ### 13.3 端到端验收
 
@@ -830,7 +832,7 @@ app/src/main/java/com/example/quickbillmate/
 - 原前端 DEMO 参考文件与参考图不随仓库分发；商品 JSON 模板随仓库维护于 `docs/products_template.json`。
 - 崩溃监控采用本地日志方案（不联网、无第三方 SDK、无 INTERNET 权限）；性能监控（启动耗时/卡顿率/APM）暂未接入，后续按需评估。
 - 发布提醒：历史开发版（数据库版本 9 及更早）不提供升级路径，覆盖安装会启动报错；发布前所有测试设备须卸载重装。
-- 已知次要项（暂不处理，仅记录）：编辑页/详情页预览位图单张约 20MB，低端机有内存压力；导出 PNG 压缩失败时可能残留空相册文件。
+- 已知次要项已处理：预览位图降采样（显示 ≤1200px，导出时全分辨率重渲染）；导出 PNG 压缩失败时清理相册残留文件；数据库改用 TRUNCATE journal 保证备份一致。
 
 ---
 

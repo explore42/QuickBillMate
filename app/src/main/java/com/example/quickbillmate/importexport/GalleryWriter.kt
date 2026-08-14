@@ -26,10 +26,16 @@ object GalleryWriter {
             val ok = context.contentResolver.openOutputStream(uri)?.use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             } ?: false
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            context.contentResolver.update(uri, values, null, null)
-            ok
+            if (ok) {
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                context.contentResolver.update(uri, values, null, null)
+                true
+            } else {
+                // 压缩失败（返回 false 不抛异常）：删除残留的空文件
+                context.contentResolver.delete(uri, null, null)
+                false
+            }
         } catch (_: Exception) {
             try {
                 context.contentResolver.delete(uri, null, null)
