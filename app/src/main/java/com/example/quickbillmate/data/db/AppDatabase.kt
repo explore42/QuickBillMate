@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Bill::class, BillItem::class, Product::class, Customer::class, StylePreset::class],
-    version = 9,
+    version = 1,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,8 +28,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "quickbillmate.db",
                 )
-                    // 尚未发布正式版：结构变更直接重建开发库，不使用迁移脚本
-                    .fallbackToDestructiveMigration()
+                    // 未发布版本：仅首次安装由 Room 自动建表，不提供升级路径；
+                    // 结构变更需卸载重装或清除应用数据。
                     .build()
                     .also { instance = it }
             }

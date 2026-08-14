@@ -1,13 +1,7 @@
 package com.example.quickbillmate.ui.view
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,7 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -68,7 +62,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
@@ -92,32 +86,11 @@ fun BillViewScreen(
 
     val s = viewModel.state
     val context = LocalContext.current
-    var storageDenied by remember { mutableStateOf(false) }
     var previewFull by remember { mutableStateOf(false) }
     var showPreviewMenu by remember { mutableStateOf(false) }
 
     fun dial(phone: String) {
-        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-    }
-
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) viewModel.exportToGallery() else storageDenied = true
-    }
-
-    fun doExport() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            ) == PackageManager.PERMISSION_GRANTED
-            if (granted) viewModel.exportToGallery() else {
-                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        } else {
-            viewModel.exportToGallery()
-        }
+        context.startActivity(Intent(Intent.ACTION_DIAL, "tel:$phone".toUri()))
     }
 
     val shareOutcome = s.shareOutcome
@@ -139,7 +112,7 @@ fun BillViewScreen(
                 title = "单据详情",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
 
@@ -160,7 +133,7 @@ fun BillViewScreen(
                     Text("修改")
                 }
                 OutlinedButton(
-                    onClick = { doExport() },
+                    onClick = { viewModel.exportToGallery() },
                     modifier = Modifier.weight(1f),
                     enabled = !s.exporting,
                 ) {
@@ -366,17 +339,6 @@ fun BillViewScreen(
                 onShare = viewModel::shareNow,
             )
         }
-    }
-
-    if (storageDenied) {
-        AlertDialog(
-            onDismissRequest = { storageDenied = false },
-            title = { Text("需要存储权限") },
-            text = { Text("保存图片到相册需要存储权限，请到系统设置中授权后重试。") },
-            confirmButton = {
-                TextButton(onClick = { storageDenied = false }) { Text("知道了") }
-            },
-        )
     }
 
     s.exportOutcome?.let { outcome ->

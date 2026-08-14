@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
@@ -53,6 +53,7 @@ import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.render.DEFAULT_COLUMNS
 import com.example.quickbillmate.render.DEFAULT_ORDER
 import com.example.quickbillmate.render.DEFAULT_WEIGHTS
+import java.util.Locale
 
 @Composable
 fun PresetEditorScreen(
@@ -71,7 +72,7 @@ fun PresetEditorScreen(
                 title = if (presetId == 0L) "新建图片样式" else "编辑图片样式",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
             )
@@ -175,7 +176,7 @@ fun PresetEditorScreen(
                                 modifier = Modifier.weight(1f),
                             )
                             Text(
-                                String.format("%.1f", weights[index]),
+                                String.format(Locale.US, "%.1f", weights[index]),
                                 modifier = Modifier.width(40.dp),
                                 textAlign = TextAlign.End,
                             )

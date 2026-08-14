@@ -17,7 +17,7 @@
 - Room（SQLite）数据存储
 - Navigation Compose
 - kotlinx.serialization、Coroutines
-- minSdk 24 / targetSdk 37
+- minSdk 29 / targetSdk 37
 
 ## 构建与运行
 
@@ -29,6 +29,16 @@
 ```
 
 安装包名：`com.example.quickbillmate`
+
+## 发布构建
+
+发布签名通过仓库根目录的 `keystore.properties` 提供（已被 `.gitignore` 忽略，不会提交）。复制 [keystore.properties.example](keystore.properties.example) 为 `keystore.properties` 并填入真实密钥后执行：
+
+```bash
+./gradlew assembleRelease   # 构建已签名的 release APK（开启 R8 最小化）
+```
+
+未配置 `keystore.properties` 时，`assembleRelease` 会回退使用 debug 签名并打印警告，仅用于开发验证；正式发布前请配置真实密钥。
 
 ## 相关文档
 

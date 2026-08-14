@@ -1,6 +1,7 @@
 package com.example.quickbillmate.data.repository
 
 import android.content.Context
+import androidx.core.content.edit
 
 /** 应用偏好：主题、默认公司信息、默认预设。 */
 class SettingsStore(context: Context) {
@@ -8,67 +9,67 @@ class SettingsStore(context: Context) {
 
     var themeMode: String
         get() = prefs.getString(KEY_THEME, THEME_SYSTEM) ?: THEME_SYSTEM
-        set(value) = prefs.edit().putString(KEY_THEME, value).apply()
+        set(value) = prefs.edit { putString(KEY_THEME, value) }
 
     var defaultCompany: String
         get() = prefs.getString(KEY_COMPANY, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_COMPANY, value).apply()
+        set(value) = prefs.edit { putString(KEY_COMPANY, value) }
 
     var defaultPhone: String
         get() = prefs.getString(KEY_PHONE, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_PHONE, value).apply()
+        set(value) = prefs.edit { putString(KEY_PHONE, value) }
 
     var defaultManager: String
         get() = prefs.getString(KEY_MANAGER, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_MANAGER, value).apply()
+        set(value) = prefs.edit { putString(KEY_MANAGER, value) }
 
     var defaultPresetKey: String
         get() = prefs.getString(KEY_PRESET, "classic_plain") ?: "classic_plain"
-        set(value) = prefs.edit().putString(KEY_PRESET, value).apply()
+        set(value) = prefs.edit { putString(KEY_PRESET, value) }
 
     var defaultShowManager: Boolean
         get() = prefs.getBoolean(KEY_SHOW_MANAGER, true)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_MANAGER, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_MANAGER, value) }
 
     var defaultShowRemark: Boolean
         get() = prefs.getBoolean(KEY_SHOW_REMARK, true)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_REMARK, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_REMARK, value) }
 
     var defaultShowWatermark: Boolean
         get() = prefs.getBoolean(KEY_SHOW_WATERMARK, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_WATERMARK, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_WATERMARK, value) }
 
     var defaultShowMultiPhones: Boolean
         get() = prefs.getBoolean(KEY_SHOW_MULTI_PHONES, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_MULTI_PHONES, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_MULTI_PHONES, value) }
 
     var defaultDocCode: String
         get() = prefs.getString(KEY_DOC_CODE, "PH") ?: "PH"
-        set(value) = prefs.edit().putString(KEY_DOC_CODE, value).apply()
+        set(value) = prefs.edit { putString(KEY_DOC_CODE, value) }
 
     var defaultTitleSuffix: String
         get() = prefs.getString(KEY_TITLE_SUFFIX, "单据") ?: "单据"
-        set(value) = prefs.edit().putString(KEY_TITLE_SUFFIX, value).apply()
+        set(value) = prefs.edit { putString(KEY_TITLE_SUFFIX, value) }
 
     var defaultAdText: String
         get() = prefs.getString(KEY_AD_TEXT, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_AD_TEXT, value).apply()
+        set(value) = prefs.edit { putString(KEY_AD_TEXT, value) }
 
     var defaultShowAd: Boolean
         get() = prefs.getBoolean(KEY_SHOW_AD, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_AD, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_AD, value) }
 
     var defaultRemark: String
         get() = prefs.getString(KEY_REMARK, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_REMARK, value).apply()
+        set(value) = prefs.edit { putString(KEY_REMARK, value) }
 
     var defaultWatermarkText: String
         get() = prefs.getString(KEY_WATERMARK_TEXT, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_WATERMARK_TEXT, value).apply()
+        set(value) = prefs.edit { putString(KEY_WATERMARK_TEXT, value) }
 
     var defaultShowContactPhone: Boolean
         get() = prefs.getBoolean(KEY_SHOW_CONTACT_PHONE, true)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_CONTACT_PHONE, value).apply()
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_CONTACT_PHONE, value) }
 
     companion object {
         const val THEME_SYSTEM = "system"

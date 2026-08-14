@@ -14,8 +14,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -86,7 +86,7 @@ fun QuickBillMateAppNavHost(
                     TabItem(Icons.Default.Home, "单据", pagerState.currentPage == 0) {
                         if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
                     }
-                    TabItem(Icons.Default.List, "商品", pagerState.currentPage == 1) {
+                    TabItem(Icons.AutoMirrored.Filled.List, "商品", pagerState.currentPage == 1) {
                         if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
                     }
                     TabItem(Icons.Default.Person, "客户", pagerState.currentPage == 2) {

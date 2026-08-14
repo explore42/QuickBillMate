@@ -1,7 +1,6 @@
 package com.example.quickbillmate.ui.settings
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.SettingsStore
@@ -94,7 +94,7 @@ fun SettingsScreen(
         onDefaultsSave = viewModel::updateDefaults,
         onManagePresets = onManagePresets,
         onOpenUrl = { url ->
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },
     )
 }

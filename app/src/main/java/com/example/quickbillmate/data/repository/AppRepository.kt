@@ -4,8 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import androidx.room.withTransaction
 import com.example.quickbillmate.data.db.AppDatabase
@@ -29,7 +27,6 @@ import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.time.LocalDateTime
@@ -312,22 +309,14 @@ class AppRepository(
     suspend fun exportProductsToDownloads(context: Context, products: List<Product>): String? {
         val text = ProductJsonCodec.export(products)
         val fileName = "products_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            exportModern(context, text, fileName)
-        } else {
-            exportLegacy(context, text, fileName)
-        }
+        return exportJsonToDownloads(context, text, fileName)
     }
 
     /** 导出指定客户到系统“下载”目录，返回文件名；失败返回 null。 */
     suspend fun exportCustomersToDownloads(context: Context, customers: List<Customer>): String? {
         val text = CustomerJsonCodec.export(customers)
         val fileName = "customers_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            exportModern(context, text, fileName)
-        } else {
-            exportLegacy(context, text, fileName)
-        }
+        return exportJsonToDownloads(context, text, fileName)
     }
 
     private fun readText(context: Context, uri: Uri): String {
@@ -346,7 +335,7 @@ class AppRepository(
         }
     }
 
-    private fun exportModern(context: Context, text: String, fileName: String): String? {
+    private fun exportJsonToDownloads(context: Context, text: String, fileName: String): String? {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, "application/json")
@@ -367,21 +356,6 @@ class AppRepository(
                 context.contentResolver.delete(uri, null, null)
             } catch (_: Exception) {
             }
-            null
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun exportLegacy(context: Context, text: String, fileName: String): String? {
-        val dir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "QuickBillMate",
-        )
-        if (!dir.exists() && !dir.mkdirs()) return null
-        return try {
-            File(dir, fileName).writeText(text, Charsets.UTF_8)
-            fileName
-        } catch (_: Exception) {
             null
         }
     }

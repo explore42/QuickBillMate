@@ -3,28 +3,17 @@ package com.example.quickbillmate.importexport
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.MediaScannerConnection
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
-import java.io.FileOutputStream
 
 object GalleryWriter {
     const val RELATIVE_DIR = "Pictures/QuickBillMate"
     const val AUTHORITY = "com.example.quickbillmate.fileprovider"
 
     /** 保存 PNG 到系统相册 Pictures/QuickBillMate。 */
-    fun save(context: Context, bitmap: Bitmap, fileName: String): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveModern(context, bitmap, fileName)
-        } else {
-            saveLegacy(context, bitmap, fileName)
-        }
-
-    private fun saveModern(context: Context, bitmap: Bitmap, fileName: String): Boolean {
+    fun save(context: Context, bitmap: Bitmap, fileName: String): Boolean {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
@@ -46,30 +35,6 @@ object GalleryWriter {
                 context.contentResolver.delete(uri, null, null)
             } catch (_: Exception) {
             }
-            false
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun saveLegacy(context: Context, bitmap: Bitmap, fileName: String): Boolean {
-        val dir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-            "QuickBillMate",
-        )
-        if (!dir.exists() && !dir.mkdirs()) return false
-        val file = File(dir, fileName)
-        return try {
-            FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            MediaScannerConnection.scanFile(
-                context,
-                arrayOf(file.absolutePath),
-                arrayOf("image/png"),
-                null,
-            )
-            true
-        } catch (_: Exception) {
             false
         }
     }

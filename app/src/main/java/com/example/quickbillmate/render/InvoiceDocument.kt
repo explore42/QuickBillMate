@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toColorInt
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.delay
 
@@ -512,7 +513,7 @@ private fun RowScope.TableCell(
 
 private fun parseColor(hex: String): Color =
     try {
-        Color(android.graphics.Color.parseColor(hex))
+        Color(hex.toColorInt())
     } catch (_: Exception) {
         Color.Black
     }

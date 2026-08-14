@@ -1,7 +1,6 @@
 package com.example.quickbillmate.ui.customers
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -294,7 +294,7 @@ fun CustomersScreen(
             },
             onCall = PhoneUtil.splitPhones(customer.phone).firstOrNull()?.let { phone ->
                 {
-                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                    context.startActivity(Intent(Intent.ACTION_DIAL, "tel:$phone".toUri()))
                 }
             },
             onDismiss = { detail = null },

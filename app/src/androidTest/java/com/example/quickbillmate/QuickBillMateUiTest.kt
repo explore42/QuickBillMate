@@ -3,6 +3,7 @@ package com.example.quickbillmate
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
@@ -52,7 +53,8 @@ class QuickBillMateUiTest {
     fun homeShowsTitleNewButtonAndTabs() {
         composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("新建单据").assertIsDisplayed()
-        composeRule.onNodeWithText("单据").assertIsDisplayed()
+        // 底部导航“单据”Tab（可点击文本节点），避免与其他页面残留的“单据”文本混淆
+        composeRule.onNode(hasText("单据") and hasClickAction()).assertIsDisplayed()
         composeRule.onAllNodesWithContentDescription("商品").fetchSemanticsNodes().isNotEmpty()
         composeRule.onAllNodesWithContentDescription("客户").fetchSemanticsNodes().isNotEmpty()
         composeRule.onAllNodesWithContentDescription("设置").fetchSemanticsNodes().isNotEmpty()
@@ -105,7 +107,7 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
-        composeRule.onNodeWithContentDescription("设置").performClick()
+        composeRule.onNodeWithText("图片样式").performClick()
         waitFor { composeRule.onAllNodesWithText("选择图片样式").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("选择图片样式").performClick()
         waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isNotEmpty() }
@@ -225,7 +227,7 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("深色模式").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("深色模式").assertIsDisplayed()
         composeRule.onNodeWithText("默认图片样式").assertIsDisplayed()
-        composeRule.onNodeWithText("默认公司信息").assertIsDisplayed()
+        composeRule.onNodeWithText("默认信息").assertIsDisplayed()
 
         composeRule.onNodeWithText("关于").performClick()
         waitFor { composeRule.onAllNodesWithText("开源地址：").fetchSemanticsNodes().isNotEmpty() }

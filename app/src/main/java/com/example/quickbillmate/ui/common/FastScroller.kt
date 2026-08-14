@@ -63,12 +63,12 @@ internal fun SectionIndexBar(
     state: LazyListState,
     sections: List<IndexSection>,
     firstIndexOf: (String) -> Int,
+    modifier: Modifier = Modifier,
     barWidth: Dp = LetterBarWidth,
     endMargin: Dp = 18.dp,
     topPadding: Dp = 8.dp,
     bottomPadding: Dp = 88.dp,
     labelTransform: (String) -> String = { it },
-    modifier: Modifier = Modifier,
 ) {
     if (sections.isEmpty()) return
     var active by remember { mutableStateOf<Int?>(null) }
