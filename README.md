@@ -42,6 +42,8 @@
 
 安装包名：`com.example.quickbillmate`
 
+> 注意：曾安装过早期开发版（数据库版本 9 及更早）的设备请**先卸载再安装**；编辑页点击返回（顶栏箭头或系统返回）会立即自动保存并退出，无需先点“保存”。
+
 ## 发布构建
 
 发布签名通过仓库根目录的 `keystore.properties` 提供（已被 `.gitignore` 忽略，不会提交）。复制 [keystore.properties.example](keystore.properties.example) 为 `keystore.properties` 并填入真实密钥后执行：

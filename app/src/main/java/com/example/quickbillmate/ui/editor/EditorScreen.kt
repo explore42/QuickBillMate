@@ -1,5 +1,6 @@
 package com.example.quickbillmate.ui.editor
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -119,6 +120,11 @@ fun EditorScreen(
         viewModel.onContactsPermission(granted)
     }
 
+    // 返回 = 立即自动保存后退出；流水号非法时弹“放弃修改?”确认
+    BackHandler(enabled = s.loaded) {
+        viewModel.saveOnExit(onBack, onInvalid = { showDiscardConfirm = true })
+    }
+
 
 
     Scaffold(
@@ -126,7 +132,9 @@ fun EditorScreen(
             AppTopBar(
                 title = if (billId == 0L) "新建单据" else "编辑单据",
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        viewModel.saveOnExit(onBack, onInvalid = { showDiscardConfirm = true })
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

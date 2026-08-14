@@ -112,6 +112,8 @@ class EditorViewModel(
     private var originalBill: Bill? = null
     private var originalItems: List<BillItem> = emptyList()
     private var isNewDraft = false
+    /** “不保存”进行中：阻止在途自动保存继续写库（防竞态崩溃/覆盖）。 */
+    private var discarding = false
 
     init {
         viewModelScope.launch {
@@ -131,6 +133,7 @@ class EditorViewModel(
     /** 新建：立即创建草稿并载入。 */
     fun createNew() {
         viewModelScope.launch {
+            discarding = false
             val settings = repo.settings
             val draft = repo.createDraft(
                 docCode = settings.defaultDocCode,
@@ -162,6 +165,7 @@ class EditorViewModel(
     /** 编辑已有单据。 */
     fun load(billId: Long) {
         viewModelScope.launch {
+            discarding = false
             val bill = repo.getBill(billId)
             if (bill == null) {
                 createNew()
@@ -182,6 +186,9 @@ class EditorViewModel(
      * 完成后回调（通常返回上一页）。
      */
     fun discardChanges(onDone: () -> Unit) {
+        discarding = true
+        saveJob?.cancel()
+        previewJob?.cancel()
         viewModelScope.launch {
             if (isNewDraft) {
                 repo.getBill(state.billId)?.let { repo.deleteBill(it) }
@@ -191,6 +198,7 @@ class EditorViewModel(
                     repo.saveBill(original, originalItems)
                 }
             }
+            discarding = false
             onDone()
         }
     }
@@ -493,13 +501,48 @@ class EditorViewModel(
         }
     }
 
+    /**
+     * 返回键（顶栏箭头/系统返回）：取消防抖与预览后立即校验并保存，成功后退出；
+     * 流水号不合法或冲突时标红并回调 [onInvalid]，由界面弹“放弃修改?”确认。
+     */
+    fun saveOnExit(onDone: () -> Unit, onInvalid: () -> Unit) {
+        if (!loaded) {
+            onDone()
+            return
+        }
+        saveJob?.cancel()
+        previewJob?.cancel()
+        viewModelScope.launch {
+            val s = state
+            val serial = s.docSerial.trim()
+            val error = when {
+                !serial.matches(Regex("\\d{3}")) -> "需要三位数字"
+                repo.serialConflict(s.docCode.ifBlank { "PH" }, s.docDate, serial, s.billId) ->
+                    "流水号已存在，请更换"
+                else -> null
+            }
+            state = state.copy(serialError = error)
+            when {
+                error != null -> onInvalid()
+                autosave() -> {
+                    state = state.copy(savedTick = state.savedTick + 1)
+                    onDone()
+                }
+                else -> onDone()
+            }
+        }
+    }
+
     /** 自动保存草稿：流水号不合法或重复时跳过，不做任何自动修改。 */
     private suspend fun autosave(): Boolean {
+        if (discarding) return false
         val s = state
         if (!s.loaded || s.billId == 0L) return false
         val serial = s.docSerial.trim()
         if (!serial.matches(Regex("\\d{3}"))) return false
         if (repo.serialConflict(s.docCode.ifBlank { "PH" }, s.docDate, serial, s.billId)) return false
+        // 串行点后再次确认：放弃流程可能在查询期间启动
+        if (discarding) return false
         val bill = s.toBill(serial)
         val items = s.items.mapIndexed { index, row -> row.toEntity(s.billId, index) }
         repo.saveBill(bill, items)

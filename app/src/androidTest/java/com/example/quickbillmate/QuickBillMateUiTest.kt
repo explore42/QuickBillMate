@@ -138,6 +138,21 @@ class QuickBillMateUiTest {
     }
 
     @Test
+    fun backInEditorSavesImmediately() {
+        val name = "返回即存${System.currentTimeMillis() % 100000}"
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
+
+        // 先收起输入法，再按系统返回（不点“保存”），返回=立即自动保存
+        Espresso.closeSoftKeyboard()
+        Espresso.pressBack()
+        waitHomeReady()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
     fun deleteSelectedBillRemovesIt() {
         val name = "待删客户${System.currentTimeMillis() % 100000}"
         createBillWithCustomer(name)

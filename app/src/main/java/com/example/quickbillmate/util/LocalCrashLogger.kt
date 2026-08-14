@@ -2,6 +2,7 @@ package com.example.quickbillmate.util
 
 import android.content.Context
 import android.os.Build
+import android.os.Process
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -46,7 +47,12 @@ object LocalCrashLogger {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             writeCrash(thread, throwable)
-            previous?.uncaughtException(thread, throwable)
+            if (previous != null) {
+                previous.uncaughtException(thread, throwable)
+            } else {
+                // 无前序处理器时确定终止进程，避免残留异常状态
+                Process.killProcess(Process.myPid())
+            }
         }
     }
 
