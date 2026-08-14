@@ -20,8 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Text
 
 /** 索引分区：label 为索引唯一标识，bubble 为按压时气泡显示文本。 */
 data class IndexSection(val label: String, val bubble: String)
@@ -76,8 +77,8 @@ internal fun SectionIndexBar(
     var hideJob by remember { mutableStateOf<Job?>(null) }
     val bubbleProgress = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
-    val barColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val barTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val barColor = AppThemeColors.surfaceContainerHigh
+    val barTextColor = AppThemeColors.onSurfaceVariant
     val pillShape = RoundedCornerShape(percent = 50)
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -138,7 +139,7 @@ internal fun SectionIndexBar(
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         text = labelTransform(section.label),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = AppThemeTypography.labelSmall,
                         color = barTextColor,
                         maxLines = 1,
                     )
@@ -185,7 +186,7 @@ internal fun SectionIndexBar(
                 Text(
                     text = bubble,
                     color = barTextColor,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AppThemeTypography.bodyMedium,
                     maxLines = 1,
                 )
             }

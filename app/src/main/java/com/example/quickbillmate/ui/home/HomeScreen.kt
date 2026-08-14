@@ -2,6 +2,7 @@ package com.example.quickbillmate.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,22 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -57,6 +45,21 @@ import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.TimeIndexBar
 import com.example.quickbillmate.ui.common.monthBubble
 import com.example.quickbillmate.ui.common.monthKey
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.icon.basic.Close
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Store
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.pressable
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /** 单据分组：key 为索引标识，title 为分组标题。 */
 internal data class BillSection(
@@ -79,7 +82,6 @@ internal fun groupBills(bills: List<HomeBill>): List<BillSection> {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNewBill: () -> Unit,
@@ -141,7 +143,6 @@ fun HomeScreen(
 }
 
 /** 单据页纯界面层：数据与回调全部由参数传入，可在 Android Studio 中直接预览调试。 */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeContent(
     bills: List<HomeBill>,
@@ -202,22 +203,16 @@ fun HomeContent(
                     title = "已选中 ${selectedIds.size} 项",
                     navigationIcon = {
                         IconButton(onClick = onExitSelection) {
-                            Icon(Icons.Default.Close, contentDescription = "退出多选")
+                            Icon(MiuixIcons.Basic.Close, contentDescription = "退出多选")
                         }
                     },
                     actions = {
                         val allVisibleSelected = bills.isNotEmpty() && bills.all { it.bill.id in selectedIds }
                         TextButton(
+                            text = if (allVisibleSelected) "取消全选" else "全选",
                             onClick = onToggleSelectAll,
                             modifier = Modifier.testTag("select_all_toggle"),
-                        ) {
-                            Icon(
-                                if (allVisibleSelected) Icons.Default.Close else Icons.Default.Check,
-                                contentDescription = null,
-                            )
-                            Spacer(Modifier.width(2.dp))
-                            Text(if (allVisibleSelected) "取消全选" else "全选")
-                        }
+                        )
                     },
                 )
             } else {
@@ -233,10 +228,12 @@ fun HomeContent(
             if (!selectionMode) {
                 FloatingActionButton(
                     onClick = onNewBill,
-                    modifier = Modifier.testTag("home_new_bill"),
+                    modifier = Modifier
+                        .testTag("home_new_bill")
+                        .pressable(interactionSource = remember { MutableInteractionSource() }),
                 ) {
                     Icon(
-                        Icons.Default.Add,
+                        MiuixIcons.Add,
                         contentDescription = "新建单据",
                     )
                 }
@@ -256,7 +253,7 @@ fun HomeContent(
     ) { padding ->
         if (bills.isEmpty()) {
             EmptyState(
-                icon = Icons.Default.ShoppingCart,
+                icon = MiuixIcons.Store,
                 text = if (searchQuery.isNotBlank()) "没有找到匹配的单据" else "还没有单据，点击右下角新建",
                 modifier = Modifier.padding(padding),
             )
@@ -264,7 +261,10 @@ fun HomeContent(
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .overScrollVertical()
+                        .scrollEndHaptic(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     grouped.forEachIndexed { groupIndex, section ->
@@ -313,8 +313,8 @@ fun HomeContent(
                         ) {
                             if (selectionMode) {
                                 Checkbox(
-                                    checked = selected,
-                                    onCheckedChange = { onToggleSelection(bill.id) },
+                                    state = if (selected) ToggleableState.On else ToggleableState.Off,
+                                    onClick = { onToggleSelection(bill.id) },
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
@@ -325,22 +325,22 @@ fun HomeContent(
                                 ) {
                                     Text(
                                         text = bill.customerName.ifBlank { "未填写客户" },
-                                        style = MaterialTheme.typography.titleSmall,
+                                        style = AppThemeTypography.titleSmall,
                                         modifier = Modifier.weight(1f),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     Text(
                                         text = bill.docDate,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.outline,
+                                        style = AppThemeTypography.bodySmall,
+                                        color = AppThemeColors.outline,
                                     )
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = "${homeBill.docNumber} · ${homeBill.itemCount} 项 · ¥${homeBill.receivableText}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = AppThemeTypography.bodySmall,
+                                    color = AppThemeColors.onSurfaceVariant,
                                 )
                             }
                         }

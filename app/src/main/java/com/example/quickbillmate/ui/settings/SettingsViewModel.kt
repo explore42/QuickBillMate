@@ -31,6 +31,10 @@ class SettingsViewModel(
 
     var themeMode by mutableStateOf(repo.settings.themeMode)
         private set
+    var dynamicColor by mutableStateOf(repo.settings.dynamicColor)
+        private set
+    var themeKeyColor by mutableStateOf(repo.settings.themeKeyColor)
+        private set
     var defaultCompany by mutableStateOf(repo.settings.defaultCompany)
         private set
     var defaultPhone by mutableStateOf(repo.settings.defaultPhone)
@@ -87,6 +91,16 @@ class SettingsViewModel(
     fun updateThemeMode(mode: String) {
         themeMode = mode
         repo.settings.themeMode = mode
+    }
+
+    fun updateDynamicColor(enabled: Boolean) {
+        dynamicColor = enabled
+        repo.settings.dynamicColor = enabled
+    }
+
+    fun updateThemeKeyColor(argb: Long) {
+        themeKeyColor = argb
+        repo.settings.themeKeyColor = argb
     }
 
     fun updateDefaultPreset(key: String) {

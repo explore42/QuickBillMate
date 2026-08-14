@@ -8,19 +8,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.icon.extended.Share
 
 /** 多选底部操作栏：复制 / 编辑 / 导出 / 删除（编辑仅单选可用）。 */
 @Composable
@@ -38,10 +39,10 @@ fun SelectionActionBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SelectionAction(Icons.Default.Add, "复制", true, onCopy)
-        SelectionAction(Icons.Default.Edit, "编辑", canEdit, onEdit)
-        SelectionAction(Icons.Default.Share, "导出", true, onExport)
-        SelectionAction(Icons.Default.Delete, "删除", true, onDelete)
+        SelectionAction(MiuixIcons.Add, "复制", true, onCopy)
+        SelectionAction(MiuixIcons.Edit, "编辑", canEdit, onEdit)
+        SelectionAction(MiuixIcons.Share, "导出", true, onExport)
+        SelectionAction(MiuixIcons.Delete, "删除", true, onDelete)
     }
 }
 
@@ -65,19 +66,19 @@ private fun SelectionAction(
             imageVector = icon,
             contentDescription = label,
             tint = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
+                AppThemeColors.onSurface
             } else {
-                MaterialTheme.colorScheme.outlineVariant
+                AppThemeColors.outlineVariant
             },
         )
         Spacer(Modifier.height(2.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = AppThemeTypography.labelSmall,
             color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
+                AppThemeColors.onSurface
             } else {
-                MaterialTheme.colorScheme.outlineVariant
+                AppThemeColors.outlineVariant
             },
         )
     }

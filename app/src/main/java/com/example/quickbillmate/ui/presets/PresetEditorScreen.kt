@@ -15,23 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +40,22 @@ import com.example.quickbillmate.render.DEFAULT_COLUMNS
 import com.example.quickbillmate.render.DEFAULT_ORDER
 import com.example.quickbillmate.render.DEFAULT_WEIGHTS
 import java.util.Locale
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 
 @Composable
 fun PresetEditorScreen(
@@ -72,7 +74,7 @@ fun PresetEditorScreen(
                 title = if (presetId == 0L) "新建图片样式" else "编辑图片样式",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    Icon(MiuixIcons.Back, contentDescription = "返回")
                     }
                 },
             )
@@ -108,25 +110,28 @@ fun PresetEditorScreen(
                         viewModel.updateParams { params -> params.copy(infoLabelWidthPx = newValue) }
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text("字体", style = MaterialTheme.typography.bodyMedium)
+                    Text("字体", style = AppThemeTypography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
+                        FontChip(
+                            label = "宋体（衬线）",
                             selected = p.fontFamily == "system_serif",
                             onClick = { viewModel.updateParams { it.copy(fontFamily = "system_serif") } },
-                            label = { Text("宋体（衬线）") },
                         )
-                        FilterChip(
+                        FontChip(
+                            label = "黑体（无衬线）",
                             selected = p.fontFamily == "system_sans",
                             onClick = { viewModel.updateParams { it.copy(fontFamily = "system_sans") } },
-                            label = { Text("黑体（无衬线）") },
                         )
                     }
                 }
 
                 SectionCard("表格列") {
-                    TextButton(onClick = {
-                        viewModel.updateParams { it.copy(columnOrder = emptyList(), columnWeights = emptyList()) }
-                    }) { Text("重置为默认") }
+                    TextButton(
+                        text = "重置为默认",
+                        onClick = {
+                            viewModel.updateParams { it.copy(columnOrder = emptyList(), columnWeights = emptyList()) }
+                        },
+                    )
                     val order = p.columnOrder.ifEmpty { DEFAULT_ORDER }
                     val weights = p.columnWeights.ifEmpty { DEFAULT_WEIGHTS }
                     order.forEachIndexed { index, id ->
@@ -146,7 +151,7 @@ fun PresetEditorScreen(
                                 },
                                 enabled = index > 0,
                             ) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                                Icon(MiuixIcons.ExpandLess, contentDescription = "上移")
                             }
                             IconButton(
                                 onClick = {
@@ -159,7 +164,7 @@ fun PresetEditorScreen(
                                 },
                                 enabled = index < order.lastIndex,
                             ) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                                Icon(MiuixIcons.ExpandMore, contentDescription = "下移")
                             }
                             Text(spec.label, modifier = Modifier.width(56.dp))
                             Slider(
@@ -256,12 +261,11 @@ fun PresetEditorScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(
+                    TextButton(
+                        text = "恢复默认值",
                         onClick = { viewModel.restoreDefaults() },
                         modifier = Modifier.weight(1f),
-                    ) {
-                        Text("恢复默认值")
-                    }
+                    )
                     Button(
                         onClick = { viewModel.save(onBack) },
                         modifier = Modifier.weight(1f),
@@ -282,13 +286,13 @@ private fun IntField(
     onChange: (Int) -> Unit,
 ) {
     var text by remember(value) { mutableStateOf(value.toString()) }
-    OutlinedTextField(
+    TextField(
         value = text,
         onValueChange = { input ->
             text = input
             input.toIntOrNull()?.let(onChange)
         },
-        label = { Text(label) },
+        label = label,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
@@ -315,10 +319,10 @@ private fun ColorField(
     onChange: (String) -> Unit,
 ) {
     Column {
-        OutlinedTextField(
+        TextField(
             value = value,
             onValueChange = onChange,
-            label = { Text(label) },
+            label = label,
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -330,7 +334,6 @@ private fun ColorField(
                         .width(28.dp)
                         .height(28.dp)
                         .clickable { onChange(hex) },
-                    shape = RoundedCornerShape(6.dp),
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -338,13 +341,43 @@ private fun ColorField(
                     ) {
                         Text(
                             text = if (value.equals(hex, ignoreCase = true)) "✓" else "",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = AppThemeTypography.labelSmall,
                             color = Color(0xFF333333),
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/** 字体选择胶囊（替代 M3 FilterChip，使用 Miuix 配色）。 */
+@Composable
+private fun FontChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) {
+            AppThemeColors.primaryContainer
+        } else {
+            AppThemeColors.surfaceContainerHigh
+        },
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)),
+    ) {
+        Text(
+            label,
+            style = AppThemeTypography.labelMedium,
+            color = if (selected) {
+                AppThemeColors.onPrimaryContainer
+            } else {
+                AppThemeColors.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }
 

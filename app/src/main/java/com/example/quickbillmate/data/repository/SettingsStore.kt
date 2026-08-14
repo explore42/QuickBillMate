@@ -11,6 +11,16 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_THEME, THEME_SYSTEM) ?: THEME_SYSTEM
         set(value) = prefs.edit { putString(KEY_THEME, value) }
 
+    /** Monet 动态取色开关，默认开启。 */
+    var dynamicColor: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, true)
+        set(value) = prefs.edit { putBoolean(KEY_DYNAMIC_COLOR, value) }
+
+    /** 主题种子色（ARGB Long），0L 表示跟随壁纸；默认品牌紫 #9C11E1。 */
+    var themeKeyColor: Long
+        get() = prefs.getLong(KEY_THEME_KEY_COLOR, 0xFF9C11E1L)
+        set(value) = prefs.edit { putLong(KEY_THEME_KEY_COLOR, value) }
+
     var defaultCompany: String
         get() = prefs.getString(KEY_COMPANY, "") ?: ""
         set(value) = prefs.edit { putString(KEY_COMPANY, value) }
@@ -77,6 +87,8 @@ class SettingsStore(context: Context) {
         const val THEME_DARK = "dark"
 
         private const val KEY_THEME = "theme_mode"
+        private const val KEY_DYNAMIC_COLOR = "theme_dynamic_color"
+        private const val KEY_THEME_KEY_COLOR = "theme_key_color"
         private const val KEY_COMPANY = "default_company"
         private const val KEY_PHONE = "default_phone"
         private const val KEY_MANAGER = "default_manager"

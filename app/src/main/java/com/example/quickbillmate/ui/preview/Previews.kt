@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,13 +26,14 @@ import com.example.quickbillmate.ui.home.HomeBill
 import com.example.quickbillmate.ui.home.HomeContent
 import com.example.quickbillmate.ui.settings.SettingsContent
 import com.example.quickbillmate.ui.theme.QuickBillMateTheme
+import top.yukonga.miuix.kmp.basic.Text
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)
 @Composable
 fun ThemePreview() {
     QuickBillMateTheme {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("快贝智单 QuickBillMate", style = MaterialTheme.typography.titleLarge)
+            Text("快贝智单 QuickBillMate", style = AppThemeTypography.titleLarge)
         }
     }
 }
@@ -123,6 +124,8 @@ fun SettingsContentPreview() {
     QuickBillMateTheme {
         SettingsContent(
             themeMode = "system",
+            dynamicColor = true,
+            themeKeyColor = 0xFF9C11E1,
             defaultCompany = "示例建材有限公司",
             defaultPhone = "13800138000",
             defaultManager = "李经理",
@@ -138,12 +141,14 @@ fun SettingsContentPreview() {
             defaultDocCode = "PH",
             defaultTitleSuffix = "单据",
             defaultAdText = "",
-            versionName = "1.0",
+            versionName = "1.1.0",
             presets = emptyList(),
             qrBitmap = null,
             pendingCropBitmap = null,
             crashLogs = emptyList(),
             onThemeModeChange = {},
+            onDynamicColorChange = {},
+            onThemeKeyColorChange = {},
             onPresetChange = {},
             onDefaultsSave = {},
             onManagePresets = {},

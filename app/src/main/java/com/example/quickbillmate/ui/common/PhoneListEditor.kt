@@ -3,21 +3,22 @@ package com.example.quickbillmate.ui.common
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 
 /** 多电话编辑器：每行一个输入框，支持上下移动与删除，底部可追加。 */
 @Composable
@@ -29,12 +30,12 @@ fun PhoneListEditor(
     Column(modifier = modifier) {
         phones.forEachIndexed { index, phone ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                TextField(
                     value = phone,
                     onValueChange = { newValue ->
                         onChange(phones.mapIndexed { i, p -> if (i == index) newValue else p })
                     },
-                    label = { Text("电话 ${index + 1}") },
+                    label = "电话 ${index + 1}",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.weight(1f).testTag("phone_input"),
@@ -47,7 +48,7 @@ fun PhoneListEditor(
                         list[index] = tmp
                         onChange(list)
                     }) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                        Icon(MiuixIcons.ExpandLess, contentDescription = "上移")
                     }
                 }
                 if (index < phones.lastIndex) {
@@ -58,18 +59,19 @@ fun PhoneListEditor(
                         list[index] = tmp
                         onChange(list)
                     }) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                        Icon(MiuixIcons.ExpandMore, contentDescription = "下移")
                     }
                 }
                 if (phones.size > 1) {
                     IconButton(onClick = { onChange(phones.filterIndexed { i, _ -> i != index }) }) {
-                        Text("−", style = MaterialTheme.typography.titleMedium)
+                        Text("−", style = AppThemeTypography.titleMedium)
                     }
                 }
             }
         }
-        TextButton(onClick = { onChange(phones + "") }) {
-            Text("＋ 添加电话")
-        }
+        TextButton(
+            text = "＋ 添加电话",
+            onClick = { onChange(phones + "") },
+        )
     }
 }

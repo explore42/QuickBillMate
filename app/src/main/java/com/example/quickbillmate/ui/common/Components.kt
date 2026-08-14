@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -16,28 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -57,8 +40,30 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.example.quickbillmate.R
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Switch
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Close
+import top.yukonga.miuix.kmp.icon.basic.Search
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Info
+import top.yukonga.miuix.kmp.icon.extended.Phone
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 
 /** 应用小 Logo：使用 APP 图标同款 PNG。 */
 @Composable
@@ -70,7 +75,7 @@ fun AppLogo(modifier: Modifier = Modifier) {
     )
 }
 
-/** 可折叠式分区卡片。 */
+/** 可折叠式分区卡片（Miuix 平滑圆角卡片）。 */
 @Composable
 fun SectionCard(
     title: String,
@@ -79,15 +84,13 @@ fun SectionCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.defaultColors(color = AppThemeColors.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                style = AppThemeTypography.titleSmall,
+                color = AppThemeColors.primary,
             )
             Spacer(Modifier.height(10.dp))
             content()
@@ -95,7 +98,7 @@ fun SectionCard(
     }
 }
 
-/** 带标签的单行文本输入框。 */
+/** 带标签的单行文本输入框（Miuix TextField，无 M3 错误态时手动渲染提示文本）。 */
 @Composable
 fun LabeledField(
     label: String,
@@ -108,18 +111,32 @@ fun LabeledField(
     isError: Boolean = false,
     supportingText: String? = null,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        modifier = modifier,
-        singleLine = singleLine,
-        isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
-        placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        shape = RoundedCornerShape(8.dp),
-    )
+    val field = @Composable {
+        TextField(
+            value = value,
+            onValueChange = onChange,
+            modifier = modifier,
+            label = label.ifEmpty { placeholder },
+            useLabelAsPlaceholder = label.isEmpty() && placeholder.isNotEmpty(),
+            singleLine = singleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        )
+    }
+    if (supportingText != null) {
+        Column(modifier = modifier) {
+            field()
+            if (isError || supportingText.isNotBlank()) {
+                Text(
+                    text = supportingText,
+                    style = AppThemeTypography.bodySmall,
+                    color = if (isError) AppThemeColors.error else AppThemeColors.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp),
+                )
+            }
+        }
+    } else {
+        field()
+    }
 }
 
 /** 整行可点击的开关。 */
@@ -137,7 +154,7 @@ fun LabeledSwitch(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = AppThemeTypography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
@@ -151,22 +168,21 @@ fun DetailLine(
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(
             label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AppThemeTypography.bodyMedium,
+            color = AppThemeColors.onSurfaceVariant,
             modifier = Modifier.width(96.dp),
         )
         Text(
             value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = AppThemeTypography.bodyMedium,
         )
     }
 }
 
 /**
- * 统一顶部标题栏：使用独立底色（与底部导航同色系），
- * 通过标准窗口边距适配全面屏状态栏，避免标题区域过大。
+ * 统一顶部标题栏（Miuix 风格自绘）：独立底色、标准窗口边距适配全面屏，
+ * 支持 Logo 标题、返回图标与右侧操作区。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
     title: String,
@@ -175,40 +191,44 @@ fun AppTopBar(
     actions: @Composable RowScope.() -> Unit = {},
     showLogo: Boolean = false,
 ) {
-    TopAppBar(
-        title = {
-            if (showLogo) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppLogo(Modifier.size(28.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(title, fontWeight = FontWeight.Bold)
-                }
-            } else {
-                Text(title, fontWeight = FontWeight.Bold)
-            }
-        },
-        navigationIcon = {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(AppThemeColors.surfaceContainer)
+            .statusBarsPadding(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (navigationIcon != null) {
-                navigationIcon()
+                Box(modifier = Modifier.padding(start = 8.dp)) {
+                    navigationIcon()
+                }
             }
-        },
-        actions = actions,
-        modifier = modifier,
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ),
-        windowInsets = TopAppBarDefaults.windowInsets,
-    )
+            Row(
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (showLogo) {
+                    AppLogo(Modifier.size(26.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(title, fontWeight = FontWeight.Bold, style = AppThemeTypography.titleMedium)
+            }
+            actions()
+            Spacer(Modifier.width(8.dp))
+        }
+    }
 }
 
 /**
  * 带搜索的标题栏：默认显示标题 + 右侧搜索图标；
  * 点击图标后标题变为紧凑搜索框（返回图标收起，输入内容后出现清除叉号）。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchableTopBar(
     title: String,
@@ -235,47 +255,49 @@ fun SearchableTopBar(
         onQueryChange("")
     }
 
-    TopAppBar(
-        title = {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppThemeColors.surfaceContainer)
+            .statusBarsPadding(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when {
+                searching -> IconButton(onClick = { closeSearch() }) {
+                    Icon(MiuixIcons.Back, contentDescription = "返回")
+                }
+                navigationIcon != null -> navigationIcon()
+            }
             if (searching) {
                 CompactSearchField(
                     query = query,
                     placeholder = searchPlaceholder,
                     onQueryChange = onQueryChange,
                     focusRequester = focusRequester,
+                    modifier = Modifier.weight(1f),
                 )
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppLogo(Modifier.size(28.dp))
+                Row(
+                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppLogo(Modifier.size(26.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(title, fontWeight = FontWeight.Bold)
+                    Text(title, fontWeight = FontWeight.Bold, style = AppThemeTypography.titleMedium)
                 }
-            }
-        },
-        navigationIcon = {
-            when {
-                searching -> IconButton(onClick = { closeSearch() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                }
-                navigationIcon != null -> navigationIcon()
-            }
-        },
-        actions = {
-            if (!searching) {
                 actions()
                 IconButton(onClick = { searching = true }) {
-                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                    Icon(MiuixIcons.Basic.Search, contentDescription = "搜索")
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ),
-        windowInsets = TopAppBarDefaults.windowInsets,
-    )
+        }
+    }
 }
 
 /** 紧凑搜索框：40dp 高、14sp 文字，文字完整显示不被裁剪。 */
@@ -289,7 +311,7 @@ fun CompactSearchField(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = AppThemeColors.surfaceContainerHigh,
         modifier = modifier
             .fillMaxWidth()
             .height(40.dp),
@@ -298,10 +320,10 @@ fun CompactSearchField(
             value = query,
             onValueChange = onQueryChange,
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
+            textStyle = AppThemeTypography.bodyMedium.copy(
+                color = AppThemeColors.onSurface,
             ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            cursorBrush = SolidColor(AppThemeColors.primary),
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(focusRequester)
@@ -312,24 +334,24 @@ fun CompactSearchField(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Default.Search,
+                        MiuixIcons.Basic.Search,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = AppThemeColors.onSurfaceVariant,
                     )
                     Spacer(Modifier.width(8.dp))
                     Box(modifier = Modifier.weight(1f)) {
                         if (query.isEmpty()) {
                             Text(
                                 placeholder,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = AppThemeTypography.bodyMedium,
+                                color = AppThemeColors.onSurfaceVariant,
                             )
                         }
                         innerTextField()
                     }
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "清除搜索")
+                            Icon(MiuixIcons.Basic.Close, contentDescription = "清除搜索")
                         }
                     }
                 }
@@ -354,14 +376,14 @@ fun EmptyState(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = AppThemeColors.outline,
             modifier = Modifier.height(48.dp).width(48.dp),
         )
         Spacer(Modifier.height(10.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.outline,
+            style = AppThemeTypography.bodyMedium,
+            color = AppThemeColors.outline,
         )
     }
 }
@@ -374,17 +396,30 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OverlayDialog(
+        title = title,
+        summary = text,
+        show = true,
         onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
-        text = { Text(text) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmText) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            SmallTextButton(
+                text = "取消",
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(20.dp))
+            SmallTextButton(
+                text = confirmText,
+                onClick = onConfirm,
+                modifier = Modifier.weight(1f),
+                primary = true,
+            )
+        }
+    }
 }
 
 @Composable
@@ -394,13 +429,98 @@ fun InfoDialog(
     onDismiss: () -> Unit,
     confirmText: String = "知道了",
 ) {
-    AlertDialog(
+    OverlayDialog(
+        title = title,
+        summary = text,
+        show = true,
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Info, contentDescription = null) },
-        title = { Text(title, fontWeight = FontWeight.Bold) },
-        text = { Text(text) },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(confirmText) }
+    ) {
+        SmallTextButton(
+            text = confirmText,
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth(),
+            primary = true,
+        )
+    }
+}
+
+/** 紧凑文本按钮（32dp 高、更小内边距），用于对话框底部与顶栏次要操作。 */
+@Composable
+fun SmallTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    primary: Boolean = false,
+) {
+    TextButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        minHeight = 32.dp,
+        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        colors = if (primary) {
+            ButtonDefaults.textButtonColorsPrimary()
+        } else {
+            ButtonDefaults.textButtonColors()
         },
     )
+}
+
+/** 电话标签：浅色圆角胶囊 + 电话图标，点击拨号（多电话场景逐个拨打）。 */
+@Composable
+fun PhoneTag(
+    phone: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(percent = 50))
+            .background(AppThemeColors.primaryContainer)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            MiuixIcons.Phone,
+            contentDescription = null,
+            tint = AppThemeColors.onPrimaryContainer,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            phone,
+            style = AppThemeTypography.bodySmall,
+            color = AppThemeColors.onPrimaryContainer,
+        )
+    }
+}
+
+/** Miuix 风格动作菜单：基于 Scaffold 内置的 MiuixPopupUtils（OverlayListPopup）。 */
+@Composable
+fun MiuixMenuPopup(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    items: List<Pair<String, () -> Unit>>,
+    modifier: Modifier = Modifier,
+) {
+    if (!expanded) return
+    OverlayListPopup(
+        show = true,
+        onDismissRequest = onDismiss,
+    ) {
+        ListPopupColumn {
+            items.forEachIndexed { index, (label, action) ->
+                DropdownImpl(
+                    text = label,
+                    optionSize = items.size,
+                    isSelected = false,
+                    index = index,
+                    onSelectedIndexChange = { action() },
+                )
+            }
+        }
+    }
 }

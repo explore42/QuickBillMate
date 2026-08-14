@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.rememberNavController
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.navigation.QuickBillMateAppNavHost
@@ -24,12 +25,19 @@ class MainActivity : ComponentActivity() {
         val settings = (application as QuickBillMateApp).repository.settings
         setContent {
             var themeMode by remember { mutableStateOf(settings.themeMode) }
+            var dynamicColor by remember { mutableStateOf(settings.dynamicColor) }
+            var themeKeyColor by remember { mutableStateOf(settings.themeKeyColor) }
             val darkTheme = when (themeMode) {
                 SettingsStore.THEME_DARK -> true
                 SettingsStore.THEME_LIGHT -> false
                 else -> isSystemInDarkTheme()
             }
-            QuickBillMateTheme(darkTheme = darkTheme) {
+            val keyColor = if (themeKeyColor == 0L) null else Color(themeKeyColor)
+            QuickBillMateTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColor,
+                keyColor = keyColor,
+            ) {
                 Box {
                     val navController = rememberNavController()
                     QuickBillMateAppNavHost(
@@ -37,6 +45,14 @@ class MainActivity : ComponentActivity() {
                         onThemeModeChange = { mode ->
                             themeMode = mode
                             settings.themeMode = mode
+                        },
+                        onDynamicColorChange = { enabled ->
+                            dynamicColor = enabled
+                            settings.dynamicColor = enabled
+                        },
+                        onThemeKeyColorChange = { argb ->
+                            themeKeyColor = argb
+                            settings.themeKeyColor = argb
                         },
                     )
                     // 全局单据渲染引擎：离屏 1×1，不占布局，持续消费渲染请求

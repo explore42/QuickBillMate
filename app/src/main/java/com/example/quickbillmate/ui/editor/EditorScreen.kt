@@ -9,6 +9,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,39 +24,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,11 +64,35 @@ import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.SectionCard
+import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.RadioButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,15 +135,18 @@ fun EditorScreen(
                     IconButton(onClick = {
                         viewModel.saveOnExit(onBack, onInvalid = { showDiscardConfirm = true })
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MiuixIcons.Back, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { showPresetDialog = true }) {
-                        Text("图片样式")
-                    }
+                    TextButton(
+                        text = "图片样式",
+                        onClick = { showPresetDialog = true },
+                        minHeight = 32.dp,
+                        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    )
                     IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(MiuixIcons.Settings, contentDescription = "设置")
                     }
                 },
             )
@@ -158,18 +160,17 @@ fun EditorScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedButton(
+                TextButton(
+                    text = "不保存",
                     onClick = { showDiscardConfirm = true },
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("不保存")
-                }
+                    minHeight = 40.dp,
+                )
                 Button(
                     onClick = { viewModel.saveNow(onBack) },
                     modifier = Modifier.weight(1.4f),
-                ) {
-                    Text("保存")
-                }
+                    minHeight = 40.dp,
+                ) { Text("保存") }
             }
         },
     ) { padding ->
@@ -202,7 +203,7 @@ fun EditorScreen(
                         onSelect = viewModel::selectSuggestion,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text("客户电话", style = MaterialTheme.typography.titleSmall)
+                    Text("客户电话", style = AppThemeTypography.titleSmall)
                     val editorPhones = remember(s.customerPhone) {
                         val parts = s.customerPhone.split(",").map { it.trim() }
                         if (parts.all { it.isEmpty() }) listOf("") else parts
@@ -219,8 +220,8 @@ fun EditorScreen(
                     if (phoneHint != null) {
                         Text(
                             phoneHint,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = AppThemeTypography.bodySmall,
+                            color = AppThemeColors.onSurfaceVariant,
                         )
                     }
                 }
@@ -243,18 +244,18 @@ fun EditorScreen(
                             supportingText = s.serialError,
                         )
                         IconButton(onClick = { viewModel.regenerateSerial() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "重新生成流水号")
+                            Icon(MiuixIcons.Refresh, contentDescription = "重新生成流水号")
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
+                    TextField(
                         value = s.docDate,
                         onValueChange = {},
-                        label = { Text("单据日期") },
+                        label = "单据日期",
                         readOnly = true,
                         trailingIcon = {
                             IconButton(onClick = { showDatePicker = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "选择日期")
+                                Icon(MiuixIcons.ExpandMore, contentDescription = "选择日期")
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -312,22 +313,24 @@ fun EditorScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(
+                        Button(
                             onClick = { viewModel.addItem() },
                             modifier = Modifier.weight(1f),
+                            minHeight = 40.dp,
+                            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
+                            Icon(MiuixIcons.Add, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
                             Text("添加商品行")
                         }
-                        FilledTonalButton(
+                        Button(
                             onClick = { showProductPicker = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .testTag("editor_add_from_library"),
-                        ) {
-                            Text("从商品库添加")
-                        }
+                            minHeight = 40.dp,
+                            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text("从商品库添加") }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -341,12 +344,13 @@ fun EditorScreen(
                             keyboardType = KeyboardType.Decimal,
                             modifier = Modifier.weight(1f),
                         )
-                        OutlinedButton(
-                            onClick = { roundDownAction?.invoke() },
-                            enabled = roundDownAction != null,
-                        ) {
-                            Text(roundDownLabel)
-                        }
+                TextButton(
+                    text = roundDownLabel,
+                    onClick = { roundDownAction?.invoke() },
+                    enabled = roundDownAction != null,
+                    minHeight = 32.dp,
+                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                )
                     }
                 }
 
@@ -358,33 +362,36 @@ fun EditorScreen(
     }
 
     if (showDatePicker) {
-        val dateState = rememberDatePickerState(
-            initialSelectedDateMillis = runCatching {
-                LocalDate.parse(s.docDate)
-                    .atStartOfDay(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli()
-            }.getOrNull()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    dateState.selectedDateMillis?.let { millis ->
-                        val date = Instant.ofEpochMilli(millis)
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate()
-                            .toString()
-                        viewModel.onDateChange(date)
-                    }
-                    showDatePicker = false
-                }) { Text("确定") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
-            },
-        ) {
-            DatePicker(state = dateState)
+        // Miuix 无日期选择器：局部保留 Material3，包一层 MaterialTheme 保证配色正常
+        MaterialTheme {
+            val dateState = rememberDatePickerState(
+                initialSelectedDateMillis = runCatching {
+                    LocalDate.parse(s.docDate)
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                }.getOrNull()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        dateState.selectedDateMillis?.let { millis ->
+                            val date = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                                .toString()
+                            viewModel.onDateChange(date)
+                        }
+                        showDatePicker = false
+                    }) { Text("确定") }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                },
+            ) {
+                DatePicker(state = dateState)
+            }
         }
     }
 
@@ -441,7 +448,6 @@ fun EditorScreen(
 }
 
 /** 客户名称：既是输入框也是下拉框。 */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomerField(
     value: String,
@@ -457,7 +463,7 @@ private fun CustomerField(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Box {
-            OutlinedTextField(
+            TextField(
                 value = value,
                 onValueChange = {
                     if (it.length <= InputLimits.NAME) {
@@ -465,7 +471,7 @@ private fun CustomerField(
                         expanded = true
                     }
                 },
-                label = { Text("客户名称") },
+                label = "客户名称",
                 modifier = Modifier
                     .fillMaxWidth()
                     .onSizeChanged { fieldWidth = it.width }
@@ -474,7 +480,7 @@ private fun CustomerField(
                 trailingIcon = {
                     IconButton(onClick = { expanded = !expanded }) {
                         Icon(
-                            Icons.Default.ArrowDropDown,
+                            MiuixIcons.ExpandMore,
                             contentDescription = if (menuOpen) "收起" else "展开",
                         )
                     }
@@ -490,41 +496,41 @@ private fun CustomerField(
                     Surface(
                         modifier = Modifier.width(popupWidth),
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = AppThemeColors.surface,
                         shadowElevation = 8.dp,
                     ) {
                         LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
                             items(suggestions) { suggestion ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    suggestion.name,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    modifier = Modifier.weight(1f),
-                                                )
-                                                if (suggestion.fromDb) {
-                                                    SuggestionTag(text = "客户库")
-                                                }
-                                            }
-                                            val subtitle = listOf(suggestion.type, suggestion.phone)
-                                                .filter { it.isNotBlank() }
-                                                .joinToString(" · ")
-                                            if (subtitle.isNotBlank()) {
-                                                Text(
-                                                    subtitle,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelect(suggestion)
+                                            expanded = false
                                         }
-                                    },
-                                    onClick = {
-                                        onSelect(suggestion)
-                                        expanded = false
-                                    },
-                                )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            suggestion.name,
+                                            style = AppThemeTypography.bodyMedium,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        if (suggestion.fromDb) {
+                                            SuggestionTag(text = "客户库")
+                                        }
+                                    }
+                                    val subtitle = listOf(suggestion.type, suggestion.phone)
+                                        .filter { it.isNotBlank() }
+                                        .joinToString(" · ")
+                                    if (subtitle.isNotBlank()) {
+                                        Text(
+                                            subtitle,
+                                            style = AppThemeTypography.bodySmall,
+                                            color = AppThemeColors.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -534,10 +540,13 @@ private fun CustomerField(
         if (!contactsGranted) {
             Text(
                 text = "开启通讯录权限可联想联系人",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AppThemeTypography.bodySmall,
+                color = AppThemeColors.onSurfaceVariant,
             )
-            TextButton(onClick = onGrantContacts) { Text("授权通讯录") }
+            TextButton(
+                text = "授权通讯录",
+                onClick = onGrantContacts,
+            )
         }
     }
 }
@@ -546,13 +555,13 @@ private fun CustomerField(
 private fun SuggestionTag(text: String) {
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = AppThemeColors.secondaryContainer,
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            style = AppThemeTypography.labelSmall,
+            color = AppThemeColors.onSecondaryContainer,
         )
     }
 }
@@ -566,25 +575,34 @@ private fun PresetPickerDialog(
     onManage: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OverlayDialog(
+        title = "选择图片样式",
+        show = true,
         onDismissRequest = onDismiss,
-        title = { Text("选择图片样式") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                PresetInlineList(
-                    currentKey = currentKey,
-                    presets = presets,
-                    onSelect = onSelect,
+    ) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            PresetInlineList(
+                currentKey = currentKey,
+                presets = presets,
+                onSelect = onSelect,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SmallTextButton(
+                    text = "管理",
+                    onClick = onManage,
+                )
+                SmallTextButton(
+                    text = "关闭",
+                    onClick = onDismiss,
+                    primary = true,
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
-        },
-        dismissButton = {
-            TextButton(onClick = onManage) { Text("管理") }
-        },
-    )
+        }
+    }
 }
 
 /** 右上角“设置”弹窗：复用默认信息表单，仅修改当前单据。 */
@@ -596,21 +614,33 @@ private fun EditorDefaultInfoDialog(
 ) {
     var local by remember(values) { mutableStateOf(values) }
 
-    AlertDialog(
+    OverlayDialog(
+        title = "设置",
+        show = true,
         onDismissRequest = onDismiss,
-        title = { Text("设置") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                DefaultInfoForm(values = local, onChange = { local = it })
+    ) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            DefaultInfoForm(values = local, onChange = { local = it })
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SmallTextButton(
+                    text = "取消",
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(20.dp))
+                SmallTextButton(
+                    text = "保存",
+                    onClick = { onSave(local) },
+                    modifier = Modifier.weight(1f),
+                    primary = true,
+                )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(local) }) { Text("保存") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -620,7 +650,7 @@ private fun PresetInlineList(
     onSelect: (String) -> Unit,
 ) {
     Column(modifier = Modifier.padding(start = 4.dp)) {
-        Text("内置预设", style = MaterialTheme.typography.labelMedium)
+        Text("内置预设", style = AppThemeTypography.labelMedium)
         StylePresets.builtIns.forEach { preset ->
             PresetRow(
                 name = preset.name,
@@ -631,7 +661,7 @@ private fun PresetInlineList(
         }
         if (presets.isNotEmpty()) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-            Text("我的预设", style = MaterialTheme.typography.labelMedium)
+            Text("我的预设", style = AppThemeTypography.labelMedium)
             presets.forEach { preset ->
                 PresetRow(
                     name = preset.name,
@@ -662,8 +692,8 @@ private fun PresetRow(
         Text(name, modifier = Modifier.weight(1f))
         Text(
             tag,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AppThemeTypography.labelSmall,
+            color = AppThemeColors.onSurfaceVariant,
         )
     }
 }
@@ -685,18 +715,18 @@ private fun ItemRowEditor(
         ) {
             Text(
                 text = "第 ${index + 1} 行",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                style = AppThemeTypography.labelMedium,
+                color = AppThemeColors.primary,
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onMoveUp, enabled = index > 0) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
+                Icon(MiuixIcons.ExpandLess, contentDescription = "上移")
             }
             IconButton(onClick = onMoveDown, enabled = index < count - 1) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
+                Icon(MiuixIcons.ExpandMore, contentDescription = "下移")
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "删除行")
+                Icon(MiuixIcons.Delete, contentDescription = "删除行")
             }
         }
         Row(
@@ -721,12 +751,12 @@ private fun ItemRowEditor(
             Column(modifier = Modifier.width(90.dp)) {
                 Text(
                     text = "金额",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    style = AppThemeTypography.labelSmall,
+                    color = AppThemeColors.outline,
                 )
                 Text(
                     text = Money.format(row.amount()),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AppThemeTypography.bodyMedium,
                     modifier = Modifier.padding(top = 12.dp),
                 )
             }
@@ -742,10 +772,10 @@ private fun RowField(
     modifier: Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
 ) {
-    OutlinedTextField(
+    TextField(
         value = value,
         onValueChange = onChange,
-        label = { Text(label) },
+        label = label,
         modifier = modifier,
         singleLine = true,
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
@@ -758,8 +788,8 @@ private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
                 text = "单据预览",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                style = AppThemeTypography.titleSmall,
+                color = AppThemeColors.primary,
             )
             Spacer(Modifier.height(10.dp))
             bitmap?.let {
@@ -775,7 +805,6 @@ private fun PreviewCard(bitmap: android.graphics.Bitmap?) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductPickerSheet(
     products: List<Product>,
@@ -783,20 +812,21 @@ private fun ProductPickerSheet(
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState()
     val filtered = remember(products, query) {
         if (query.isBlank()) products else products.filter {
             it.name.contains(query.trim()) || it.spec.contains(query.trim())
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    OverlayBottomSheet(
+        show = true,
+        title = "从商品库添加",
+        onDismissRequest = onDismiss,
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Text("从商品库添加", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
+            TextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("搜索商品") },
+                label = "搜索商品",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -814,16 +844,16 @@ private fun ProductPickerSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(p.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(p.name, style = AppThemeTypography.bodyLarge)
                             Text(
                                 listOf(p.spec, p.unit).filter { it.isNotBlank() }.joinToString(" · "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = AppThemeTypography.bodySmall,
+                                color = AppThemeColors.onSurfaceVariant,
                             )
                         }
                         Text(
                             "¥${Money.format(p.price)}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = AppThemeTypography.bodyMedium,
                         )
                     }
                 }

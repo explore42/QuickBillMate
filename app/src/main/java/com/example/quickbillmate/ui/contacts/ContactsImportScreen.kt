@@ -13,22 +13,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.importexport.ContactsImporter
@@ -50,6 +42,21 @@ import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.InitialCircle
 import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LetterIndexBar
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Search
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
 fun ContactsImportScreen(
@@ -96,14 +103,24 @@ fun ContactsImportScreen(
                 title = "从通讯录导入",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MiuixIcons.Back, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    TextButton(
+                    Button(
                         onClick = { viewModel.importSelected() },
                         enabled = viewModel.selected.isNotEmpty() && !viewModel.importing,
+                        minHeight = 32.dp,
+                        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                     ) {
+                        if (viewModel.importing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                size = 16.dp,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
                         Text(if (viewModel.importing) "导入中…" else "导入")
                     }
                 },
@@ -119,7 +136,7 @@ fun ContactsImportScreen(
                     CircularProgressIndicator()
                 }
             } else if (viewModel.candidates.isEmpty()) {
-                EmptyState(Icons.Default.Search, "通讯录中没有有电话号码的联系人")
+                EmptyState(MiuixIcons.Basic.Search, "通讯录中没有有电话号码的联系人")
             } else {
                 val importableFiltered = viewModel.filtered.filterNot { viewModel.isImported(it) }
                 val searchFocusRequester = remember { FocusRequester() }
@@ -135,25 +152,29 @@ fun ContactsImportScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(
-                        checked = importableFiltered.isNotEmpty() && importableFiltered.all {
-                            keyOf(it) in viewModel.selected
-                        },
-                        onCheckedChange = { checked ->
-                            viewModel.toggleAll(viewModel.filtered, checked)
+                        state = if (importableFiltered.isNotEmpty() && importableFiltered.all {
+                                keyOf(it) in viewModel.selected
+                            }) ToggleableState.On else ToggleableState.Off,
+                        onClick = {
+                            val allSelected = importableFiltered.all { keyOf(it) in viewModel.selected }
+                            viewModel.toggleAll(viewModel.filtered, !allSelected)
                         },
                     )
-                    Text("全选（仅当前筛选结果）", style = MaterialTheme.typography.bodyMedium)
+                    Text("全选（仅当前筛选结果）", style = AppThemeTypography.bodyMedium)
                     Spacer(Modifier.weight(1f))
                     Text(
                         "已选中 ${viewModel.selected.size} 项",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        style = AppThemeTypography.bodySmall,
+                        color = AppThemeColors.primary,
                     )
                 }
                 Box(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .overScrollVertical()
+                            .scrollEndHaptic(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     ) {
                         sections.forEachIndexed { groupIndex, section ->
@@ -184,28 +205,41 @@ fun ContactsImportScreen(
     }
 
     if (permissionDenied) {
-        AlertDialog(
+        OverlayDialog(
+            title = "需要通讯录权限",
+            summary = "用于从通讯录选择联系人导入客户库。您也可以稍后在系统设置中开启。",
+            show = true,
             onDismissRequest = { permissionDenied = false },
-            title = { Text("需要通讯录权限") },
-            text = { Text("用于从通讯录选择联系人导入客户库。您也可以稍后在系统设置中开启。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    permissionDenied = false
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            ) {
+                TextButton(
+                    text = "取消",
+                    onClick = {
+                        permissionDenied = false
+                        onBack()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(20.dp))
+                TextButton(
+                    text = "去设置",
+                    onClick = {
+                        permissionDenied = false
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null),
+                            )
                         )
-                    )
-                }) { Text("去设置") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    permissionDenied = false
-                    onBack()
-                }) { Text("取消") }
-            },
-        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
+            }
+        }
     }
 
     viewModel.importResult?.let { outcome ->
@@ -213,17 +247,22 @@ fun ContactsImportScreen(
             add("新增 ${outcome.inserted} 条")
             if (outcome.merged > 0) add("合并 ${outcome.merged} 条")
         }
-        AlertDialog(
+        OverlayDialog(
+            title = "导入完成",
+            summary = parts.joinToString(" / "),
+            show = true,
             onDismissRequest = viewModel::consumeResult,
-            title = { Text("导入完成") },
-            text = { Text(parts.joinToString(" / ")) },
-            confirmButton = {
-                TextButton(onClick = {
+        ) {
+            TextButton(
+                text = "返回客户",
+                onClick = {
                     viewModel.consumeResult()
                     onBack()
-                }) { Text("返回客户") }
-            },
-        )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
+            )
+        }
     }
 }
 
@@ -234,27 +273,31 @@ private fun ImportRow(
     checked: Boolean,
     onToggle: () -> Unit,
 ) {
-    val grey = MaterialTheme.colorScheme.outline
+    val grey = AppThemeColors.outline
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle() }, enabled = !imported)
+        Checkbox(
+            state = if (checked) ToggleableState.On else ToggleableState.Off,
+            onClick = { onToggle() },
+            enabled = !imported,
+        )
         Spacer(Modifier.width(8.dp))
         InitialCircle(candidate.name.trim().firstOrNull()?.toString() ?: "?")
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 candidate.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (imported) grey else MaterialTheme.colorScheme.onSurface,
+                style = AppThemeTypography.bodyLarge,
+                color = if (imported) grey else AppThemeColors.onSurface,
             )
             Text(
                 candidate.phone,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (imported) grey else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AppThemeTypography.bodySmall,
+                color = if (imported) grey else AppThemeColors.onSurfaceVariant,
             )
         }
     }

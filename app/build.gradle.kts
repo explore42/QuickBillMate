@@ -1,8 +1,8 @@
 import java.io.FileInputStream
 import java.util.Properties
 
-// 正式产物命名：QuickBillMate-v<versionName>-<buildType>.apk（如 QuickBillMate-v1.0.0-release.apk）
-val appVersionName = "1.0.0"
+// 正式产物命名：QuickBillMate-v<versionName>-<buildType>.apk（如 QuickBillMate-v1.1.0-release.apk）
+val appVersionName = "1.1.0"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -27,6 +27,10 @@ android {
 
     signingConfigs {
         create("release") {
+            storeFile = file("REDACTED\\REDACTED")
+            storePassword = "REDACTED"
+            keyPassword = "REDACTED"
+            keyAlias = "key0"
             if (hasReleaseKeystore) {
                 storeFile = file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
@@ -38,9 +42,9 @@ android {
 
     defaultConfig {
         applicationId = "com.example.quickbillmate"
-        minSdk = 29
+        minSdk = 33
         targetSdk = 37
-        versionCode = 1
+        versionCode = 2
         // 版本规范（语义化版本）：
         // - versionName 遵循 MAJOR.MINOR.PATCH，首个正式版 1.0.0
         // - MAJOR=破坏性变更 / MINOR=新增功能 / PATCH=修复；预发布用 -beta.N 后缀
@@ -109,8 +113,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.core)
-    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.miuix.ui)
+    implementation(libs.miuix.preference)
+    implementation(libs.miuix.icons)
+    implementation(libs.miuix.blur)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

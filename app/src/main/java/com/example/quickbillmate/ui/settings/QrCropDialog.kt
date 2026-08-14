@@ -16,10 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,6 +41,10 @@ import androidx.compose.ui.window.DialogProperties
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 
 /** 裁剪输出的二维码边长（px）。 */
 private const val OUTPUT_SIZE = 720
@@ -88,7 +90,7 @@ fun QrCropDialog(
                 Text(
                     text = "调整二维码区域",
                     color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = AppThemeTypography.titleMedium,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
                 )
 
@@ -166,7 +168,11 @@ fun QrCropDialog(
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                 ) {
-                    TextButton(onClick = onCancel) { Text("取消", color = Color.White) }
+                    TextButton(
+                        text = "取消",
+                        onClick = onCancel,
+                        colors = ButtonDefaults.textButtonColors(textColor = Color.White),
+                    )
                     Button(onClick = {
                         onSave(
                             cropSquare(

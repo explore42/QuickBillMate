@@ -1,11 +1,10 @@
 package com.example.quickbillmate.navigation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,16 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,8 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -50,6 +39,16 @@ import com.example.quickbillmate.ui.products.ProductsScreen
 import com.example.quickbillmate.ui.settings.SettingsScreen
 import com.example.quickbillmate.ui.view.BillViewScreen
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Contacts
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val TABS = "tabs"
 private const val SLIDE_DURATION_MS = 320
@@ -58,6 +57,8 @@ private const val SLIDE_DURATION_MS = 320
 fun QuickBillMateAppNavHost(
     navController: NavHostController,
     onThemeModeChange: (String) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onThemeKeyColorChange: (Long) -> Unit,
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -82,73 +83,86 @@ fun QuickBillMateAppNavHost(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (currentRoute == TABS && !selectionActive) {
-                NavigationBar {
-                    TabItem(Icons.Default.Home, "单据", pagerState.currentPage == 0) {
+                // 标准底部导航栏：仅图标（Demibold）无文字，点击仅加深/灰化
+                // 容器色使用 surfaceContainer，与页面背景（background）保持轻微色差，
+                // 动态取色下会带一点主题色倾向，便于区分导航栏与内容区域。
+                NavigationBar(
+                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    mode = NavigationBarDisplayMode.IconOnly,
+                ) {
+                    NavItem(MiuixIcons.Demibold.File, "单据", pagerState.currentPage == 0) {
                         if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
                     }
-                    TabItem(Icons.AutoMirrored.Filled.List, "商品", pagerState.currentPage == 1) {
+                    NavItem(MiuixIcons.Demibold.ListView, "商品", pagerState.currentPage == 1) {
                         if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
                     }
-                    TabItem(Icons.Default.Person, "客户", pagerState.currentPage == 2) {
+                    NavItem(MiuixIcons.Demibold.Contacts, "客户", pagerState.currentPage == 2) {
                         if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
                     }
-                    TabItem(Icons.Default.Settings, "设置", pagerState.currentPage == 3) {
+                    NavItem(MiuixIcons.Demibold.Settings, "设置", pagerState.currentPage == 3) {
                         if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
                     }
                 }
             }
         },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = TABS,
-            modifier = Modifier.padding(padding),
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
-                )
-            },
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
         ) {
-            composable(TABS) {
-                TabPagerHost(
-                    pagerState = pagerState,
-                    userScrollEnabled = !selectionActive,
-                    homeScrollTicks = homeScrollTicks,
-                    productsScrollTicks = productsScrollTicks,
-                    customersScrollTicks = customersScrollTicks,
-                    onSelectionModeChange = { tab, active ->
-                        when (tab) {
-                            0 -> homeSelectionActive = active
-                            1 -> productsSelectionActive = active
-                            2 -> customersSelectionActive = active
-                        }
-                    },
-                    onNewBill = { navController.navigate(Routes.editor(0)) },
-                    onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
-                    onImportContacts = { navController.navigate(Routes.CONTACTS_IMPORT) },
-                    onThemeModeChange = onThemeModeChange,
-                    onManagePresets = { navController.navigate(Routes.PRESETS) },
-                )
-            }
+            NavHost(
+                navController = navController,
+                startDestination = TABS,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(SLIDE_DURATION_MS, easing = FastOutSlowInEasing),
+                    )
+                },
+            ) {
+                composable(TABS) {
+                    TabPagerHost(
+                        pagerState = pagerState,
+                        userScrollEnabled = !selectionActive,
+                        homeScrollTicks = homeScrollTicks,
+                        productsScrollTicks = productsScrollTicks,
+                        customersScrollTicks = customersScrollTicks,
+                        onSelectionModeChange = { tab, active ->
+                            when (tab) {
+                                0 -> homeSelectionActive = active
+                                1 -> productsSelectionActive = active
+                                2 -> customersSelectionActive = active
+                            }
+                        },
+                        onNewBill = { navController.navigate(Routes.editor(0)) },
+                        onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
+                        onImportContacts = { navController.navigate(Routes.CONTACTS_IMPORT) },
+                        onThemeModeChange = onThemeModeChange,
+                        onDynamicColorChange = onDynamicColorChange,
+                        onThemeKeyColorChange = onThemeKeyColorChange,
+                        onManagePresets = { navController.navigate(Routes.PRESETS) },
+                    )
+                }
 
             composable(
                 route = Routes.EDITOR,
@@ -218,6 +232,7 @@ fun QuickBillMateAppNavHost(
         }
     }
 }
+}
 
 /** 四个底部标签页容器：左右滑动切换，底部导航同步。 */
 @Composable
@@ -232,6 +247,8 @@ private fun TabPagerHost(
     onOpenBill: (Long) -> Unit,
     onImportContacts: () -> Unit,
     onThemeModeChange: (String) -> Unit,
+    onDynamicColorChange: (Boolean) -> Unit,
+    onThemeKeyColorChange: (Long) -> Unit,
     onManagePresets: () -> Unit,
 ) {
     HorizontalPager(
@@ -257,6 +274,8 @@ private fun TabPagerHost(
             )
             3 -> SettingsScreen(
                 onThemeModeChange = onThemeModeChange,
+                onDynamicColorChange = onDynamicColorChange,
+                onThemeKeyColorChange = onThemeKeyColorChange,
                 onManagePresets = onManagePresets,
             )
         }
@@ -264,31 +283,16 @@ private fun TabPagerHost(
 }
 
 @Composable
-private fun RowScope.TabItem(
+private fun RowScope.NavItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.18f else 1f,
-        animationSpec = tween(200, easing = FastOutSlowInEasing),
-        label = "navIconScale",
-    )
     NavigationBarItem(
         selected = selected,
         onClick = onClick,
-        icon = {
-            Icon(
-                icon,
-                contentDescription = label,
-                modifier = Modifier.scale(iconScale),
-            )
-        },
-        label = if (selected) {
-            { Text(label) }
-        } else {
-            null
-        },
+        icon = icon,
+        label = label,
     )
 }

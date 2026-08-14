@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,23 +22,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -68,8 +55,30 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Close
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.icon.extended.More
+import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.pressable
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 
 /** 商品分组：title 为分组标题（收藏 / 字母 / #）。 */
@@ -190,18 +199,17 @@ fun ProductsScreen(
                     title = "已选中 ${viewModel.selectedIds.size} 项",
                     navigationIcon = {
                         IconButton(onClick = { viewModel.exitSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "退出多选")
+                            Icon(MiuixIcons.Basic.Close, contentDescription = "退出多选")
                         }
                     },
                     actions = {
                         val allVisibleSelected =
                             products.isNotEmpty() && products.all { it.id in viewModel.selectedIds }
                         TextButton(
+                            text = if (allVisibleSelected) "取消全选" else "全选",
                             onClick = { viewModel.toggleSelectAll() },
                             modifier = Modifier.testTag("select_all_toggle"),
-                        ) {
-                            Text(if (allVisibleSelected) "取消全选" else "全选")
-                        }
+                        )
                     },
                 )
             } else {
@@ -211,40 +219,41 @@ fun ProductsScreen(
                 query = viewModel.queryText,
                 onQueryChange = viewModel::setQuery,
                 actions = {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
+                    OverlayIconDropdownMenu(
+                        entry = DropdownEntry(
+                            items = listOf(
+                                DropdownItem(
+                                    text = "导出 JSON",
+                                    onClick = {
+                                        showMenu = false
+                                        viewModel.exportProducts()
+                                    },
+                                ),
+                                DropdownItem(
+                                    text = "导入 JSON",
+                                    onClick = {
+                                        showMenu = false
+                                        showImportDialog = true
+                                    },
+                                ),
+                                DropdownItem(
+                                    text = "从剪贴板导入",
+                                    onClick = {
+                                        showMenu = false
+                                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val text = cm.primaryClip
+                                            ?.getItemAt(0)
+                                            ?.coerceToText(context)
+                                            ?.toString()
+                                            ?.trim()
+                                        viewModel.importFromClipboard(text.orEmpty())
+                                    },
+                                ),
+                            )
+                        ),
+                        onExpandedChange = { showMenu = it },
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("导出 JSON") },
-                            onClick = {
-                                showMenu = false
-                                viewModel.exportProducts()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("导入 JSON") },
-                            onClick = {
-                                showMenu = false
-                                showImportDialog = true
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("从剪贴板导入") },
-                            onClick = {
-                                showMenu = false
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val text = cm.primaryClip
-                                    ?.getItemAt(0)
-                                    ?.coerceToText(context)
-                                    ?.toString()
-                                    ?.trim()
-                                viewModel.importFromClipboard(text.orEmpty())
-                            },
-                        )
+                        Icon(MiuixIcons.More, contentDescription = "更多")
                     }
                 },
             )
@@ -252,8 +261,12 @@ fun ProductsScreen(
         },
         floatingActionButton = {
             if (!viewModel.selectionMode) {
-                FloatingActionButton(onClick = { showNewDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "新增商品")
+                FloatingActionButton(
+                    onClick = { showNewDialog = true },
+                    modifier = Modifier
+                        .pressable(interactionSource = remember { MutableInteractionSource() }),
+                ) {
+                    Icon(MiuixIcons.Add, contentDescription = "新增商品")
                 }
             }
         },
@@ -272,9 +285,24 @@ fun ProductsScreen(
             }
         },
     ) { padding ->
-        if (products.isEmpty()) {
+        if (viewModel.importing) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "正在导入…",
+                        style = AppThemeTypography.bodySmall,
+                        color = AppThemeColors.onSurfaceVariant,
+                    )
+                }
+            }
+        } else if (products.isEmpty()) {
             EmptyState(
-                icon = Icons.Default.Edit,
+                icon = MiuixIcons.Edit,
                 text = if (viewModel.queryText.isNotBlank()) "没有找到匹配的商品" else "还没有商品，点击右下角新增",
                 modifier = Modifier.padding(padding),
             )
@@ -282,7 +310,10 @@ fun ProductsScreen(
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .overScrollVertical()
+                        .scrollEndHaptic(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     grouped.forEachIndexed { groupIndex, section ->
@@ -313,8 +344,8 @@ fun ProductsScreen(
                         ) {
                             if (viewModel.selectionMode) {
                                 Checkbox(
-                                    checked = product.id in viewModel.selectedIds,
-                                    onCheckedChange = { viewModel.toggleSelection(product.id) },
+                                    state = if (product.id in viewModel.selectedIds) ToggleableState.On else ToggleableState.Off,
+                                    onClick = { viewModel.toggleSelection(product.id) },
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
@@ -341,20 +372,20 @@ fun ProductsScreen(
                                     )
                                     .padding(vertical = 10.dp),
                             ) {
-                                Text(product.name, style = MaterialTheme.typography.titleSmall)
+                                Text(product.name, style = AppThemeTypography.titleSmall)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = listOf(product.spec, product.unit)
                                         .filter { it.isNotBlank() }
                                         .joinToString("  "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = AppThemeTypography.bodySmall,
+                                    color = AppThemeColors.onSurfaceVariant,
                                 )
                             }
                             Text(
                                 "¥${Money.format(product.price)}",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                style = AppThemeTypography.titleSmall,
+                                color = AppThemeColors.primary,
                             )
 
                         }
@@ -424,113 +455,158 @@ fun ProductsScreen(
     }
 
     if (showImportDialog) {
-        AlertDialog(
+        OverlayDialog(
+            title = "导入 JSON",
+            summary = "从 JSON 文件批量导入商品。支持 application/json 或文本文件，文件不超过 2MB。",
+            show = true,
             onDismissRequest = { showImportDialog = false },
-            title = { Text("导入 JSON") },
-            text = { Text("从 JSON 文件批量导入商品。支持 application/json 或文本文件，文件不超过 2MB。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showImportDialog = false
-                    filePicker.launch(arrayOf("application/json", "text/plain", "*/*"))
-                }) { Text("选择文件") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showImportDialog = false
-                    showTemplate = true
-                }) { Text("查看模板") }
-            },
-        )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            ) {
+                TextButton(
+                    text = "查看模板",
+                    onClick = {
+                        showImportDialog = false
+                        showTemplate = true
+                    },
+                )
+                TextButton(
+                    text = "选择文件",
+                    onClick = {
+                        showImportDialog = false
+                        filePicker.launch(arrayOf("application/json", "text/plain", "*/*"))
+                    },
+                    colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                )
+            }
+        }
     }
 
     if (showTemplate) {
-        AlertDialog(
+        OverlayDialog(
+            title = "JSON 模板",
+            show = true,
             onDismissRequest = { showTemplate = false },
-            title = { Text("JSON 模板") },
-            text = {
-                Column {
-                    Text(
-                        text = ProductJsonCodec.templateText(),
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.height(220.dp),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = {
+        ) {
+            Column {
+                Text(
+                    text = ProductJsonCodec.templateText(),
+                    fontFamily = FontFamily.Monospace,
+                    style = AppThemeTypography.bodySmall,
+                    modifier = Modifier.height(220.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    text = "复制模板",
+                    onClick = {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cm.setPrimaryClip(ClipData.newPlainText("json", ProductJsonCodec.templateText()))
-                    }) {
-                        Text("复制模板")
-                    }
+                    },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                ) {
+                    TextButton(
+                        text = "关闭",
+                        onClick = { showTemplate = false },
+                        colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                    )
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showTemplate = false }) { Text("关闭") }
-            },
-        )
+            }
+        }
     }
 
     viewModel.importResult?.let { result ->
         val failureText = result.failures.take(20).joinToString("\n") { "第${it.first}行：${it.second}" }
-        AlertDialog(
+        OverlayDialog(
+            title = "导入完成",
+            show = true,
             onDismissRequest = viewModel::consumeImportResult,
-            title = { Text("导入完成") },
-            text = {
-                Column {
-                    Text("成功 ${result.success} 条 / 跳过重复 ${result.skipped} 条 / 失败 ${result.failures.size} 条")
-                    if (failureText.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            failureText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+        ) {
+            Column {
+                Text("成功 ${result.success} 条 / 跳过重复 ${result.skipped} 条 / 失败 ${result.failures.size} 条")
+                if (failureText.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        failureText,
+                        style = AppThemeTypography.bodySmall,
+                        color = AppThemeColors.error,
+                    )
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeImportResult) { Text("完成") }
-            },
-        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                ) {
+                    TextButton(
+                        text = "完成",
+                        onClick = viewModel::consumeImportResult,
+                        colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                    )
+                }
+            }
+        }
     }
 
     viewModel.importError?.let { message ->
-        AlertDialog(
+        OverlayDialog(
+            title = "导入失败",
+            summary = message,
+            show = true,
             onDismissRequest = viewModel::consumeImportError,
-            title = { Text("导入失败") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeImportError) { Text("完成") }
-            },
-        )
+        ) {
+            TextButton(
+                text = "完成",
+                onClick = viewModel::consumeImportError,
+                modifier = Modifier.fillMaxWidth(),
+                colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+            )
+        }
     }
 
     viewModel.exportFileName?.let { fileName ->
-        AlertDialog(
+        OverlayDialog(
+            title = "导出完成",
+            summary = "已保存到下载目录：$fileName",
+            show = true,
             onDismissRequest = viewModel::consumeExport,
-            title = { Text("导出完成") },
-            text = { Text("已保存到下载目录：$fileName") },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeExport) { Text("完成") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.shareExportedJson()
-                    viewModel.consumeExport()
-                }) { Text("分享") }
-            },
-        )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            ) {
+                TextButton(
+                    text = "分享",
+                    onClick = {
+                        viewModel.shareExportedJson()
+                        viewModel.consumeExport()
+                    },
+                )
+                TextButton(
+                    text = "完成",
+                    onClick = viewModel::consumeExport,
+                    colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                )
+            }
+        }
     }
 
     viewModel.exportError?.let { message ->
-        AlertDialog(
+        OverlayDialog(
+            title = "导出失败",
+            summary = message,
+            show = true,
             onDismissRequest = viewModel::consumeExport,
-            title = { Text("导出失败") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeExport) { Text("完成") }
-            },
-        )
+        ) {
+            TextButton(
+                text = "完成",
+                onClick = viewModel::consumeExport,
+                modifier = Modifier.fillMaxWidth(),
+                colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+            )
+        }
     }
 }
 
@@ -541,31 +617,36 @@ private fun ProductDetailDialog(
     onEdit: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    OverlayDialog(
+        title = "商品详情",
+        show = true,
         onDismissRequest = onDismiss,
-        title = { Text("商品详情") },
-        text = {
-            Column {
-                DetailLine("名称", product.name)
-                if (product.spec.isNotBlank()) DetailLine("规格", product.spec)
-                if (product.unit.isNotBlank()) DetailLine("单位", product.unit)
-                DetailLine("单价", "¥${Money.format(product.price)}")
-                if (product.pack.isNotBlank()) DetailLine("包装规格", product.pack)
-                if (product.note.isNotBlank()) DetailLine("备注", product.note)
-                Spacer(Modifier.height(6.dp))
-                LabeledSwitch("收藏", product.favorite, onToggleFavorite)
+    ) {
+        Column {
+            DetailLine("名称", product.name)
+            if (product.spec.isNotBlank()) DetailLine("规格", product.spec)
+            if (product.unit.isNotBlank()) DetailLine("单位", product.unit)
+            DetailLine("单价", "¥${Money.format(product.price)}")
+            if (product.pack.isNotBlank()) DetailLine("包装规格", product.pack)
+            if (product.note.isNotBlank()) DetailLine("备注", product.note)
+            Spacer(Modifier.height(6.dp))
+            LabeledSwitch("收藏", product.favorite, onToggleFavorite)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+            ) {
+                SmallTextButton(
+                    text = "修改",
+                    onClick = {
+                        onEdit()
+                        onDismiss()
+                    },
+                    primary = true,
+                )
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onEdit()
-                    onDismiss()
-                },
-            ) { Text("修改") }
-        },
-        confirmButton = {},
-    )
+        }
+    }
 }
 
 @Composable
@@ -583,66 +664,78 @@ private fun ProductEditDialog(
     var favorite by remember { mutableStateOf(initial.favorite) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
+    OverlayDialog(
+        title = if (initial.id == 0L) "新增商品" else "编辑商品",
+        show = true,
         onDismissRequest = onDismiss,
-        title = { Text(if (initial.id == 0L) "新增商品" else "编辑商品") },
-        text = {
-            Column {
-                LabeledField(
-                    "名称*",
-                    name,
-                    { if (it.length <= InputLimits.NAME) name = it },
-                    modifier = Modifier.testTag("product_name"),
-                )
-                Spacer(Modifier.height(8.dp))
-                LabeledField("规格", spec, { if (it.length <= InputLimits.SPEC) spec = it })
-                Spacer(Modifier.height(8.dp))
-                LabeledField("单位", unit, { if (it.length <= InputLimits.UNIT) unit = it })
-                Spacer(Modifier.height(8.dp))
-                LabeledField(
-                    "单价*",
-                    price,
-                    { price = it },
-                    modifier = Modifier.testTag("product_price"),
-                    keyboardType = KeyboardType.Decimal,
-                )
-                Spacer(Modifier.height(8.dp))
-                LabeledField("包装规格", pack, { if (it.length <= InputLimits.PACK) pack = it })
-                Spacer(Modifier.height(8.dp))
-                LabeledField("备注", note, { if (it.length <= InputLimits.REMARK) note = it })
-                Spacer(Modifier.height(8.dp))
-                LabeledSwitch("收藏", favorite, { favorite = it })
-                error?.let {
-                    Spacer(Modifier.height(6.dp))
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
+    ) {
+        Column {
+            LabeledField(
+                "名称*",
+                name,
+                { if (it.length <= InputLimits.NAME) name = it },
+                modifier = Modifier.testTag("product_name"),
+            )
+            Spacer(Modifier.height(8.dp))
+            LabeledField("规格", spec, { if (it.length <= InputLimits.SPEC) spec = it })
+            Spacer(Modifier.height(8.dp))
+            LabeledField("单位", unit, { if (it.length <= InputLimits.UNIT) unit = it })
+            Spacer(Modifier.height(8.dp))
+            LabeledField(
+                "单价*",
+                price,
+                { price = it },
+                modifier = Modifier.testTag("product_price"),
+                keyboardType = KeyboardType.Decimal,
+            )
+            Spacer(Modifier.height(8.dp))
+            LabeledField("包装规格", pack, { if (it.length <= InputLimits.PACK) pack = it })
+            Spacer(Modifier.height(8.dp))
+            LabeledField("备注", note, { if (it.length <= InputLimits.REMARK) note = it })
+            Spacer(Modifier.height(8.dp))
+            LabeledSwitch("收藏", favorite, { favorite = it })
+            error?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, color = AppThemeColors.error, style = AppThemeTypography.bodySmall)
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val priceValue = price.toDoubleOrNull()
-                error = when {
-                    name.isBlank() -> "名称不能为空"
-                    priceValue == null || priceValue < 0 -> "单价必须是非负数字"
-                    else -> null
-                }
-                if (error == null) {
-                    onSave(
-                        initial.copy(
-                            name = name.trim(),
-                            spec = spec.trim(),
-                            unit = unit.trim().ifBlank { "桶" },
-                            price = priceValue ?: 0.0,
-                            pack = pack.trim(),
-                            note = note.trim(),
-                            favorite = favorite,
-                        )
-                    )
-                }
-            }) { Text("保存") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            ) {
+                SmallTextButton(
+                    text = "取消",
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(20.dp))
+                SmallTextButton(
+                    text = "保存",
+                    onClick = {
+                        val priceValue = price.toDoubleOrNull()
+                        error = when {
+                            name.isBlank() -> "名称不能为空"
+                            priceValue == null || priceValue < 0 -> "单价必须是非负数字"
+                            else -> null
+                        }
+                        if (error == null) {
+                            onSave(
+                                initial.copy(
+                                    name = name.trim(),
+                                    spec = spec.trim(),
+                                    unit = unit.trim().ifBlank { "桶" },
+                                    price = priceValue ?: 0.0,
+                                    pack = pack.trim(),
+                                    note = note.trim(),
+                                    favorite = favorite,
+                                )
+                            )
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    primary = true,
+                )
+            }
+        }
+    }
 }

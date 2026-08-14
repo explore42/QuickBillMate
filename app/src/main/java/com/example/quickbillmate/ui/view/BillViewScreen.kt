@@ -18,29 +18,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,11 +52,29 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.MiuixMenuPopup
+import com.example.quickbillmate.ui.common.PhoneTag
 import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.ui.editor.presetDisplayName
 import com.example.quickbillmate.util.BillNumber
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Close
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Phone
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -112,7 +116,7 @@ fun BillViewScreen(
                 title = "单据详情",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MiuixIcons.Back, contentDescription = "返回")
                     }
                 },
 
@@ -125,27 +129,39 @@ fun BillViewScreen(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedButton(
+                TextButton(
+                    text = "修改",
                     onClick = { onEdit(billId) },
                     modifier = Modifier.weight(0.8f),
                     enabled = !s.exporting,
-                ) {
-                    Text("修改")
-                }
-                OutlinedButton(
+                    minHeight = 40.dp,
+                )
+                Button(
                     onClick = { viewModel.exportToGallery() },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).heightIn(min = 40.dp),
                     enabled = !s.exporting,
+                    minHeight = 40.dp,
+                    colors = ButtonDefaults.buttonColors(
+                        color = MiuixTheme.colorScheme.secondaryContainer,
+                        contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
+                    ),
                 ) {
-                    Text(if (s.exporting) "导出中…" else "导出图片")
+                    if (s.exporting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            size = 18.dp,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(if (s.exporting) "保存中…" else "保存图片")
                 }
                 Button(
                     onClick = { viewModel.shareNow() },
-                    modifier = Modifier.weight(1.3f),
+                    modifier = Modifier.weight(1.3f).heightIn(min = 40.dp),
                     enabled = !s.exporting,
-                ) {
-                    Text("分享图片")
-                }
+                    minHeight = 40.dp,
+                ) { Text("分享图片") }
             }
         },
     ) { padding ->
@@ -174,7 +190,6 @@ fun BillViewScreen(
                             contentDescription = "单据预览",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .shadow(2.dp, RoundedCornerShape(8.dp))
                                 .clip(RoundedCornerShape(8.dp))
                                 .combinedClickable(
                                     onClick = { previewFull = true },
@@ -182,25 +197,20 @@ fun BillViewScreen(
                                 )
                                 .testTag("view_preview"),
                         )
-                        DropdownMenu(
+                        MiuixMenuPopup(
                             expanded = showPreviewMenu,
-                            onDismissRequest = { showPreviewMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("导出图片") },
-                                onClick = {
+                            onDismiss = { showPreviewMenu = false },
+                            items = listOf(
+                                "保存图片" to {
                                     showPreviewMenu = false
                                     viewModel.exportToGallery()
                                 },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("分享图片") },
-                                onClick = {
+                                "分享图片" to {
                                     showPreviewMenu = false
                                     viewModel.shareNow()
                                 },
-                            )
-                        }
+                            ),
+                        )
                     }
                 }
 
@@ -211,12 +221,12 @@ fun BillViewScreen(
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                         Text(
                             "客户电话",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = AppThemeTypography.bodyMedium,
+                            color = AppThemeColors.onSurfaceVariant,
                             modifier = Modifier.width(110.dp),
                         )
                         if (dialPhones.isEmpty()) {
-                            Text("—", style = MaterialTheme.typography.bodyMedium)
+                            Text("—", style = AppThemeTypography.bodyMedium)
                         } else {
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 dialPhones.forEach { phone ->
@@ -241,45 +251,45 @@ fun BillViewScreen(
 
                 SectionCard("商品信息") {
                     if (s.items.isEmpty()) {
-                        Text("无商品行", color = MaterialTheme.colorScheme.outline)
+                        Text("无商品行", color = AppThemeColors.outline)
                     } else {
                         s.items.forEachIndexed { index, item ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     "${index + 1}.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline,
+                                    style = AppThemeTypography.bodySmall,
+                                    color = AppThemeColors.outline,
                                     modifier = Modifier.width(32.dp),
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.name.ifBlank { "（未填写名称）" }, style = MaterialTheme.typography.bodyMedium)
+                                    Text(item.name.ifBlank { "（未填写名称）" }, style = AppThemeTypography.bodyMedium)
                                     val detail = listOf(item.spec, item.unit, item.pack)
                                         .filter { it.isNotBlank() }
                                         .joinToString("  ")
                                     if (detail.isNotBlank()) {
                                         Text(
                                             detail,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = AppThemeTypography.bodySmall,
+                                            color = AppThemeColors.onSurfaceVariant,
                                         )
                                     }
                                     if (item.note.isNotBlank()) {
                                         Text(
                                             "备注：${item.note}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = AppThemeTypography.bodySmall,
+                                            color = AppThemeColors.onSurfaceVariant,
                                         )
                                     }
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         "${item.qty.toLong()} × ${Money.format(item.price)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = AppThemeTypography.bodySmall,
+                                        color = AppThemeColors.onSurfaceVariant,
                                     )
                                     Text(
                                         Money.format(if (item.qty <= 0) 0.0 else Money.round2(item.qty * item.price)),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = AppThemeTypography.bodyMedium,
                                     )
                                 }
                             }
@@ -294,19 +304,19 @@ fun BillViewScreen(
                         val receivable = Math.max(0.0, Money.round2(total - bill.discount))
                         Text(
                             "合计：${Money.format(total)}",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = AppThemeTypography.bodyMedium,
                         )
                         if (bill.discount != 0.0) {
                             Text(
                                 "优惠：${Money.format(bill.discount)}",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = AppThemeTypography.bodyMedium,
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                         }
                         Text(
                             "应收：${Money.format(receivable)}（${Money.toChineseAmount(receivable)}）",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            style = AppThemeTypography.titleSmall,
+                            color = AppThemeColors.primary,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
@@ -342,27 +352,37 @@ fun BillViewScreen(
     }
 
     s.exportOutcome?.let { outcome ->
-        AlertDialog(
+        OverlayDialog(
+            title = if (outcome.saved) "保存成功" else "保存失败",
+            summary = outcome.message,
+            show = true,
             onDismissRequest = viewModel::consumeExportOutcome,
-            title = { Text(if (outcome.saved) "导出成功" else "导出失败") },
-            text = { Text(outcome.message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::consumeExportOutcome) { Text("完成") }
-            },
-            dismissButton = {
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 if (outcome.saved && outcome.shareUri != null) {
-                    TextButton(onClick = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "image/png"
-                            putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享单据"))
-                        viewModel.consumeExportOutcome()
-                    }) { Text("分享") }
+                    TextButton(
+                        text = "分享",
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "image/png"
+                                putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享单据"))
+                            viewModel.consumeExportOutcome()
+                        },
+                    )
                 }
-            },
-        )
+                TextButton(
+                    text = "完成",
+                    onClick = viewModel::consumeExportOutcome,
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                )
+            }
+        }
     }
 }
 
@@ -375,44 +395,18 @@ private fun InfoLine(
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(
             label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AppThemeTypography.bodyMedium,
+            color = AppThemeColors.onSurfaceVariant,
             modifier = Modifier.width(110.dp),
         )
         Text(
             value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = AppThemeTypography.bodyMedium,
             modifier = if (onValueClick != null) {
                 Modifier.clickable { onValueClick() }
             } else {
                 Modifier
             },
-        )
-    }
-}
-
-/** 电话标签：浅色圆角胶囊 + 电话图标，点击拨号。 */
-@Composable
-private fun PhoneTag(phone: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(percent = 50))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Default.Call,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(14.dp),
-        )
-        Spacer(Modifier.width(5.dp))
-        Text(
-            phone,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
@@ -477,25 +471,20 @@ private fun FullPreviewDialog(
                             }
                         },
                 )
-                DropdownMenu(
+                MiuixMenuPopup(
                     expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("导出图片") },
-                        onClick = {
+                    onDismiss = { showMenu = false },
+                    items = listOf(
+                        "保存图片" to {
                             showMenu = false
                             onExport()
                         },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("分享图片") },
-                        onClick = {
+                        "分享图片" to {
                             showMenu = false
                             onShare()
                         },
-                    )
-                }
+                    ),
+                )
             }
             IconButton(
                 onClick = onDismiss,
@@ -504,7 +493,7 @@ private fun FullPreviewDialog(
                     .padding(8.dp)
                     .background(Color.Black.copy(alpha = 0.5f)),
             ) {
-                Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White)
+                Icon(MiuixIcons.Basic.Close, contentDescription = "关闭", tint = Color.White)
             }
         }
     }
