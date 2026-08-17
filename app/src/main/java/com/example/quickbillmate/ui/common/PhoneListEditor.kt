@@ -1,7 +1,9 @@
 package com.example.quickbillmate.ui.common
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
@@ -14,13 +16,14 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.ExpandLess
-import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Delete
 
-/** 多电话编辑器：每行一个输入框，支持上下移动与删除，底部可追加。 */
+/**
+ * 多电话编辑器：每行一个输入框 + 删除。
+ * 「添加电话」入口由调用方放在小标题行（见 [PhoneSectionHeader]）。
+ */
 @Composable
 fun PhoneListEditor(
     phones: List<String>,
@@ -40,38 +43,34 @@ fun PhoneListEditor(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.weight(1f).testTag("phone_input"),
                 )
-                if (index > 0) {
-                    IconButton(onClick = {
-                        val list = phones.toMutableList()
-                        val tmp = list[index - 1]
-                        list[index - 1] = list[index]
-                        list[index] = tmp
-                        onChange(list)
-                    }) {
-                        Icon(MiuixIcons.ExpandLess, contentDescription = "上移")
-                    }
-                }
-                if (index < phones.lastIndex) {
-                    IconButton(onClick = {
-                        val list = phones.toMutableList()
-                        val tmp = list[index + 1]
-                        list[index + 1] = list[index]
-                        list[index] = tmp
-                        onChange(list)
-                    }) {
-                        Icon(MiuixIcons.ExpandMore, contentDescription = "下移")
-                    }
-                }
                 if (phones.size > 1) {
                     IconButton(onClick = { onChange(phones.filterIndexed { i, _ -> i != index }) }) {
-                        Text("−", style = AppThemeTypography.titleMedium)
+                        Icon(MiuixIcons.Delete, contentDescription = "删除电话")
                     }
                 }
             }
         }
-        TextButton(
+    }
+}
+
+/** 「客户电话」小标题行：标题居左，右侧「＋添加」小按钮。 */
+@Composable
+fun PhoneSectionHeader(
+    phoneCount: Int,
+    onAdd: () -> Unit,
+) {
+    Row(
+        modifier = Modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("客户电话", style = AppThemeTypography.titleSmall, modifier = Modifier.weight(1f))
+        Text(
             text = "＋ 添加电话",
-            onClick = { onChange(phones + "") },
+            style = AppThemeTypography.labelMedium,
+            color = AppThemeColors.primary,
+            modifier = Modifier
+                .clickable(onClick = onAdd)
+                .padding(vertical = 2.dp),
         )
     }
 }

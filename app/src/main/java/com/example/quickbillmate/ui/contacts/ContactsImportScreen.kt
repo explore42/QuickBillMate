@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,7 @@ import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.CompactSearchField
+import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.InitialCircle
@@ -145,7 +147,7 @@ fun ContactsImportScreen(
                     placeholder = "搜索姓名/号码",
                     onQueryChange = viewModel::onQueryChange,
                     focusRequester = searchFocusRequester,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -211,34 +213,23 @@ fun ContactsImportScreen(
             show = true,
             onDismissRequest = { permissionDenied = false },
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-            ) {
-                TextButton(
-                    text = "取消",
-                    onClick = {
-                        permissionDenied = false
-                        onBack()
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                TextButton(
-                    text = "去设置",
-                    onClick = {
-                        permissionDenied = false
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.fromParts("package", context.packageName, null),
-                            )
+            DialogButtons(
+                confirmText = "去设置",
+                cancelText = "取消",
+                onCancel = {
+                    permissionDenied = false
+                    onBack()
+                },
+                onConfirm = {
+                    permissionDenied = false
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
                         )
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
+                    )
+                },
+            )
         }
     }
 
@@ -253,14 +244,13 @@ fun ContactsImportScreen(
             show = true,
             onDismissRequest = viewModel::consumeResult,
         ) {
-            TextButton(
-                text = "返回客户",
-                onClick = {
+            DialogButtons(
+                confirmText = "返回客户",
+                cancelText = null,
+                onConfirm = {
                     viewModel.consumeResult()
                     onBack()
                 },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
             )
         }
     }
@@ -274,9 +264,11 @@ private fun ImportRow(
     onToggle: () -> Unit,
 ) {
     val grey = AppThemeColors.outline
+    // 整行可点击切换勾选（已导入项不可点）
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(enabled = !imported) { onToggle() }
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

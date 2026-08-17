@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
@@ -230,7 +231,9 @@ fun HomeContent(
                     onClick = onNewBill,
                     modifier = Modifier
                         .testTag("home_new_bill")
-                        .pressable(interactionSource = remember { MutableInteractionSource() }),
+                        .pressable(interactionSource = remember { MutableInteractionSource() })
+                        // 底部导航栏改为覆盖层后，FAB 手动抬到栏上方
+                        .padding(bottom = 84.dp),
                 ) {
                     Icon(
                         MiuixIcons.Add,
@@ -265,7 +268,7 @@ fun HomeContent(
                         .fillMaxSize()
                         .overScrollVertical()
                         .scrollEndHaptic(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 ) {
                     grouped.forEachIndexed { groupIndex, section ->
                         item(key = "header_${section.key}", contentType = { "sectionHeader" }) {
@@ -308,7 +311,7 @@ fun HomeContent(
                                         }
                                     },
                                 )
-                                .padding(start = 0.dp, end = 52.dp, top = 12.dp, bottom = 12.dp),
+                                .padding(start = 0.dp, end = 32.dp, top = 12.dp, bottom = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (selectionMode) {
@@ -338,9 +341,15 @@ fun HomeContent(
                                 }
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = "${homeBill.docNumber} · ${homeBill.itemCount} 项 · ¥${homeBill.receivableText}",
+                                    text = "${homeBill.docNumber} · ${homeBill.itemCount} 项",
                                     style = AppThemeTypography.bodySmall,
                                     color = AppThemeColors.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = "¥${homeBill.receivableText}",
+                                    style = AppThemeTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = AppThemeColors.primary,
                                 )
                             }
                         }
@@ -359,6 +368,7 @@ fun HomeContent(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除单据",
+            destructive = true,
             text = "确定删除选中的 ${selectedIds.size} 条单据及其商品行吗？此操作不可恢复。",
             onConfirm = {
                 onConfirmDelete()

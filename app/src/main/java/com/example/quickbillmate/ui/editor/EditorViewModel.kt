@@ -312,6 +312,30 @@ class EditorViewModel(
     }
     fun onDateChange(value: String) = update { copy(docDate = value) }
     fun onDiscountChange(value: String) = update { copy(discountText = value) }
+
+    /**
+     * 三步抹零（先抹分角 → 再抹元 → 最后清除）：
+     * 返回 <按钮文案, 目标优惠额>；目标为 null 表示当前无可抹零。
+     */
+    fun roundDownAction(): Pair<String, Double?> {
+        val totalCents = state.items.sumOf { Math.round(it.amount() * 100.0) }
+        val discountCents = Math.round((state.discountText.toDoubleOrNull() ?: 0.0) * 100.0)
+        val receivableCents = totalCents - discountCents
+        val jiaoFenCents = receivableCents % 100
+        val yuanOnesCents = receivableCents % 1000
+        val currentDiscount = state.discountText.toDoubleOrNull() ?: 0.0
+        return when {
+            jiaoFenCents != 0L -> "抹分角" to (discountCents + jiaoFenCents) / 100.0
+            yuanOnesCents != 0L -> "抹元" to (discountCents + yuanOnesCents) / 100.0
+            currentDiscount != 0.0 -> "清除抹零" to 0.0
+            else -> "抹零" to null
+        }
+    }
+
+    fun applyRoundDown() {
+        roundDownAction().second?.let { onDiscountChange(Money.format(it)) }
+    }
+
     fun onRemarkChange(value: String) = update { copy(remark = value) }
     fun onTitleSuffixChange(value: String) = update { copy(titleSuffix = value) }
     fun onAdTextChange(value: String) = update { copy(adText = value) }

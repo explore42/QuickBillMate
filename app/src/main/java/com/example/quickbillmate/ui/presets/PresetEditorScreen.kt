@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.SelectionChip
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.SectionCard
@@ -93,8 +95,8 @@ fun PresetEditorScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 val p = viewModel.params
 
@@ -112,13 +114,13 @@ fun PresetEditorScreen(
                     Spacer(Modifier.height(6.dp))
                     Text("字体", style = AppThemeTypography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FontChip(
-                            label = "宋体（衬线）",
+                        SelectionChip(
+                            text = "宋体（衬线）",
                             selected = p.fontFamily == "system_serif",
                             onClick = { viewModel.updateParams { it.copy(fontFamily = "system_serif") } },
                         )
-                        FontChip(
-                            label = "黑体（无衬线）",
+                        SelectionChip(
+                            text = "黑体（无衬线）",
                             selected = p.fontFamily == "system_sans",
                             onClick = { viewModel.updateParams { it.copy(fontFamily = "system_sans") } },
                         )
@@ -260,19 +262,12 @@ fun PresetEditorScreen(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TextButton(
-                        text = "恢复默认值",
-                        onClick = { viewModel.restoreDefaults() },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Button(
-                        onClick = { viewModel.save(onBack) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("保存")
-                    }
-                }
+                DialogButtons(
+                    confirmText = "保存",
+                    cancelText = "恢复默认值",
+                    onCancel = { viewModel.restoreDefaults() },
+                    onConfirm = { viewModel.save(onBack) },
+                )
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -348,36 +343,6 @@ private fun ColorField(
                 }
             }
         }
-    }
-}
-
-/** 字体选择胶囊（替代 M3 FilterChip，使用 Miuix 配色）。 */
-@Composable
-private fun FontChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) {
-            AppThemeColors.primaryContainer
-        } else {
-            AppThemeColors.surfaceContainerHigh
-        },
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)),
-    ) {
-        Text(
-            label,
-            style = AppThemeTypography.labelMedium,
-            color = if (selected) {
-                AppThemeColors.onPrimaryContainer
-            } else {
-                AppThemeColors.onSurfaceVariant
-            },
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        )
     }
 }
 

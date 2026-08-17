@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -43,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import com.example.quickbillmate.R
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
+import com.example.quickbillmate.ui.theme.Ds
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -86,13 +89,13 @@ fun SectionCard(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.defaultColors(color = AppThemeColors.surfaceContainerLow),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(Ds.lg)) {
             Text(
                 text = title,
                 style = AppThemeTypography.titleSmall,
                 color = AppThemeColors.primary,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Ds.md))
             content()
         }
     }
@@ -395,6 +398,7 @@ fun ConfirmDialog(
     confirmText: String = "删除",
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    destructive: Boolean = false,
 ) {
     OverlayDialog(
         title = title,
@@ -402,23 +406,12 @@ fun ConfirmDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            SmallTextButton(
-                text = "取消",
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(20.dp))
-            SmallTextButton(
-                text = confirmText,
-                onClick = onConfirm,
-                modifier = Modifier.weight(1f),
-                primary = true,
-            )
-        }
+        DialogButtons(
+            confirmText = confirmText,
+            onCancel = onDismiss,
+            onConfirm = onConfirm,
+            destructive = destructive,
+        )
     }
 }
 
@@ -435,11 +428,87 @@ fun InfoDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        SmallTextButton(
-            text = confirmText,
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth(),
-            primary = true,
+        DialogButtons(
+            confirmText = confirmText,
+            cancelText = null,
+            onConfirm = onDismiss,
+        )
+    }
+}
+
+/**
+ * 对话框标准按钮区：次级操作（取消）为文本按钮，主操作为实心主色按钮且更宽，
+ * 通过视觉权重体现操作优先级；破坏性操作（删除/放弃）确认按钮使用错误色警示。
+ */
+@Composable
+fun DialogButtons(
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+    confirmText: String = "确定",
+    cancelText: String? = "取消",
+    onCancel: (() -> Unit)? = null,
+    confirmEnabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Ds.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (cancelText != null && onCancel != null) {
+            TextButton(
+                text = cancelText,
+                onClick = onCancel,
+                modifier = Modifier.weight(1f),
+                minHeight = Ds.buttonHeight,
+            )
+        }
+        Button(
+            onClick = onConfirm,
+            enabled = confirmEnabled,
+            modifier = Modifier.weight(if (cancelText != null && onCancel != null) 1.5f else 1f),
+            minHeight = Ds.buttonHeight,
+            colors = if (destructive) {
+                ButtonDefaults.buttonColors(
+                    color = AppThemeColors.error,
+                    contentColor = Color.White,
+                )
+            } else {
+                ButtonDefaults.buttonColors()
+            },
+        ) {
+            Text(confirmText)
+        }
+    }
+}
+
+/** 可选标签 Chip：选中态主色容器，未选中浅色容器，用于类型/字体等快速选择。 */
+@Composable
+fun SelectionChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(percent = 50),
+        color = if (selected) {
+            AppThemeColors.primaryContainer
+        } else {
+            AppThemeColors.surfaceContainerHigh
+        },
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = AppThemeTypography.labelMedium,
+            color = if (selected) {
+                AppThemeColors.onPrimaryContainer
+            } else {
+                AppThemeColors.onSurfaceVariant
+            },
+            modifier = Modifier.padding(horizontal = Ds.md, vertical = 6.dp),
         )
     }
 }
@@ -494,6 +563,26 @@ fun PhoneTag(
             phone,
             style = AppThemeTypography.bodySmall,
             color = AppThemeColors.onPrimaryContainer,
+        )
+    }
+}
+
+/** 只读小标签（浅色小圆角容器），用于列表行/详情里的类型、来源等标记。 */
+@Composable
+fun TagChip(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = AppThemeColors.secondaryContainer,
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = AppThemeTypography.labelSmall,
+            color = AppThemeColors.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }

@@ -48,27 +48,27 @@ fun DefaultInfoForm(
             values.titleSuffix,
             { if (it.length <= InputLimits.CODE) onChange(values.copy(titleSuffix = it)) },
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         LabeledField(
             "编号代码",
             values.docCode,
             { if (it.length <= InputLimits.CODE) onChange(values.copy(docCode = it)) },
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
         SectionTitle("客户信息")
         LabeledSwitch("显示多个客户电话", values.showMultiPhones) {
             onChange(values.copy(showMultiPhones = it))
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
         SectionTitle("公司信息")
         LabeledField(
             "公司名称",
             values.companyName,
             { if (it.length <= InputLimits.COMPANY) onChange(values.copy(companyName = it)) },
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         InlineFieldRow(
             label = "客户经理",
             value = values.manager,
@@ -76,7 +76,7 @@ fun DefaultInfoForm(
             checked = values.showManager,
             onCheckedChange = { onChange(values.copy(showManager = it)) },
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         InlineFieldRow(
             label = "联系电话",
             value = values.contactPhone,
@@ -86,7 +86,7 @@ fun DefaultInfoForm(
             keyboardType = KeyboardType.Phone,
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
         SectionTitle("其他信息")
         InlineFieldRow(
             label = "备注",
@@ -95,7 +95,7 @@ fun DefaultInfoForm(
             checked = values.showRemark,
             onCheckedChange = { onChange(values.copy(showRemark = it)) },
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         InlineFieldRow(
             label = "广告文案",
             value = values.adText,
@@ -103,7 +103,7 @@ fun DefaultInfoForm(
             checked = values.showAd,
             onCheckedChange = { onChange(values.copy(showAd = it)) },
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
         InlineFieldRow(
             label = "水印文案",
             value = values.watermarkText,

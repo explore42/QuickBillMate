@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -19,7 +20,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -43,6 +46,9 @@ import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Contacts
 import top.yukonga.miuix.kmp.icon.extended.File
@@ -79,32 +85,15 @@ fun QuickBillMateAppNavHost(
         else -> false
     }
 
+    val backgroundColor = MiuixTheme.colorScheme.background
+    val backdrop = rememberLayerBackdrop {
+        // 捕获列表内容前先铺一层不透明背景色，避免透明像素扩散成色块
+        drawRect(backgroundColor)
+        drawContent()
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (currentRoute == TABS && !selectionActive) {
-                // 标准底部导航栏：仅图标（Demibold）无文字，点击仅加深/灰化
-                // 容器色使用 surfaceContainer，与页面背景（background）保持轻微色差，
-                // 动态取色下会带一点主题色倾向，便于区分导航栏与内容区域。
-                NavigationBar(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
-                    mode = NavigationBarDisplayMode.IconOnly,
-                ) {
-                    NavItem(MiuixIcons.Demibold.File, "单据", pagerState.currentPage == 0) {
-                        if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
-                    }
-                    NavItem(MiuixIcons.Demibold.ListView, "商品", pagerState.currentPage == 1) {
-                        if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
-                    }
-                    NavItem(MiuixIcons.Demibold.Contacts, "客户", pagerState.currentPage == 2) {
-                        if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
-                    }
-                    NavItem(MiuixIcons.Demibold.Settings, "设置", pagerState.currentPage == 3) {
-                        if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
-                    }
-                }
-            }
-        },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -114,7 +103,9 @@ fun QuickBillMateAppNavHost(
             NavHost(
                 navController = navController,
                 startDestination = TABS,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .layerBackdrop(backdrop),
                 enterTransition = {
                     slideInHorizontally(
                         initialOffsetX = { it },
@@ -230,8 +221,42 @@ fun QuickBillMateAppNavHost(
                 )
             }
         }
+
+            // 底部导航栏覆盖层：内容从栏下滑过时透出实时模糊（半透明材质）
+            if (currentRoute == TABS && !selectionActive) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .textureBlur(
+                            backdrop = backdrop,
+                            shape = RectangleShape,
+                            blurRadius = 24f,
+                        ),
+                ) {
+                    // 标准底部导航栏：仅图标（Demibold）无文字，点击仅加深/灰化
+                    NavigationBar(
+                        color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
+                        mode = NavigationBarDisplayMode.IconOnly,
+                        showDivider = false,
+                    ) {
+                        NavItem(MiuixIcons.Demibold.File, "单据", pagerState.currentPage == 0) {
+                            if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
+                        }
+                        NavItem(MiuixIcons.Demibold.ListView, "商品", pagerState.currentPage == 1) {
+                            if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
+                        }
+                        NavItem(MiuixIcons.Demibold.Contacts, "客户", pagerState.currentPage == 2) {
+                            if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
+                        }
+                        NavItem(MiuixIcons.Demibold.Settings, "设置", pagerState.currentPage == 3) {
+                            if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
+                        }
+                    }
+                }
+            }
+        }
     }
-}
 }
 
 /** 四个底部标签页容器：左右滑动切换，底部导航同步。 */

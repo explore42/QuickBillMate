@@ -39,12 +39,15 @@ import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import androidx.compose.foundation.layout.Arrangement
 import com.example.quickbillmate.ui.common.ConfirmDialog
+import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.ui.editor.presetDisplayName
 import com.example.quickbillmate.ui.theme.AppThemeColors
+import com.example.quickbillmate.ui.theme.Ds
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.THEME_COLOR_WALLPAPER
 import com.example.quickbillmate.ui.theme.ThemeColorPresets
@@ -52,7 +55,8 @@ import com.example.quickbillmate.util.CrashRecord
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -216,150 +220,93 @@ fun SettingsContent(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(top = 4.dp),
+                .padding(top = 12.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(Ds.md),
         ) {
-            // 深色模式（Miuix 下拉选择）
-            OverlayDropdownPreference(
-                title = "深色模式",
-                summary = themeLabel,
-                items = ThemeOptions,
-                selectedIndex = themeIndex,
-                onSelectedIndexChange = { index ->
-                    onThemeModeChange(ThemeModes[index])
-                },
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Theme,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-            )
-            HorizontalDivider()
-
-            // 动态取色（Monet）：默认开启，可用壁纸或预置种子色
-            SwitchPreference(
-                title = "动态取色",
-                summary = if (dynamicColor) "根据壁纸或主题色生成配色" else "使用默认配色",
-                checked = dynamicColor,
-                onCheckedChange = onDynamicColorChange,
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Layers,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-            )
-            if (dynamicColor) {
+            SettingsGroup {
+                // 深色模式（Miuix 下拉选择）
                 OverlayDropdownPreference(
-                    title = "主题色",
-                    summary = ThemeColorLabels[themeColorIndex(themeKeyColor)],
-                    items = ThemeColorLabels,
-                    selectedIndex = themeColorIndex(themeKeyColor),
+                    title = "深色模式",
+                    summary = themeLabel,
+                    items = ThemeOptions,
+                    selectedIndex = themeIndex,
                     onSelectedIndexChange = { index ->
-                        onThemeKeyColorChange(ThemeColorArgbs[index])
+                        onThemeModeChange(ThemeModes[index])
                     },
-                    startAction = {
-                        Icon(
-                            imageVector = MiuixIcons.Theme,
-                            contentDescription = null,
-                            tint = AppThemeColors.onBackground,
-                            modifier = Modifier.padding(end = 12.dp),
-                        )
+                    startAction = { SettingsIcon(MiuixIcons.Theme) },
+                )
+                // 动态取色（Monet）：默认开启，可用壁纸或预置种子色
+                SwitchPreference(
+                    title = "动态取色",
+                    summary = if (dynamicColor) "根据壁纸或主题色生成配色" else "使用默认配色",
+                    checked = dynamicColor,
+                    onCheckedChange = onDynamicColorChange,
+                    startAction = { SettingsIcon(MiuixIcons.Layers) },
+                )
+                if (dynamicColor) {
+                    OverlayDropdownPreference(
+                        title = "主题色",
+                        summary = ThemeColorLabels[themeColorIndex(themeKeyColor)],
+                        items = ThemeColorLabels,
+                        selectedIndex = themeColorIndex(themeKeyColor),
+                        onSelectedIndexChange = { index ->
+                            onThemeKeyColorChange(ThemeColorArgbs[index])
+                        },
+                        startAction = { SettingsIcon(MiuixIcons.Theme) },
+                    )
+                }
+            }
+
+            SettingsGroup {
+                // 默认图片样式（下拉选择；管理入口独立成行）
+                val presetNames = StylePresets.builtIns.map { it.name } + presets.map { it.name }
+                val presetKeys = StylePresets.builtIns.map { it.key } + presets.map { "custom:${it.id}" }
+                val presetIndex = presetKeys.indexOf(defaultPresetKey).coerceAtLeast(0)
+                OverlayDropdownPreference(
+                    title = "默认图片样式",
+                    summary = presetDisplayName(defaultPresetKey, presets),
+                    items = presetNames,
+                    selectedIndex = presetIndex,
+                    onSelectedIndexChange = { index ->
+                        onPresetChange(presetKeys[index])
                     },
+                    startAction = { SettingsIcon(MiuixIcons.Tune) },
+                )
+                ArrowPreference(
+                    title = "图片样式管理",
+                    summary = "内置与自定义预设管理",
+                    startAction = { SettingsIcon(MiuixIcons.Tune) },
+                    onClick = onManagePresets,
+                )
+                // 默认信息（弹窗）
+                ArrowPreference(
+                    title = "默认信息",
+                    summary = listOf(
+                        defaultCompany,
+                        defaultManager,
+                        defaultPhone,
+                    ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "未设置" },
+                    startAction = { SettingsIcon(MiuixIcons.Store) },
+                    onClick = { showDefaultsDialog = true },
                 )
             }
-            HorizontalDivider()
 
-            // 默认图片样式（与深色模式一致的下拉选择；管理入口独立成行）
-            val presetNames = StylePresets.builtIns.map { it.name } + presets.map { it.name }
-            val presetKeys = StylePresets.builtIns.map { it.key } + presets.map { "custom:${it.id}" }
-            val presetIndex = presetKeys.indexOf(defaultPresetKey).coerceAtLeast(0)
-            OverlayDropdownPreference(
-                title = "默认图片样式",
-                summary = presetDisplayName(defaultPresetKey, presets),
-                items = presetNames,
-                selectedIndex = presetIndex,
-                onSelectedIndexChange = { index ->
-                    onPresetChange(presetKeys[index])
-                },
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Tune,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-            )
-            ArrowPreference(
-                title = "图片样式管理",
-                summary = "内置与自定义预设管理",
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Tune,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-                onClick = onManagePresets,
-            )
-            HorizontalDivider()
-
-            // 默认信息（弹窗）
-            ArrowPreference(
-                title = "默认信息",
-                summary = listOf(
-                    defaultCompany,
-                    defaultManager,
-                    defaultPhone,
-                ).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "未设置" },
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Store,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-                onClick = { showDefaultsDialog = true },
-            )
-            HorizontalDivider()
-
-            // 崩溃日志（本地，无联网）
-            ArrowPreference(
-                title = "崩溃日志",
-                summary = if (crashLogs.isEmpty()) "无" else "最近 ${crashLogs.size} 条",
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Report,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-                onClick = { showCrashLogsDialog = true },
-            )
-            HorizontalDivider()
-
-            // 关于
-            ArrowPreference(
-                title = "关于",
-                summary = "版本 $versionName",
-                startAction = {
-                    Icon(
-                        imageVector = MiuixIcons.Info,
-                        contentDescription = null,
-                        tint = AppThemeColors.onBackground,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                },
-                onClick = { showAboutDialog = true },
-            )
+            SettingsGroup {
+                // 崩溃日志（本地，无联网）
+                ArrowPreference(
+                    title = "崩溃日志",
+                    summary = if (crashLogs.isEmpty()) "无" else "最近 ${crashLogs.size} 条",
+                    startAction = { SettingsIcon(MiuixIcons.Report) },
+                    onClick = { showCrashLogsDialog = true },
+                )
+                // 关于
+                ArrowPreference(
+                    title = "关于",
+                    summary = "版本 $versionName",
+                    startAction = { SettingsIcon(MiuixIcons.Info) },
+                    onClick = { showAboutDialog = true },
+                )
+            }
         }
     }
 
@@ -417,16 +364,12 @@ fun SettingsContent(
                     text = PROJECT_URL,
                     onClick = { onOpenUrl(PROJECT_URL) },
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
-                ) {
-                    SmallTextButton(
-                        text = "关闭",
-                        onClick = { showAboutDialog = false },
-                        primary = true,
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
+                DialogButtons(
+                    confirmText = "关闭",
+                    cancelText = null,
+                    onConfirm = { showAboutDialog = false },
+                )
             }
         }
     }
@@ -454,25 +397,27 @@ fun SettingsContent(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
-                    SmallTextButton(
-                        text = "复制全部",
-                        onClick = onCopyCrashLogs,
-                        modifier = Modifier.align(Alignment.End),
-                    )
+                    Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (crashLogs.isNotEmpty()) {
+                            SmallTextButton(
+                                text = "复制全部",
+                                onClick = onCopyCrashLogs,
+                            )
                             SmallTextButton(
                                 text = "清除",
                                 onClick = { showClearCrashConfirm = true },
                             )
                         }
-                        SmallTextButton(
-                            text = "关闭",
-                            onClick = { showCrashLogsDialog = false },
-                            primary = true,
+                        DialogButtons(
+                            confirmText = "关闭",
+                            cancelText = null,
+                            onConfirm = { showCrashLogsDialog = false },
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -485,6 +430,7 @@ fun SettingsContent(
             title = "清除崩溃日志",
             text = "确定清除全部 ${crashLogs.size} 条崩溃日志吗？",
             confirmText = "确认清除",
+            destructive = true,
             onConfirm = {
                 onClearCrashLogs()
                 showClearCrashConfirm = false
@@ -505,6 +451,30 @@ fun SettingsContent(
 /** 毫秒时间戳 → 本地时间文本（崩溃日志弹窗展示）。 */
 private fun Long.toCrashTimeText(): String =
     SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(this))
+
+/** 设置分组：仅卡片容器（无小标题），卡片间距由外层 spacedBy 提供。 */
+@Composable
+private fun SettingsGroup(
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Ds.screen),
+        colors = CardDefaults.defaultColors(color = AppThemeColors.surfaceContainer),
+    ) {
+        Column { content() }
+    }
+}
+
+/** 设置项统一起始图标。 */
+@Composable
+private fun SettingsIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = AppThemeColors.onBackground,
+        modifier = Modifier.padding(end = Ds.md),
+    )
+}
 
 @Composable
 private fun DefaultInfoDialog(
@@ -576,34 +546,22 @@ private fun DefaultInfoDialog(
                 color = AppThemeColors.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-            ) {
-                SmallTextButton(
-                    text = "取消",
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                SmallTextButton(
-                    text = "保存",
-                    onClick = {
-                        onSave(
-                            local.copy(
-                                titleSuffix = local.titleSuffix.trim(),
-                                docCode = local.docCode.trim(),
-                                companyName = local.companyName.trim(),
-                                manager = local.manager.trim(),
-                                contactPhone = local.contactPhone.trim(),
-                                adText = local.adText.trim(),
-                            )
+            DialogButtons(
+                confirmText = "保存",
+                onCancel = onDismiss,
+                onConfirm = {
+                    onSave(
+                        local.copy(
+                            titleSuffix = local.titleSuffix.trim(),
+                            docCode = local.docCode.trim(),
+                            companyName = local.companyName.trim(),
+                            manager = local.manager.trim(),
+                            contactPhone = local.contactPhone.trim(),
+                            adText = local.adText.trim(),
                         )
-                    },
-                    modifier = Modifier.weight(1f),
-                    primary = true,
-                )
-            }
+                    )
+                },
+            )
         }
     }
 }

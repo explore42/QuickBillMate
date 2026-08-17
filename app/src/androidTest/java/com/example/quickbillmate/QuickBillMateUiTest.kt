@@ -98,8 +98,7 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText(productName).fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText(productName).performClick()
 
-        waitFor { composeRule.onAllNodesWithText("第 2 行").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("第 2 行").assertExists()
+        waitFor { composeRule.onAllNodesWithTag("editor_item_card").fetchSemanticsNodes().size == 2 }
     }
 
     @Test
@@ -107,16 +106,13 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
-        composeRule.onNodeWithText("图片样式").performClick()
-        waitFor { composeRule.onAllNodesWithText("选择图片样式").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("选择图片样式").performClick()
+        composeRule.onNodeWithContentDescription("单据设置").performClick()
+        waitFor { composeRule.onAllNodesWithText("图片样式").fetchSemanticsNodes().isNotEmpty() }
         waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("商务蓝").performClick()
-        // 选中后预设列表收起
-        waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isEmpty() }
-        // 返回键关闭设置弹窗
+        // 返回键关闭单据设置弹窗
         Espresso.pressBack()
-        waitFor { composeRule.onAllNodesWithText("选择图片样式").fetchSemanticsNodes().isEmpty() }
+        waitFor { composeRule.onAllNodesWithText("商务蓝").fetchSemanticsNodes().isEmpty() }
     }
 
     @Test
@@ -128,9 +124,10 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
 
-        composeRule.onNodeWithText("不保存").performClick()
-        waitFor { composeRule.onAllNodesWithText("放弃").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("放弃").performClick()
+        Espresso.closeSoftKeyboard()
+        composeRule.onNodeWithContentDescription("关闭").performClick()
+        waitFor { composeRule.onAllNodesWithText("保存并离开").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("直接退出").performClick()
 
         // 回到单据页，且该草稿已删除
         waitHomeReady()
@@ -145,9 +142,11 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
 
-        // 先收起输入法，再按系统返回（不点“保存”），返回=立即自动保存
+        // 先收起输入法，再按系统返回 → 弹出退出确认 → 保存并离开
         Espresso.closeSoftKeyboard()
         Espresso.pressBack()
+        waitFor { composeRule.onAllNodesWithText("保存并离开").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("保存并离开").performClick()
         waitHomeReady()
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -231,8 +230,8 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("单据详情").assertIsDisplayed()
 
-        // 修改 → 编辑页
-        composeRule.onNodeWithText("修改").performClick()
+        // 修改（图标按钮）→ 编辑页
+        composeRule.onNodeWithContentDescription("修改").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
     }
 
@@ -284,10 +283,10 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("保存").performClick()
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
 
-        // 点击行先打开“客户详情”，含“呼叫”与“修改”
+        // 点击行先打开“客户详情”，电话标签可拨号，点“修改”进入编辑
         composeRule.onAllNodes(hasText(name, substring = true))[0].performClick()
         waitFor { composeRule.onAllNodesWithText("客户详情").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("呼叫").assertIsDisplayed()
+        composeRule.onNodeWithText("13800001111").assertIsDisplayed()
         composeRule.onNodeWithText("修改").performClick()
         waitFor { composeRule.onAllNodesWithText("编辑客户").fetchSemanticsNodes().isNotEmpty() }
     }

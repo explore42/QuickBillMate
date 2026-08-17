@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,11 +18,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
@@ -45,6 +49,7 @@ import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DetailLine
+import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.IndexSection
@@ -55,7 +60,6 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.SearchableTopBar
-import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -264,7 +268,9 @@ fun ProductsScreen(
                 FloatingActionButton(
                     onClick = { showNewDialog = true },
                     modifier = Modifier
-                        .pressable(interactionSource = remember { MutableInteractionSource() }),
+                        .pressable(interactionSource = remember { MutableInteractionSource() })
+                        // 底部导航栏改为覆盖层后，FAB 手动抬到栏上方
+                        .padding(bottom = 84.dp),
                 ) {
                     Icon(MiuixIcons.Add, contentDescription = "新增商品")
                 }
@@ -314,7 +320,7 @@ fun ProductsScreen(
                         .fillMaxSize()
                         .overScrollVertical()
                         .scrollEndHaptic(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 ) {
                     grouped.forEachIndexed { groupIndex, section ->
                         item(key = "header_${section.title}", contentType = { "sectionHeader" }) {
@@ -336,10 +342,27 @@ fun ProductsScreen(
                             key = { it.id },
                             contentType = { "productCard" },
                         ) { product ->
+                        // 整行可点击（含头像与单价区域），长按进入多选
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 0.dp, end = 32.dp),
+                                .combinedClickable(
+                                    onClick = {
+                                        if (viewModel.selectionMode) {
+                                            viewModel.toggleSelection(product.id)
+                                        } else {
+                                            detail = product
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (viewModel.selectionMode) {
+                                            viewModel.toggleSelection(product.id)
+                                        } else {
+                                            viewModel.enterSelection(product.id)
+                                        }
+                                    },
+                                )
+                                .padding(start = 0.dp, end = 32.dp, top = 10.dp, bottom = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (viewModel.selectionMode) {
@@ -352,25 +375,7 @@ fun ProductsScreen(
                             InitialCircle(product.name.trim().firstOrNull()?.toString() ?: "?")
                             Spacer(Modifier.width(12.dp))
                             Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (viewModel.selectionMode) {
-                                                viewModel.toggleSelection(product.id)
-                                            } else {
-                                                detail = product
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (viewModel.selectionMode) {
-                                                viewModel.toggleSelection(product.id)
-                                            } else {
-                                                viewModel.enterSelection(product.id)
-                                            }
-                                        },
-                                    )
-                                    .padding(vertical = 10.dp),
+                                modifier = Modifier.weight(1f),
                             ) {
                                 Text(product.name, style = AppThemeTypography.titleSmall)
                                 Spacer(Modifier.height(4.dp))
@@ -442,6 +447,7 @@ fun ProductsScreen(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除商品",
+            destructive = true,
             text = "确定删除选中的 ${viewModel.selectedIds.size} 条商品吗？此操作不可恢复。",
             onConfirm = {
                 viewModel.confirmDelete()
@@ -463,7 +469,7 @@ fun ProductsScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 TextButton(
                     text = "查看模板",
@@ -478,7 +484,7 @@ fun ProductsScreen(
                         showImportDialog = false
                         filePicker.launch(arrayOf("application/json", "text/plain", "*/*"))
                     },
-                    colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
             }
         }
@@ -495,7 +501,7 @@ fun ProductsScreen(
                     text = ProductJsonCodec.templateText(),
                     fontFamily = FontFamily.Monospace,
                     style = AppThemeTypography.bodySmall,
-                    modifier = Modifier.height(220.dp),
+                    modifier = Modifier.heightIn(max = 220.dp),
                 )
                 Spacer(Modifier.height(8.dp))
                 TextButton(
@@ -507,12 +513,12 @@ fun ProductsScreen(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(
                         text = "关闭",
                         onClick = { showTemplate = false },
-                        colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
                     )
                 }
             }
@@ -538,12 +544,12 @@ fun ProductsScreen(
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(
                         text = "完成",
                         onClick = viewModel::consumeImportResult,
-                        colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                        colors = ButtonDefaults.textButtonColorsPrimary(),
                     )
                 }
             }
@@ -561,7 +567,7 @@ fun ProductsScreen(
                 text = "完成",
                 onClick = viewModel::consumeImportError,
                 modifier = Modifier.fillMaxWidth(),
-                colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
             )
         }
     }
@@ -575,7 +581,7 @@ fun ProductsScreen(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 TextButton(
                     text = "分享",
@@ -587,7 +593,7 @@ fun ProductsScreen(
                 TextButton(
                     text = "完成",
                     onClick = viewModel::consumeExport,
-                    colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
             }
         }
@@ -604,7 +610,7 @@ fun ProductsScreen(
                 text = "完成",
                 onClick = viewModel::consumeExport,
                 modifier = Modifier.fillMaxWidth(),
-                colors = top.yukonga.miuix.kmp.basic.ButtonDefaults.textButtonColorsPrimary(),
+                colors = ButtonDefaults.textButtonColorsPrimary(),
             )
         }
     }
@@ -631,20 +637,15 @@ private fun ProductDetailDialog(
             if (product.note.isNotBlank()) DetailLine("备注", product.note)
             Spacer(Modifier.height(6.dp))
             LabeledSwitch("收藏", product.favorite, onToggleFavorite)
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
-            ) {
-                SmallTextButton(
-                    text = "修改",
-                    onClick = {
-                        onEdit()
-                        onDismiss()
-                    },
-                    primary = true,
-                )
-            }
+            Spacer(Modifier.height(12.dp))
+            DialogButtons(
+                confirmText = "修改",
+                cancelText = null,
+                onConfirm = {
+                    onEdit()
+                    onDismiss()
+                },
+            )
         }
     }
 }
@@ -669,18 +670,18 @@ private fun ProductEditDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             LabeledField(
                 "名称*",
                 name,
                 { if (it.length <= InputLimits.NAME) name = it },
                 modifier = Modifier.testTag("product_name"),
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("规格", spec, { if (it.length <= InputLimits.SPEC) spec = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("单位", unit, { if (it.length <= InputLimits.UNIT) unit = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField(
                 "单价*",
                 price,
@@ -688,54 +689,42 @@ private fun ProductEditDialog(
                 modifier = Modifier.testTag("product_price"),
                 keyboardType = KeyboardType.Decimal,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("包装规格", pack, { if (it.length <= InputLimits.PACK) pack = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("备注", note, { if (it.length <= InputLimits.REMARK) note = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledSwitch("收藏", favorite, { favorite = it })
             error?.let {
                 Spacer(Modifier.height(6.dp))
                 Text(it, color = AppThemeColors.error, style = AppThemeTypography.bodySmall)
             }
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-            ) {
-                SmallTextButton(
-                    text = "取消",
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                SmallTextButton(
-                    text = "保存",
-                    onClick = {
-                        val priceValue = price.toDoubleOrNull()
-                        error = when {
-                            name.isBlank() -> "名称不能为空"
-                            priceValue == null || priceValue < 0 -> "单价必须是非负数字"
-                            else -> null
-                        }
-                        if (error == null) {
-                            onSave(
-                                initial.copy(
-                                    name = name.trim(),
-                                    spec = spec.trim(),
-                                    unit = unit.trim().ifBlank { "桶" },
-                                    price = priceValue ?: 0.0,
-                                    pack = pack.trim(),
-                                    note = note.trim(),
-                                    favorite = favorite,
-                                )
+            Spacer(Modifier.height(12.dp))
+            DialogButtons(
+                confirmText = "保存",
+                onCancel = onDismiss,
+                onConfirm = {
+                    val priceValue = price.toDoubleOrNull()
+                    error = when {
+                        name.isBlank() -> "名称不能为空"
+                        priceValue == null || priceValue < 0 -> "单价必须是非负数字"
+                        else -> null
+                    }
+                    if (error == null) {
+                        onSave(
+                            initial.copy(
+                                name = name.trim(),
+                                spec = spec.trim(),
+                                unit = unit.trim().ifBlank { "桶" },
+                                price = priceValue ?: 0.0,
+                                pack = pack.trim(),
+                                note = note.trim(),
+                                favorite = favorite,
                             )
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    primary = true,
-                )
-            }
+                        )
+                    }
+                },
+            )
         }
     }
 }

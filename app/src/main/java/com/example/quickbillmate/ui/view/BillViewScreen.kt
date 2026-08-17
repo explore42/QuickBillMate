@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.MiuixMenuPopup
 import com.example.quickbillmate.ui.common.PhoneTag
 import com.example.quickbillmate.ui.common.SectionCard
@@ -72,7 +74,10 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Download
+import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Phone
+import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -123,24 +128,33 @@ fun BillViewScreen(
             )
         },
         bottomBar = {
+            // 修改 / 保存图片为纯图标按钮；分享图片（最重要）为 icon+文字主色实心并占满剩余宽度，单行排列
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(
-                    text = "修改",
+                Button(
                     onClick = { onEdit(billId) },
-                    modifier = Modifier.weight(0.8f),
                     enabled = !s.exporting,
-                    minHeight = 40.dp,
-                )
+                    minHeight = 44.dp,
+                    minWidth = 44.dp,
+                    insideMargin = PaddingValues(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        color = Color.Transparent,
+                        contentColor = MiuixTheme.colorScheme.primary,
+                    ),
+                ) {
+                    Icon(MiuixIcons.Edit, contentDescription = "修改")
+                }
                 Button(
                     onClick = { viewModel.exportToGallery() },
-                    modifier = Modifier.weight(1f).heightIn(min = 40.dp),
                     enabled = !s.exporting,
-                    minHeight = 40.dp,
+                    minHeight = 44.dp,
+                    minWidth = 44.dp,
+                    insideMargin = PaddingValues(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         color = MiuixTheme.colorScheme.secondaryContainer,
                         contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
@@ -152,16 +166,21 @@ fun BillViewScreen(
                             strokeWidth = 2.dp,
                             size = 18.dp,
                         )
-                        Spacer(Modifier.width(6.dp))
+                    } else {
+                        Icon(MiuixIcons.Download, contentDescription = "保存图片")
                     }
-                    Text(if (s.exporting) "保存中…" else "保存图片")
                 }
                 Button(
                     onClick = { viewModel.shareNow() },
-                    modifier = Modifier.weight(1.3f).heightIn(min = 40.dp),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
+                    modifier = Modifier.weight(1f),
                     enabled = !s.exporting,
-                    minHeight = 40.dp,
-                ) { Text("分享图片") }
+                    minHeight = 44.dp,
+                ) {
+                    Icon(MiuixIcons.Share, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("分享图片", maxLines = 1)
+                }
             }
         },
     ) { padding ->
@@ -179,8 +198,8 @@ fun BillViewScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 s.preview?.let { bitmap ->
                     Box {
@@ -223,7 +242,7 @@ fun BillViewScreen(
                             "客户电话",
                             style = AppThemeTypography.bodyMedium,
                             color = AppThemeColors.onSurfaceVariant,
-                            modifier = Modifier.width(110.dp),
+                            modifier = Modifier.width(96.dp),
                         )
                         if (dialPhones.isEmpty()) {
                             Text("—", style = AppThemeTypography.bodyMedium)
@@ -358,28 +377,27 @@ fun BillViewScreen(
             show = true,
             onDismissRequest = viewModel::consumeExportOutcome,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                if (outcome.saved && outcome.shareUri != null) {
-                    TextButton(
-                        text = "分享",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "image/png"
-                                putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(intent, "分享单据"))
-                            viewModel.consumeExportOutcome()
-                        },
-                    )
-                }
-                TextButton(
-                    text = "完成",
-                    onClick = viewModel::consumeExportOutcome,
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
+            Spacer(Modifier.height(8.dp))
+            if (outcome.saved && outcome.shareUri != null) {
+                DialogButtons(
+                    confirmText = "完成",
+                    cancelText = "分享",
+                    onCancel = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "分享单据"))
+                        viewModel.consumeExportOutcome()
+                    },
+                    onConfirm = viewModel::consumeExportOutcome,
+                )
+            } else {
+                DialogButtons(
+                    confirmText = "完成",
+                    cancelText = null,
+                    onConfirm = viewModel::consumeExportOutcome,
                 )
             }
         }
@@ -397,7 +415,7 @@ private fun InfoLine(
             label,
             style = AppThemeTypography.bodyMedium,
             color = AppThemeColors.onSurfaceVariant,
-            modifier = Modifier.width(110.dp),
+            modifier = Modifier.width(96.dp),
         )
         Text(
             value,

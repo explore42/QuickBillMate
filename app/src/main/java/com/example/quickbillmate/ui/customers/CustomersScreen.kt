@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
@@ -45,6 +47,7 @@ import com.example.quickbillmate.data.db.Customer
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.DetailLine
 import com.example.quickbillmate.ui.common.ConfirmDialog
+import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
@@ -56,6 +59,8 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.PhoneTag
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.SelectionChip
+import com.example.quickbillmate.ui.common.TagChip
 import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.util.PhoneUtil
@@ -216,7 +221,9 @@ fun CustomersScreen(
                 FloatingActionButton(
                     onClick = { showNewDialog = true },
                     modifier = Modifier
-                        .pressable(interactionSource = remember { MutableInteractionSource() }),
+                        .pressable(interactionSource = remember { MutableInteractionSource() })
+                        // 底部导航栏改为覆盖层后，FAB 手动抬到栏上方
+                        .padding(bottom = 84.dp),
                 ) {
                     Icon(MiuixIcons.Add, contentDescription = "新增客户")
                 }
@@ -251,7 +258,7 @@ fun CustomersScreen(
                         .fillMaxSize()
                         .overScrollVertical()
                         .scrollEndHaptic(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 ) {
                     grouped.forEachIndexed { groupIndex, section ->
                         item(key = "header_${section.title}", contentType = { "sectionHeader" }) {
@@ -337,6 +344,7 @@ fun CustomersScreen(
     if (showDeleteConfirm) {
         ConfirmDialog(
             title = "删除客户",
+            destructive = true,
             text = "确定删除选中的 ${viewModel.selectedIds.size} 条客户吗？此操作不可恢复。",
             onConfirm = {
                 viewModel.confirmDelete()
@@ -360,12 +368,13 @@ private fun CustomerDetailDialog(
     onDismiss: () -> Unit,
 ) {
     val phones = PhoneUtil.splitPhones(customer.phone)
-    OverlayBottomSheet(
-        show = true,
+    // 与商品详情一致：居中对话框，底部仅「修改」主按钮，点弹窗外关闭
+    OverlayDialog(
         title = "客户详情",
+        show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Column {
             DetailLine("姓名", customer.name)
             if (customer.type.isNotBlank()) DetailLine("客户类型", customer.type)
             if (phones.isNotEmpty()) {
@@ -386,36 +395,15 @@ private fun CustomerDetailDialog(
             if (customer.remark.isNotBlank()) DetailLine("备注", customer.remark)
             Spacer(Modifier.height(6.dp))
             LabeledSwitch("收藏", customer.favorite, onToggleFavorite)
-            Spacer(Modifier.height(14.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SmallTextButton(
-                    text = "修改",
-                    onClick = {
-                        onEdit()
-                        onDismiss()
-                    },
-                )
-                if (phones.isNotEmpty()) {
-                    IconButton(
-                        onClick = { onDial(phones.first()) },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(AppThemeColors.primary),
-                    ) {
-                        Icon(
-                            MiuixIcons.Phone,
-                            contentDescription = "呼叫",
-                            tint = AppThemeColors.onPrimary,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                }
-            }
+            Spacer(Modifier.height(12.dp))
+            DialogButtons(
+                confirmText = "修改",
+                cancelText = null,
+                onConfirm = {
+                    onEdit()
+                    onDismiss()
+                },
+            )
         }
     }
 }
@@ -429,10 +417,15 @@ private fun CustomerCard(
     onDetail: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // 整行可点击（含头像区域），长按进入多选
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(end = 32.dp),
+            .combinedClickable(
+                onClick = { if (selectionMode) onToggleSelection() else onDetail() },
+                onLongClick = { if (selectionMode) onToggleSelection() else onDelete() },
+            )
+            .padding(end = 32.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (selectionMode) {
@@ -445,29 +438,13 @@ private fun CustomerCard(
         InitialCircle(customer.name.trim().firstOrNull()?.toString() ?: "?")
         Spacer(Modifier.width(12.dp))
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .combinedClickable(
-                    onClick = { if (selectionMode) onToggleSelection() else onDetail() },
-                    onLongClick = { if (selectionMode) onToggleSelection() else onDelete() },
-                )
-                .padding(top = 6.dp, bottom = 6.dp),
+            modifier = Modifier.weight(1f),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(customer.name, style = AppThemeTypography.titleSmall)
                 if (customer.type.isNotBlank()) {
                     Spacer(Modifier.width(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = AppThemeColors.secondaryContainer,
-                    ) {
-                        Text(
-                            customer.type,
-                            style = AppThemeTypography.labelSmall,
-                            color = AppThemeColors.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                        )
-                    }
+                    TagChip(customer.type)
                 }
             }
             if (customer.phone.isNotBlank()) {
@@ -504,41 +481,24 @@ private fun CustomerEditDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             LabeledField("姓名*", name, { if (it.length <= InputLimits.NAME) name = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             Text("电话", style = AppThemeTypography.titleSmall)
             PhoneListEditor(phones = phones, onChange = { phones = it })
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("客户类型", type, { if (it.length <= InputLimits.CUSTOMER_TYPE) type = it })
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CUSTOMER_TYPES.forEach { preset ->
-                    val selected = type == preset
-                    Surface(
+                    SelectionChip(
+                        text = preset,
+                        selected = type == preset,
                         onClick = { type = preset },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (selected) {
-                            AppThemeColors.primaryContainer
-                        } else {
-                            AppThemeColors.surfaceContainerHigh
-                        },
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)),
-                    ) {
-                        Text(
-                            preset,
-                            style = AppThemeTypography.labelMedium,
-                            color = if (selected) {
-                                AppThemeColors.onPrimaryContainer
-                            } else {
-                                AppThemeColors.onSurfaceVariant
-                            },
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        )
-                    }
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             LabeledField("备注", remark, { if (it.length <= InputLimits.REMARK) remark = it })
             Spacer(Modifier.height(4.dp))
             LabeledSwitch("收藏", favorite, { favorite = it })
@@ -546,47 +506,35 @@ private fun CustomerEditDialog(
                 Spacer(Modifier.height(6.dp))
                 Text(it, color = AppThemeColors.error, style = AppThemeTypography.bodySmall)
             }
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                SmallTextButton(
-                    text = "取消",
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                SmallTextButton(
-                    text = "保存",
-                    onClick = {
-                        error = when {
-                            name.isBlank() -> "姓名不能为空"
-                            else -> {
-                                val invalidIndex = phones.indexOfFirst { p ->
-                                    p.isNotBlank() && !PhoneUtil.isValidPhone(PhoneUtil.normalizePhone(p))
-                                }
-                                if (invalidIndex >= 0) "第 ${invalidIndex + 1} 个电话格式不正确" else null
+            Spacer(Modifier.height(12.dp))
+            DialogButtons(
+                confirmText = "保存",
+                onCancel = onDismiss,
+                onConfirm = {
+                    error = when {
+                        name.isBlank() -> "姓名不能为空"
+                        else -> {
+                            val invalidIndex = phones.indexOfFirst { p ->
+                                p.isNotBlank() && !PhoneUtil.isValidPhone(PhoneUtil.normalizePhone(p))
                             }
+                            if (invalidIndex >= 0) "第 ${invalidIndex + 1} 个电话格式不正确" else null
                         }
-                        if (error == null) {
-                            onSave(
-                                initial.copy(
-                                    name = name.trim(),
-                                    phone = phones.map { PhoneUtil.normalizePhone(it) }
-                                        .filter { it.isNotEmpty() }
-                                        .joinToString(","),
-                                    type = type.trim(),
-                                    remark = remark.trim(),
-                                    favorite = favorite,
-                                )
+                    }
+                    if (error == null) {
+                        onSave(
+                            initial.copy(
+                                name = name.trim(),
+                                phone = phones.map { PhoneUtil.normalizePhone(it) }
+                                    .filter { it.isNotEmpty() }
+                                    .joinToString(","),
+                                type = type.trim(),
+                                remark = remark.trim(),
+                                favorite = favorite,
                             )
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    primary = true,
-                )
-            }
+                        )
+                    }
+                },
+            )
         }
     }
 }
