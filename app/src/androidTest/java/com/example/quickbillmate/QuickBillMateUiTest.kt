@@ -53,8 +53,8 @@ class QuickBillMateUiTest {
     fun homeShowsTitleNewButtonAndTabs() {
         composeRule.onNodeWithText("快贝智单").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("新建单据").assertIsDisplayed()
-        // 底部导航“单据”Tab（可点击文本节点），避免与其他页面残留的“单据”文本混淆
-        composeRule.onNode(hasText("单据") and hasClickAction()).assertIsDisplayed()
+        // 底部导航“单据”Tab（IconOnly 模式下标签以 contentDescription 暴露）
+        composeRule.onNodeWithContentDescription("单据").assertIsDisplayed()
         composeRule.onAllNodesWithContentDescription("商品").fetchSemanticsNodes().isNotEmpty()
         composeRule.onAllNodesWithContentDescription("客户").fetchSemanticsNodes().isNotEmpty()
         composeRule.onAllNodesWithContentDescription("设置").fetchSemanticsNodes().isNotEmpty()
@@ -286,7 +286,8 @@ class QuickBillMateUiTest {
         // 点击行先打开“客户详情”，电话标签可拨号，点“修改”进入编辑
         composeRule.onAllNodes(hasText(name, substring = true))[0].performClick()
         waitFor { composeRule.onAllNodesWithText("客户详情").fetchSemanticsNodes().isNotEmpty() }
-        composeRule.onNodeWithText("13800001111").assertIsDisplayed()
+        // 列表行与详情弹窗中都显示电话，取详情弹窗中的那一个
+        composeRule.onAllNodesWithText("13800001111")[1].assertIsDisplayed()
         composeRule.onNodeWithText("修改").performClick()
         waitFor { composeRule.onAllNodesWithText("编辑客户").fetchSemanticsNodes().isNotEmpty() }
     }

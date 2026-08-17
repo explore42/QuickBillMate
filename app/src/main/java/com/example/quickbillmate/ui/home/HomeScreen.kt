@@ -229,11 +229,11 @@ fun HomeContent(
             if (!selectionMode) {
                 FloatingActionButton(
                     onClick = onNewBill,
+                    // padding 放链首：语义节点边界=可视圆钮，中心可被测试/无障碍正确点中
                     modifier = Modifier
+                        .padding(bottom = 84.dp)
                         .testTag("home_new_bill")
-                        .pressable(interactionSource = remember { MutableInteractionSource() })
-                        // 底部导航栏改为覆盖层后，FAB 手动抬到栏上方
-                        .padding(bottom = 84.dp),
+                        .pressable(interactionSource = remember { MutableInteractionSource() }),
                 ) {
                     Icon(
                         MiuixIcons.Add,

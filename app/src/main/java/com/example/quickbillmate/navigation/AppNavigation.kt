@@ -103,6 +103,7 @@ fun QuickBillMateAppNavHost(
             NavHost(
                 navController = navController,
                 startDestination = TABS,
+                // 诊断二分 B：恢复 layerBackdrop，暂时不消费（无 textureBlur 覆盖层）
                 modifier = Modifier
                     .fillMaxSize()
                     .layerBackdrop(backdrop),
@@ -222,9 +223,10 @@ fun QuickBillMateAppNavHost(
             }
         }
 
-            // 底部导航栏覆盖层：内容从栏下滑过时透出实时模糊（半透明材质）
+            // 底部导航栏覆盖层：内容从栏下滑过时透出模糊（半透明材质）
+            // textureBlur 直接挂在 NavigationBar 上（不额外包 Box），与 layerBackdrop 共存验证
             if (currentRoute == TABS && !selectionActive) {
-                Box(
+                NavigationBar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -233,25 +235,21 @@ fun QuickBillMateAppNavHost(
                             shape = RectangleShape,
                             blurRadius = 24f,
                         ),
+                    color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
+                    mode = NavigationBarDisplayMode.IconOnly,
+                    showDivider = false,
                 ) {
-                    // 标准底部导航栏：仅图标（Demibold）无文字，点击仅加深/灰化
-                    NavigationBar(
-                        color = MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
-                        mode = NavigationBarDisplayMode.IconOnly,
-                        showDivider = false,
-                    ) {
-                        NavItem(MiuixIcons.Demibold.File, "单据", pagerState.currentPage == 0) {
-                            if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
-                        }
-                        NavItem(MiuixIcons.Demibold.ListView, "商品", pagerState.currentPage == 1) {
-                            if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
-                        }
-                        NavItem(MiuixIcons.Demibold.Contacts, "客户", pagerState.currentPage == 2) {
-                            if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
-                        }
-                        NavItem(MiuixIcons.Demibold.Settings, "设置", pagerState.currentPage == 3) {
-                            if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
-                        }
+                    NavItem(MiuixIcons.Demibold.File, "单据", pagerState.currentPage == 0) {
+                        if (pagerState.currentPage == 0) homeScrollTicks++ else scope.launch { pagerState.animateScrollToPage(0) }
+                    }
+                    NavItem(MiuixIcons.Demibold.ListView, "商品", pagerState.currentPage == 1) {
+                        if (pagerState.currentPage == 1) productsScrollTicks++ else scope.launch { pagerState.animateScrollToPage(1) }
+                    }
+                    NavItem(MiuixIcons.Demibold.Contacts, "客户", pagerState.currentPage == 2) {
+                        if (pagerState.currentPage == 2) customersScrollTicks++ else scope.launch { pagerState.animateScrollToPage(2) }
+                    }
+                    NavItem(MiuixIcons.Demibold.Settings, "设置", pagerState.currentPage == 3) {
+                        if (pagerState.currentPage != 3) scope.launch { pagerState.animateScrollToPage(3) }
                     }
                 }
             }
