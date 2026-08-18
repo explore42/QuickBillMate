@@ -34,6 +34,10 @@ class SettingsViewModel(
     var dynamicColor by mutableStateOf(repo.settings.dynamicColor)
         private set
     var themeKeyColor by mutableStateOf(repo.settings.themeKeyColor)
+
+    var themePaletteStyle by mutableStateOf(repo.settings.themePaletteStyle)
+
+    var hapticsEnabled by mutableStateOf(repo.settings.hapticsEnabled)
         private set
     var defaultCompany by mutableStateOf(repo.settings.defaultCompany)
         private set
@@ -86,6 +90,16 @@ class SettingsViewModel(
         viewModelScope.launch {
             crashLogs = withContext(Dispatchers.Default) { LocalCrashLogger.listLogs(app) }
         }
+    }
+
+    fun updateThemePaletteStyle(style: String) {
+        themePaletteStyle = style
+        repo.settings.themePaletteStyle = style
+    }
+
+    fun updateHapticsEnabled(enabled: Boolean) {
+        hapticsEnabled = enabled
+        repo.settings.hapticsEnabled = enabled
     }
 
     fun updateThemeMode(mode: String) {

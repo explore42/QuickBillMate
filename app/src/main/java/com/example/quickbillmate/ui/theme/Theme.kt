@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
+import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 
 /**
  * 应用主题入口：基于 Miuix 的主题体系。
@@ -23,6 +24,7 @@ fun QuickBillMateTheme(
     darkTheme: Boolean? = null,
     dynamicColor: Boolean = true,
     keyColor: Color? = Color(0xFF9C11E1),
+    paletteStyle: ThemePaletteStyle = ThemePaletteStyle.TonalSpot,
     content: @Composable () -> Unit,
 ) {
     val mode = when {
@@ -33,11 +35,16 @@ fun QuickBillMateTheme(
         darkTheme == false -> ColorSchemeMode.Light
         else -> ColorSchemeMode.System
     }
-    val controller = remember(mode, dynamicColor, keyColor) {
+    val controller = remember(mode, dynamicColor, keyColor, paletteStyle) {
         ThemeController(
             colorSchemeMode = mode,
             keyColor = if (dynamicColor) keyColor else null,
+            paletteStyle = paletteStyle,
         )
     }
     MiuixTheme(controller = controller, content = content)
 }
+
+/** 设置存储的名称 → ThemePaletteStyle，未知值回退默认。 */
+fun paletteStyleOf(name: String): ThemePaletteStyle =
+    runCatching { ThemePaletteStyle.valueOf(name) }.getOrDefault(ThemePaletteStyle.TonalSpot)

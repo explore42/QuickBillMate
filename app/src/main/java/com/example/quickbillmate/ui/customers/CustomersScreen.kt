@@ -2,7 +2,13 @@ package com.example.quickbillmate.ui.customers
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -56,6 +62,8 @@ import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.LabeledSwitch
+import com.example.quickbillmate.ui.common.LocalHaptics
+import com.example.quickbillmate.ui.common.TopBarActionTextButton
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.PhoneTag
 import com.example.quickbillmate.ui.common.SearchableTopBar
@@ -82,6 +90,7 @@ import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Phone
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.pressable
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -192,7 +201,7 @@ fun CustomersScreen(
                     actions = {
                         val allVisibleSelected =
                             customers.isNotEmpty() && customers.all { it.id in viewModel.selectedIds }
-                        TextButton(
+                        TopBarActionTextButton(
                             text = if (allVisibleSelected) "取消全选" else "全选",
                             onClick = { viewModel.toggleSelectAll() },
                             modifier = Modifier.testTag("select_all_toggle"),
@@ -230,7 +239,11 @@ fun CustomersScreen(
             }
         },
         bottomBar = {
-            if (viewModel.selectionMode) {
+            AnimatedVisibility(
+                visible = viewModel.selectionMode,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+            ) {
                 SelectionActionBar(
                     canEdit = viewModel.selectedIds.size == 1,
                     onCopy = { viewModel.copySelected() },
@@ -281,6 +294,7 @@ fun CustomersScreen(
                             contentType = { "customerCard" },
                         ) { customer ->
                             CustomerCard(
+                                modifier = Modifier.animateItem(),
                                 customer = customer,
                                 selectionMode = viewModel.selectionMode,
                                 selected = customer.id in viewModel.selectedIds,
@@ -416,14 +430,27 @@ private fun CustomerCard(
     onToggleSelection: () -> Unit,
     onDetail: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    // 整行可点击（含头像区域），长按进入多选
+    // 整行可点击（含头像区域），长按进入多选；圆角涟漪+下沉按压
+    val interactionSource = remember { MutableInteractionSource() }
+    val haptics = LocalHaptics.current
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .indication(interactionSource, SinkFeedback(sinkAmount = 0.97f))
             .combinedClickable(
+                interactionSource = interactionSource,
                 onClick = { if (selectionMode) onToggleSelection() else onDetail() },
-                onLongClick = { if (selectionMode) onToggleSelection() else onDelete() },
+                onLongClick = {
+                    if (selectionMode) {
+                        onToggleSelection()
+                    } else {
+                        haptics.longPress()
+                        onDelete()
+                    }
+                },
             )
             .padding(end = 32.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -166,6 +166,9 @@ class HomeViewModel(
             }
             exitSelection()
             pendingDeleteIds = emptySet()
+            // 兜底：Room 失效通知偶发丢失时主动重查一次，保证列表与库一致
+            allBills = buildHomeBills(repo.recentBillsOnce(), repo.allBillItemsOnce())
+            applyFilter()
         }
     }
 

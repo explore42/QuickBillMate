@@ -12,6 +12,9 @@ interface BillDao {
     @Query("SELECT * FROM bills ORDER BY updatedAt DESC")
     fun observeRecent(): Flow<List<Bill>>
 
+    @Query("SELECT * FROM bills ORDER BY updatedAt DESC")
+    suspend fun getRecentOnce(): List<Bill>
+
     @Query("SELECT * FROM bills WHERE id = :id")
     fun observeBill(id: Long): Flow<Bill?>
 
@@ -41,6 +44,9 @@ interface BillItemDao {
 
     @Query("SELECT * FROM bill_items")
     fun observeAll(): Flow<List<BillItem>>
+
+    @Query("SELECT * FROM bill_items")
+    suspend fun getAllOnce(): List<BillItem>
 
     @Query("SELECT * FROM bill_items WHERE billId = :billId ORDER BY sortOrder ASC")
     suspend fun getItems(billId: Long): List<BillItem>

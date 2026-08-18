@@ -42,6 +42,7 @@ class QuickBillMateUiTest {
     private fun createBillWithCustomer(name: String) {
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
         composeRule.onNodeWithText("保存").performClick()
@@ -67,6 +68,7 @@ class QuickBillMateUiTest {
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
 
         // 填写客户名称后，实时预览渲染
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
@@ -121,6 +123,7 @@ class QuickBillMateUiTest {
 
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
 
@@ -139,6 +142,7 @@ class QuickBillMateUiTest {
         val name = "返回即存${System.currentTimeMillis() % 100000}"
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
 
@@ -156,7 +160,9 @@ class QuickBillMateUiTest {
         val name = "待删客户${System.currentTimeMillis() % 100000}"
         createBillWithCustomer(name)
 
-        // 长按进入多选
+        // 长按进入多选（先等列表进入动画结束，避免长按落在动画中的行上）
+        composeRule.waitForIdle()
+        Thread.sleep(300)
         composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
         waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
 
@@ -217,6 +223,7 @@ class QuickBillMateUiTest {
         // 新建一张单据并填写客户名称
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(name)
         waitFor { composeRule.onAllNodesWithTag("editor_preview").fetchSemanticsNodes().isNotEmpty() }
@@ -329,6 +336,7 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("收藏").performClick()
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
         composeRule.onNodeWithText("客户名称").performTextInput(second)
         composeRule.onNodeWithText("保存").performClick()

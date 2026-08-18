@@ -1,7 +1,13 @@
 package com.example.quickbillmate.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
@@ -28,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +52,8 @@ import com.example.quickbillmate.ui.common.IndexSection
 import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.TimeIndexBar
+import com.example.quickbillmate.ui.common.TopBarActionTextButton
+import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.monthBubble
 import com.example.quickbillmate.ui.common.monthKey
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -58,6 +68,7 @@ import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Store
+import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.pressable
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -209,7 +220,7 @@ fun HomeContent(
                     },
                     actions = {
                         val allVisibleSelected = bills.isNotEmpty() && bills.all { it.bill.id in selectedIds }
-                        TextButton(
+                        TopBarActionTextButton(
                             text = if (allVisibleSelected) "取消全选" else "全选",
                             onClick = onToggleSelectAll,
                             modifier = Modifier.testTag("select_all_toggle"),
@@ -243,7 +254,12 @@ fun HomeContent(
             }
         },
         bottomBar = {
-            if (selectionMode) {
+            // 多选底栏滑入/滑出
+            AnimatedVisibility(
+                visible = selectionMode,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+            ) {
                 SelectionActionBar(
                     canEdit = selectedIds.size == 1,
                     onCopy = onCopy,
@@ -292,10 +308,17 @@ fun HomeContent(
                         ) { homeBill ->
                         val bill = homeBill.bill
                         val selected = bill.id in selectedIds
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val haptics = LocalHaptics.current
                         Row(
                             modifier = Modifier
+                                .animateItem()
                                 .fillMaxWidth()
+                                // 圆角涟漪 + 轻微下沉：符合整体圆角调性的按压反馈
+                                .clip(RoundedCornerShape(16.dp))
+                                .indication(interactionSource, SinkFeedback(sinkAmount = 0.97f))
                                 .combinedClickable(
+                                    interactionSource = interactionSource,
                                     onClick = {
                                         if (selectionMode) {
                                             onToggleSelection(bill.id)
@@ -307,6 +330,7 @@ fun HomeContent(
                                         if (selectionMode) {
                                             onToggleSelection(bill.id)
                                         } else {
+                                            haptics.longPress()
                                             onEnterSelection(bill.id)
                                         }
                                     },

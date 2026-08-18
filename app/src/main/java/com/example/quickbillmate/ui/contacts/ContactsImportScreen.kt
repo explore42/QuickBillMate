@@ -7,6 +7,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -264,10 +266,11 @@ private fun ImportRow(
     onToggle: () -> Unit,
 ) {
     val grey = AppThemeColors.outline
-    // 整行可点击切换勾选（已导入项不可点）
+    // 整行可点击切换勾选（已导入项不可点），圆角涟漪
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickable(enabled = !imported) { onToggle() }
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

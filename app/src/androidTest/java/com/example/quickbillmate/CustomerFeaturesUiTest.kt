@@ -65,6 +65,7 @@ class CustomerFeaturesUiTest {
         composeRule.onNodeWithContentDescription("单据").performClick()
         composeRule.onNodeWithTag("home_new_bill").performClick()
         waitFor { composeRule.onAllNodesWithText("保存").fetchSemanticsNodes().isNotEmpty() }
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("客户名称").performClick()
 
         waitFor { composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }

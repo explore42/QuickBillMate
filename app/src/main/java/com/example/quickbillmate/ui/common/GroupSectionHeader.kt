@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 
 /** 分组小标题：组与组之间用一条细分割线隔开；多选模式下可传入 onSelectGroup 显示"全选/取消全选"。 */
 @Composable
@@ -45,7 +44,7 @@ fun GroupSectionHeader(
         )
         if (onSelectGroup != null) {
             Spacer(Modifier.weight(1f))
-            TextButton(
+            TopBarActionTextButton(
                 text = if (allSelected) "取消全选" else "全选",
                 onClick = onSelectGroup,
                 modifier = Modifier.testTag("select_group"),

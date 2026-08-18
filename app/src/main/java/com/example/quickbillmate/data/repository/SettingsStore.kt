@@ -21,6 +21,16 @@ class SettingsStore(context: Context) {
         get() = prefs.getLong(KEY_THEME_KEY_COLOR, 0xFF9C11E1L)
         set(value) = prefs.edit { putLong(KEY_THEME_KEY_COLOR, value) }
 
+    /** Monet 配色风格（ThemePaletteStyle 名称），默认 TonalSpot。 */
+    var themePaletteStyle: String
+        get() = prefs.getString(KEY_THEME_PALETTE_STYLE, "TonalSpot") ?: "TonalSpot"
+        set(value) = prefs.edit { putString(KEY_THEME_PALETTE_STYLE, value) }
+
+    /** 触觉反馈开关，默认开启。 */
+    var hapticsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_HAPTICS, true)
+        set(value) = prefs.edit { putBoolean(KEY_HAPTICS, value) }
+
     var defaultCompany: String
         get() = prefs.getString(KEY_COMPANY, "") ?: ""
         set(value) = prefs.edit { putString(KEY_COMPANY, value) }
@@ -89,6 +99,8 @@ class SettingsStore(context: Context) {
         private const val KEY_THEME = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "theme_dynamic_color"
         private const val KEY_THEME_KEY_COLOR = "theme_key_color"
+        private const val KEY_THEME_PALETTE_STYLE = "theme_palette_style"
+        private const val KEY_HAPTICS = "haptics_enabled"
         private const val KEY_COMPANY = "default_company"
         private const val KEY_PHONE = "default_phone"
         private const val KEY_MANAGER = "default_manager"

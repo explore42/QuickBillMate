@@ -15,7 +15,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.navigation.QuickBillMateAppNavHost
 import com.example.quickbillmate.render.InvoiceRenderEngine
+import com.example.quickbillmate.ui.common.ProvideHaptics
 import com.example.quickbillmate.ui.theme.QuickBillMateTheme
+import com.example.quickbillmate.ui.theme.paletteStyleOf
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +29,8 @@ class MainActivity : ComponentActivity() {
             var themeMode by remember { mutableStateOf(settings.themeMode) }
             var dynamicColor by remember { mutableStateOf(settings.dynamicColor) }
             var themeKeyColor by remember { mutableStateOf(settings.themeKeyColor) }
+            var themePaletteStyle by remember { mutableStateOf(settings.themePaletteStyle) }
+            var hapticsEnabled by remember { mutableStateOf(settings.hapticsEnabled) }
             val darkTheme = when (themeMode) {
                 SettingsStore.THEME_DARK -> true
                 SettingsStore.THEME_LIGHT -> false
@@ -37,26 +41,37 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 dynamicColor = dynamicColor,
                 keyColor = keyColor,
+                paletteStyle = paletteStyleOf(themePaletteStyle),
             ) {
                 Box {
-                    val navController = rememberNavController()
-                    QuickBillMateAppNavHost(
-                        navController = navController,
-                        onThemeModeChange = { mode ->
-                            themeMode = mode
-                            settings.themeMode = mode
-                        },
-                        onDynamicColorChange = { enabled ->
-                            dynamicColor = enabled
-                            settings.dynamicColor = enabled
-                        },
-                        onThemeKeyColorChange = { argb ->
-                            themeKeyColor = argb
-                            settings.themeKeyColor = argb
-                        },
-                    )
-                    // 全局单据渲染引擎：离屏 1×1，不占布局，持续消费渲染请求
-                    InvoiceRenderEngine()
+                    ProvideHaptics(enabled = hapticsEnabled) {
+                        val navController = rememberNavController()
+                        QuickBillMateAppNavHost(
+                            navController = navController,
+                            onThemeModeChange = { mode ->
+                                themeMode = mode
+                                settings.themeMode = mode
+                            },
+                            onDynamicColorChange = { enabled ->
+                                dynamicColor = enabled
+                                settings.dynamicColor = enabled
+                            },
+                            onThemeKeyColorChange = { argb ->
+                                themeKeyColor = argb
+                                settings.themeKeyColor = argb
+                            },
+                            onThemePaletteStyleChange = { style ->
+                                themePaletteStyle = style
+                                settings.themePaletteStyle = style
+                            },
+                            onHapticsChange = { enabled ->
+                                hapticsEnabled = enabled
+                                settings.hapticsEnabled = enabled
+                            },
+                        )
+                        // 全局单据渲染引擎：离屏 1×1，不占布局，持续消费渲染请求
+                        InvoiceRenderEngine()
+                    }
                 }
             }
         }

@@ -7,7 +7,14 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
@@ -59,7 +67,9 @@ import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.LetterIndexBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
+import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.SearchableTopBar
+import com.example.quickbillmate.ui.common.TopBarActionTextButton
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -80,6 +90,7 @@ import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.pressable
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -209,7 +220,7 @@ fun ProductsScreen(
                     actions = {
                         val allVisibleSelected =
                             products.isNotEmpty() && products.all { it.id in viewModel.selectedIds }
-                        TextButton(
+                        TopBarActionTextButton(
                             text = if (allVisibleSelected) "取消全选" else "全选",
                             onClick = { viewModel.toggleSelectAll() },
                             modifier = Modifier.testTag("select_all_toggle"),
@@ -277,7 +288,11 @@ fun ProductsScreen(
             }
         },
         bottomBar = {
-            if (viewModel.selectionMode) {
+            AnimatedVisibility(
+                visible = viewModel.selectionMode,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+            ) {
                 SelectionActionBar(
                     canEdit = viewModel.selectedIds.size == 1,
                     onCopy = { viewModel.copySelected() },
@@ -342,11 +357,17 @@ fun ProductsScreen(
                             key = { it.id },
                             contentType = { "productCard" },
                         ) { product ->
-                        // 整行可点击（含头像与单价区域），长按进入多选
+                        // 整行可点击（含头像与单价区域），长按进入多选；圆角涟漪+下沉按压
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val haptics = LocalHaptics.current
                         Row(
                             modifier = Modifier
+                                .animateItem()
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .indication(interactionSource, SinkFeedback(sinkAmount = 0.97f))
                                 .combinedClickable(
+                                    interactionSource = interactionSource,
                                     onClick = {
                                         if (viewModel.selectionMode) {
                                             viewModel.toggleSelection(product.id)
@@ -358,6 +379,7 @@ fun ProductsScreen(
                                         if (viewModel.selectionMode) {
                                             viewModel.toggleSelection(product.id)
                                         } else {
+                                            haptics.longPress()
                                             viewModel.enterSelection(product.id)
                                         }
                                     },

@@ -56,6 +56,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Switch
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
@@ -83,6 +84,7 @@ fun AppLogo(modifier: Modifier = Modifier) {
 fun SectionCard(
     title: String,
     modifier: Modifier = Modifier,
+    action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
@@ -90,11 +92,18 @@ fun SectionCard(
         colors = CardDefaults.defaultColors(color = AppThemeColors.surfaceContainerLow),
     ) {
         Column(modifier = Modifier.padding(Ds.lg)) {
-            Text(
-                text = title,
-                style = AppThemeTypography.titleSmall,
-                color = AppThemeColors.primary,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = title,
+                    style = AppThemeTypography.titleSmall,
+                    color = AppThemeColors.primary,
+                    modifier = Modifier.weight(1f),
+                )
+                action?.invoke()
+            }
             Spacer(Modifier.height(Ds.md))
             content()
         }
@@ -400,6 +409,7 @@ fun ConfirmDialog(
     onDismiss: () -> Unit,
     destructive: Boolean = false,
 ) {
+    val haptics = LocalHaptics.current
     OverlayDialog(
         title = title,
         summary = text,
@@ -409,7 +419,11 @@ fun ConfirmDialog(
         DialogButtons(
             confirmText = confirmText,
             onCancel = onDismiss,
-            onConfirm = onConfirm,
+            onConfirm = {
+                // 破坏性确认用长按触觉警示，普通确认用轻确认
+                if (destructive) haptics.longPress() else haptics.confirm()
+                onConfirm()
+            },
             destructive = destructive,
         )
     }
@@ -565,6 +579,23 @@ fun PhoneTag(
             color = AppThemeColors.onPrimaryContainer,
         )
     }
+}
+
+/** 顶栏紧凑动作按钮（全选/导入等）：28dp 高、上下 2dp、12sp 字号。 */
+@Composable
+fun TopBarActionTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        minHeight = 28.dp,
+        insideMargin = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+        textStyle = MiuixTheme.textStyles.footnote1,
+    )
 }
 
 /** 只读小标签（浅色小圆角容器），用于列表行/详情里的类型、来源等标记。 */

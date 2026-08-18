@@ -63,6 +63,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Alarm
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Report
@@ -94,6 +95,8 @@ fun SettingsScreen(
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
+    onThemePaletteStyleChange: (String) -> Unit = {},
+    onHapticsChange: (Boolean) -> Unit = {},
     onManagePresets: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
@@ -109,6 +112,8 @@ fun SettingsScreen(
         themeMode = viewModel.themeMode,
         dynamicColor = viewModel.dynamicColor,
         themeKeyColor = viewModel.themeKeyColor,
+        themePaletteStyle = viewModel.themePaletteStyle,
+        hapticsEnabled = viewModel.hapticsEnabled,
         defaultCompany = viewModel.defaultCompany,
         defaultPhone = viewModel.defaultPhone,
         defaultManager = viewModel.defaultManager,
@@ -141,6 +146,14 @@ fun SettingsScreen(
             viewModel.updateThemeKeyColor(argb)
             onThemeKeyColorChange(argb)
         },
+        onThemePaletteStyleChange = { style ->
+            viewModel.updateThemePaletteStyle(style)
+            onThemePaletteStyleChange(style)
+        },
+        onHapticsChange = { enabled ->
+            viewModel.updateHapticsEnabled(enabled)
+            onHapticsChange(enabled)
+        },
         onPresetChange = viewModel::updateDefaultPreset,
         onDefaultsSave = viewModel::updateDefaults,
         onManagePresets = onManagePresets,
@@ -162,6 +175,8 @@ fun SettingsContent(
     themeMode: String,
     dynamicColor: Boolean,
     themeKeyColor: Long,
+    themePaletteStyle: String = "TonalSpot",
+    hapticsEnabled: Boolean = true,
     defaultCompany: String,
     defaultPhone: String,
     defaultManager: String,
@@ -185,6 +200,8 @@ fun SettingsContent(
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
+    onThemePaletteStyleChange: (String) -> Unit = {},
+    onHapticsChange: (Boolean) -> Unit = {},
     onPresetChange: (String) -> Unit,
     onDefaultsSave: (DefaultInfoValues) -> Unit,
     onManagePresets: () -> Unit,
@@ -200,6 +217,10 @@ fun SettingsContent(
     var showCrashLogsDialog by remember { mutableStateOf(false) }
     var showClearCrashConfirm by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+
+    val paletteStyleLabels = listOf("标准", "柔和", "鲜艳", "个性")
+    val paletteStyleValues = listOf("TonalSpot", "Neutral", "Vibrant", "Expressive")
+    val paletteStyleIndex = paletteStyleValues.indexOf(themePaletteStyle).coerceAtLeast(0)
 
     val themeLabel = when (themeMode) {
         SettingsStore.THEME_DARK -> "深色"
@@ -254,7 +275,24 @@ fun SettingsContent(
                         },
                         startAction = { SettingsIcon(MiuixIcons.Theme) },
                     )
+                    OverlayDropdownPreference(
+                        title = "配色风格",
+                        summary = paletteStyleLabels[paletteStyleIndex],
+                        items = paletteStyleLabels,
+                        selectedIndex = paletteStyleIndex,
+                        onSelectedIndexChange = { index ->
+                            onThemePaletteStyleChange(paletteStyleValues[index])
+                        },
+                        startAction = { SettingsIcon(MiuixIcons.Theme) },
+                    )
                 }
+                SwitchPreference(
+                    title = "触觉反馈",
+                    summary = if (hapticsEnabled) "按键与操作的振动反馈" else "已关闭振动反馈",
+                    checked = hapticsEnabled,
+                    onCheckedChange = onHapticsChange,
+                    startAction = { SettingsIcon(MiuixIcons.Alarm) },
+                )
             }
 
             SettingsGroup {

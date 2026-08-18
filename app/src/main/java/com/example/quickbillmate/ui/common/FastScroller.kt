@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.quickbillmate.ui.common.LocalHaptics
 import top.yukonga.miuix.kmp.basic.Text
 
 /** 索引分区：label 为索引唯一标识，bubble 为按压时气泡显示文本。 */
@@ -68,11 +70,17 @@ internal fun SectionIndexBar(
     barWidth: Dp = LetterBarWidth,
     endMargin: Dp = 18.dp,
     topPadding: Dp = 8.dp,
-    bottomPadding: Dp = 88.dp,
+    // 底部避让抬升后的 FAB（84dp 抬升 + 圆钮 + 余量），否则末尾分区被遮住
+    bottomPadding: Dp = 170.dp,
     labelTransform: (String) -> String = { it },
 ) {
     if (sections.isEmpty()) return
     var active by remember { mutableStateOf<Int?>(null) }
+    // 拖动跨分区时轻触觉反馈
+    val haptics = LocalHaptics.current
+    LaunchedEffect(active) {
+        if (active != null) haptics.tick()
+    }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
     var hideJob by remember { mutableStateOf<Job?>(null) }
     val bubbleProgress = remember { Animatable(0f) }

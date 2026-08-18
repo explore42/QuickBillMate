@@ -67,6 +67,11 @@ class AppRepository(
 
     fun observeRecentBills(): Flow<List<Bill>> = billDao.observeRecent()
 
+    /** 一次性查询当前列表：Room 失效通知偶发丢失时的兜底刷新入口。 */
+    suspend fun recentBillsOnce(): List<Bill> = billDao.getRecentOnce()
+
+    suspend fun allBillItemsOnce(): List<BillItem> = itemDao.getAllOnce()
+
     fun observeBill(id: Long): Flow<Bill?> = billDao.observeBill(id)
 
     fun observeItems(billId: Long): Flow<List<BillItem>> = itemDao.observeItems(billId)

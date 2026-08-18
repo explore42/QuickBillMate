@@ -65,6 +65,8 @@ fun QuickBillMateAppNavHost(
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
+    onThemePaletteStyleChange: (String) -> Unit = {},
+    onHapticsChange: (Boolean) -> Unit = {},
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -152,6 +154,8 @@ fun QuickBillMateAppNavHost(
                         onThemeModeChange = onThemeModeChange,
                         onDynamicColorChange = onDynamicColorChange,
                         onThemeKeyColorChange = onThemeKeyColorChange,
+                        onThemePaletteStyleChange = onThemePaletteStyleChange,
+                        onHapticsChange = onHapticsChange,
                         onManagePresets = { navController.navigate(Routes.PRESETS) },
                     )
                 }
@@ -272,6 +276,8 @@ private fun TabPagerHost(
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
+    onThemePaletteStyleChange: (String) -> Unit,
+    onHapticsChange: (Boolean) -> Unit,
     onManagePresets: () -> Unit,
 ) {
     HorizontalPager(
@@ -299,6 +305,8 @@ private fun TabPagerHost(
                 onThemeModeChange = onThemeModeChange,
                 onDynamicColorChange = onDynamicColorChange,
                 onThemeKeyColorChange = onThemeKeyColorChange,
+                onThemePaletteStyleChange = onThemePaletteStyleChange,
+                onHapticsChange = onHapticsChange,
                 onManagePresets = onManagePresets,
             )
         }

@@ -6,7 +6,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +24,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -30,6 +38,7 @@ import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,9 +50,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
@@ -54,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.MiuixMenuPopup
 import com.example.quickbillmate.ui.common.PhoneTag
 import com.example.quickbillmate.ui.common.SectionCard
@@ -78,6 +90,11 @@ import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Phone
 import top.yukonga.miuix.kmp.icon.extended.Share
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -115,6 +132,13 @@ fun BillViewScreen(
         }
     }
 
+    // 底部操作栏与底部导航栏一致的模糊材质：内容捕获层 + 半透明覆盖
+    val backgroundColor = MiuixTheme.colorScheme.background
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backgroundColor)
+        drawContent()
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             AppTopBar(
@@ -126,62 +150,6 @@ fun BillViewScreen(
                 },
 
             )
-        },
-        bottomBar = {
-            // 修改 / 保存图片为纯图标按钮；分享图片（最重要）为 icon+文字主色实心并占满剩余宽度，单行排列
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Button(
-                    onClick = { onEdit(billId) },
-                    enabled = !s.exporting,
-                    minHeight = 44.dp,
-                    minWidth = 44.dp,
-                    insideMargin = PaddingValues(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        color = Color.Transparent,
-                        contentColor = MiuixTheme.colorScheme.primary,
-                    ),
-                ) {
-                    Icon(MiuixIcons.Edit, contentDescription = "修改")
-                }
-                Button(
-                    onClick = { viewModel.exportToGallery() },
-                    enabled = !s.exporting,
-                    minHeight = 44.dp,
-                    minWidth = 44.dp,
-                    insideMargin = PaddingValues(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        color = MiuixTheme.colorScheme.secondaryContainer,
-                        contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
-                    ),
-                ) {
-                    if (s.exporting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            size = 18.dp,
-                        )
-                    } else {
-                        Icon(MiuixIcons.Download, contentDescription = "保存图片")
-                    }
-                }
-                Button(
-                    onClick = { viewModel.shareNow() },
-                    colors = ButtonDefaults.buttonColorsPrimary(),
-                    modifier = Modifier.weight(1f),
-                    enabled = !s.exporting,
-                    minHeight = 44.dp,
-                ) {
-                    Icon(MiuixIcons.Share, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("分享图片", maxLines = 1)
-                }
-            }
         },
     ) { padding ->
         if (!s.loaded || s.bill == null) {
@@ -197,6 +165,7 @@ fun BillViewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .layerBackdrop(backdrop)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -348,13 +317,78 @@ fun BillViewScreen(
                 }
 
                 SectionCard("显示选项") {
+                    //（底部操作栏为覆盖层，列表末尾留出滑过空间）
                     InfoLine("显示客户经理", if (bill.showManager) "开" else "关")
                     InfoLine("显示备注", if (bill.showRemark) "开" else "关")
                     InfoLine("显示广告", if (bill.showAd) "开" else "关")
                     InfoLine("显示水印", if (bill.showWatermark) "开" else "关")
                     InfoLine("显示多个电话", if (bill.showMultiPhones) "开" else "关")
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(96.dp))
+            }
+        }
+    }
+
+        // 修改 / 保存图片为纯图标按钮；分享图片（最重要）为 icon+文字主色实心并占满剩余宽度，单行排列
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .textureBlur(
+                    backdrop = backdrop,
+                    shape = RectangleShape,
+                    blurRadius = 24f,
+                )
+                .background(AppThemeColors.surfaceContainer.copy(alpha = 0.6f))
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = { onEdit(billId) },
+                enabled = !s.exporting,
+                minHeight = 44.dp,
+                minWidth = 44.dp,
+                insideMargin = PaddingValues(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    color = Color.Transparent,
+                    contentColor = MiuixTheme.colorScheme.primary,
+                ),
+            ) {
+                Icon(MiuixIcons.Edit, contentDescription = "修改")
+            }
+            Button(
+                onClick = { viewModel.exportToGallery() },
+                enabled = !s.exporting,
+                minHeight = 44.dp,
+                minWidth = 44.dp,
+                insideMargin = PaddingValues(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    color = MiuixTheme.colorScheme.secondaryContainer,
+                    contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
+                ),
+            ) {
+                if (s.exporting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        size = 18.dp,
+                    )
+                } else {
+                    Icon(MiuixIcons.Download, contentDescription = "保存图片")
+                }
+            }
+            Button(
+                onClick = { viewModel.shareNow() },
+                colors = ButtonDefaults.buttonColorsPrimary(),
+                modifier = Modifier.weight(1f),
+                enabled = !s.exporting,
+                minHeight = 44.dp,
+            ) {
+                Icon(MiuixIcons.Share, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("分享图片", maxLines = 1)
             }
         }
     }
@@ -443,9 +477,42 @@ private fun FullPreviewDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         var showMenu by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        val haptics = LocalHaptics.current
+
+        // 进入过渡：scale 0.92→1 + 淡入
+        val enter = remember { Animatable(0f) }
+        LaunchedEffect(Unit) { enter.animateTo(1f, tween(220)) }
+
+        // 下拉关闭：跟手下坠+缩小+背景变透明；松手按位移阈值判定 spring 回弹或收束关闭
+        val dragY = remember { Animatable(0f) }
+        val dismissThresholdPx = 240f
+
+        fun settle() {
+            if (dragY.value > dismissThresholdPx) {
+                haptics.tick()
+                scope.launch {
+                    dragY.animateTo(
+                        targetValue = 1600f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                    )
+                    onDismiss()
+                }
+            } else {
+                scope.launch {
+                    dragY.animateTo(
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
+                    )
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                // 背景透明度随下拉进度联动（最低保留 0.25，避免瞬间全透明）
+                .graphicsLayer { alpha = (1f - (dragY.value / 900f)).coerceIn(0.25f, 1f) }
                 .background(Color.Black)
                 // 点击图片实际绘制区域之外的黑暗背景关闭（图片按 Fit 缩放后居中留边）
                 .pointerInput(bitmap) {
@@ -471,21 +538,58 @@ private fun FullPreviewDialog(
             var scale by remember { mutableFloatStateOf(1f) }
             var offset by remember { mutableStateOf(Offset.Zero) }
             Box(modifier = Modifier.fillMaxSize()) {
+                // 下拉进度：图片缩到 0.72、竖向位移按 0.55 阻尼跟手
+                val dragScale = 1f - (dragY.value / 1400f).coerceIn(0f, 0.28f)
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = "单据预览",
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
+                            val enterScale = 0.92f + 0.08f * enter.value
+                            val s = scale * dragScale * enterScale
+                            scaleX = s
+                            scaleY = s
                             translationX = offset.x
-                            translationY = offset.y
+                            translationY = offset.y + dragY.value * 0.55f
                         }
+                        // 单一手势处理器：多指/已放大 → 缩放平移；单指未放大 → 下拉关闭。
+                        // 不能与 detectTransformGestures 叠加——后者会先消费移动事件，导致下拉永远不触发。
                         .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(1f, 4f)
-                                offset += pan
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                var multiTouch = false
+                                var dragged = false
+                                var slopY = 0f
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.changes.size > 1) multiTouch = true
+                                    val zoom = event.calculateZoom()
+                                    val pan = event.calculatePan()
+                                    val pressed = event.changes.any { it.pressed }
+                                    if (multiTouch || scale > 1.01f) {
+                                        // 缩放/平移（放大态）；缩回原尺寸时归位
+                                        scale = (scale * zoom).coerceIn(1f, 4f)
+                                        offset += pan
+                                        if (scale <= 1.01f) {
+                                            scale = 1f
+                                            offset = Offset.Zero
+                                        }
+                                        event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                    } else {
+                                        // 单指未放大：超过触摸阈值后竖向拖拽 → 下拉关闭；
+                                        // 未超阈值不消费，保住外层长按菜单与点击关闭
+                                        slopY += pan.y
+                                        if (!dragged && abs(slopY) > viewConfiguration.touchSlop) dragged = true
+                                        if (dragged && pan.y != 0f) {
+                                            val target = (dragY.value + pan.y).coerceAtLeast(0f)
+                                            scope.launch { dragY.snapTo(target) }
+                                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                        }
+                                    }
+                                    if (!pressed) break
+                                }
+                                if (!multiTouch && scale <= 1.01f && dragged) settle()
                             }
                         },
                 )

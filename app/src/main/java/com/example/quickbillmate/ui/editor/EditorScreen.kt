@@ -1,6 +1,13 @@
 package com.example.quickbillmate.ui.editor
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -58,6 +65,7 @@ import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.LabeledField
+import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.PhoneSectionHeader
@@ -103,6 +111,7 @@ fun EditorScreen(
     }
 
     val s = viewModel.state
+    val haptics = LocalHaptics.current
     var showDatePicker by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
@@ -129,9 +138,12 @@ fun EditorScreen(
                     }
                 },
                 actions = {
-                    // 紧凑实心主色按钮，比文本按钮更醒目
+                    // 紧凑实心主色按钮，比文本按钮更醒目；保存成功伴随确认触觉
                     Button(
-                        onClick = { viewModel.saveNow(onBack) },
+                        onClick = {
+                            haptics.confirm()
+                            viewModel.saveNow(onBack)
+                        },
                         enabled = s.loaded,
                         colors = ButtonDefaults.buttonColorsPrimary(),
                         minHeight = 34.dp,
@@ -249,7 +261,10 @@ fun EditorScreen(
                 // 商品信息
                 SectionCard("商品信息") {
                     val (roundDownLabel, roundDownTarget) = viewModel.roundDownAction()
-                    Column(verticalArrangement = Arrangement.spacedBy(Ds.md)) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Ds.md),
+                        modifier = Modifier.animateContentSize(),
+                    ) {
                         s.items.forEachIndexed { index, row ->
                             ItemCardEditor(
                                 row = row,
@@ -666,6 +681,7 @@ private fun ItemCardEditor(
     onUpdate: (ItemRow) -> Unit,
     onRemove: () -> Unit,
 ) {
+    val haptics = LocalHaptics.current
     val qtyValue = row.qtyText.toIntOrNull() ?: 0
     Surface(
         shape = RoundedCornerShape(Ds.md + 4.dp),
@@ -712,10 +728,13 @@ private fun ItemCardEditor(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StepperButton(
-                    icon = MiuixIcons.Remove,
+                    symbol = "−",
                     contentDescription = "数量减一",
                     enabled = qtyValue > 1,
-                    onClick = { onUpdate(row.copy(qtyText = ((qtyValue - 1).coerceAtLeast(1)).toString())) },
+                    onClick = {
+                        haptics.tick()
+                        onUpdate(row.copy(qtyText = ((qtyValue - 1).coerceAtLeast(1)).toString()))
+                    },
                 )
                 TextField(
                     value = row.qtyText,
@@ -726,10 +745,14 @@ private fun ItemCardEditor(
                     modifier = Modifier.weight(1f),
                 )
                 StepperButton(
+                    symbol = null,
                     icon = MiuixIcons.Add,
                     contentDescription = "数量加一",
                     enabled = true,
-                    onClick = { onUpdate(row.copy(qtyText = (qtyValue + 1).toString())) },
+                    onClick = {
+                        haptics.tick()
+                        onUpdate(row.copy(qtyText = (qtyValue + 1).toString()))
+                    },
                 )
                 Spacer(Modifier.width(Ds.xs))
                 TextField(
@@ -746,11 +769,26 @@ private fun ItemCardEditor(
                         style = AppThemeTypography.labelSmall,
                         color = AppThemeColors.onSurfaceVariant,
                     )
-                    Text(
-                        text = Money.format(row.amount()),
-                        style = AppThemeTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = AppThemeColors.primary,
-                    )
+                    // 数量/单价变化时金额上下滑动过渡
+                    AnimatedContent(
+                        targetState = Money.format(row.amount()),
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                (slideInVertically { it } + fadeIn()) togetherWith
+                                    (slideOutVertically { -it } + fadeOut())
+                            } else {
+                                (slideInVertically { -it } + fadeIn()) togetherWith
+                                    (slideOutVertically { it } + fadeOut())
+                            }
+                        },
+                        label = "amount",
+                    ) { amount ->
+                        Text(
+                            text = amount,
+                            style = AppThemeTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = AppThemeColors.primary,
+                        )
+                    }
                 }
             }
             // 第三行：规格 / 单位 / 包装
@@ -791,14 +829,16 @@ private fun ItemCardEditor(
     }
 }
 
-/** 数量步进圆形按钮：surface 底 + primary 图标，与卡片背景形成相对层次。 */
+/** 数量步进圆形按钮：surface 底 + primary 前景，与卡片背景形成相对层次；symbol 非空时显示文字符号。 */
 @Composable
 private fun StepperButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     enabled: Boolean,
     onClick: () -> Unit,
+    symbol: String? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
+    val tint = if (enabled) AppThemeColors.primary else AppThemeColors.onSurfaceVariant
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = AppThemeColors.surface,
@@ -809,11 +849,19 @@ private fun StepperButton(
             enabled = enabled,
             modifier = Modifier.fillMaxSize(),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = if (enabled) AppThemeColors.primary else AppThemeColors.onSurfaceVariant,
-            )
+            if (symbol != null) {
+                Text(
+                    text = symbol,
+                    style = AppThemeTypography.titleMedium,
+                    color = tint,
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    tint = tint,
+                )
+            }
         }
     }
 }
@@ -824,6 +872,7 @@ private fun ProductPickerSheet(
     onPick: (Product) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val haptics = LocalHaptics.current
     var query by remember { mutableStateOf("") }
     val filtered = remember(products, query) {
         if (query.isBlank()) products else products.filter {
@@ -854,7 +903,10 @@ private fun ProductPickerSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onPick(p) }
+                            .clickable {
+                                haptics.tick()
+                                onPick(p)
+                            }
                             .padding(vertical = Ds.rowVertical),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
