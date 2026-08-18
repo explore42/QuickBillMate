@@ -11,12 +11,18 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// 发布签名：存在 keystore.properties 时使用真实签名；缺失时回退 debug 签名（仅限开发验证）。
+// 发布签名：仅从根目录 keystore.properties（已被 .gitignore 忽略）读取真实凭据；
+// 文件缺失时回退 debug 签名（仅限开发验证）。禁止在构建脚本中硬编码密钥路径或密码。
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
+val requiredKeystoreKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 if (hasReleaseKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    val missingKeystoreKeys = requiredKeystoreKeys.filterNot { keystoreProperties.containsKey(it) }
+    check(missingKeystoreKeys.isEmpty()) {
+        "keystore.properties 缺少必填字段：${missingKeystoreKeys.joinToString(", ")}，请补全后再构建 release"
+    }
 }
 
 android {
@@ -27,12 +33,8 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("REDACTED\\REDACTED")
-            storePassword = "REDACTED"
-            keyPassword = "REDACTED"
-            keyAlias = "key0"
             if (hasReleaseKeystore) {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
