@@ -1,6 +1,7 @@
 package com.example.quickbillmate.data.db
 
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Room 数据库迁移注册表。
@@ -10,16 +11,16 @@ import androidx.room.migration.Migration
  * 2. 在 [ALL] 中注册；
  * 3. 新增列须在迁移 SQL 中提供默认值；
  * 4. 在 androidTest 的 MigrationTest 中补充“旧版本数据 → 迁移 → 数据完整”用例。
- *
- * 当前 v1 为首个正式版基线，暂无迁移；后续形如：
- * val MIGRATION_1_2 = object : Migration(1, 2) {
- *     override fun migrate(db: SupportSQLiteDatabase) {
- *         db.execSQL("ALTER TABLE bills ADD COLUMN newField TEXT NOT NULL DEFAULT ''")
- *     }
- * }
  */
 object Migrations {
+    /** v2：单据客户电话改为三态展示（不显示/一个/多个），存量单据统一置为不显示。 */
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE bills ADD COLUMN showCustomerPhone INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
-        // MIGRATION_1_2 等在此注册
+        MIGRATION_1_2,
     )
 }

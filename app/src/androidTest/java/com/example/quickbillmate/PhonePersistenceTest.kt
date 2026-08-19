@@ -13,6 +13,7 @@ import com.example.quickbillmate.importexport.ContactsImporter
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,6 +51,7 @@ class PhonePersistenceTest {
             id = 1,
             customerName = "张三",
             customerPhone = "13800000000,13900000000",
+            showCustomerPhone = true,
             showMultiPhones = false,
         )
         val invoice = repo.buildRenderInvoice(bill, emptyList())
@@ -62,9 +64,24 @@ class PhonePersistenceTest {
             id = 1,
             customerName = "张三",
             customerPhone = "13800000000,13900000000",
+            showCustomerPhone = true,
             showMultiPhones = true,
         )
         val invoice = repo.buildRenderInvoice(bill, emptyList())
         assertEquals("13800000000,13900000000", invoice.customerPhone)
+    }
+
+    @Test
+    fun buildRenderInvoiceHidesPhoneWhenDisabled() {
+        val bill = Bill(
+            id = 1,
+            customerName = "张三",
+            customerPhone = "13800000000,13900000000",
+            showCustomerPhone = false,
+            showMultiPhones = true,
+        )
+        val invoice = repo.buildRenderInvoice(bill, emptyList())
+        assertEquals("", invoice.customerPhone)
+        assertFalse(invoice.showCustomerPhone)
     }
 }

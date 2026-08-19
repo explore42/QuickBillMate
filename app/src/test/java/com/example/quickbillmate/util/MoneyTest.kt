@@ -26,6 +26,21 @@ class MoneyTest {
     }
 
     @Test
+    fun `金额输入过滤_最多两位小数`() {
+        assertEquals("35", Money.sanitizeAmountInput("35"))
+        assertEquals("35.5", Money.sanitizeAmountInput("35.5"))
+        assertEquals("35.56", Money.sanitizeAmountInput("35.56"))
+        // 第三位小数被丢弃，其余内容不受影响
+        assertEquals("35.56", Money.sanitizeAmountInput("35.567"))
+        assertEquals("0.99", Money.sanitizeAmountInput("0.999"))
+        // 仅保留第一个小数点，多余的小数点与非法字符被剔除
+        assertEquals("1.23", Money.sanitizeAmountInput("1.2.3"))
+        assertEquals("12.5", Money.sanitizeAmountInput("12元.5"))
+        assertEquals("", Money.sanitizeAmountInput(" abc"))
+        assertEquals(".", Money.sanitizeAmountInput(".."))
+    }
+
+    @Test
     fun `四舍五入到分`() {
         assertEquals(12.35, Money.round2(12.345), 1e-9)
         assertEquals(12.34, Money.round2(12.344), 1e-9)

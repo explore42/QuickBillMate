@@ -63,6 +63,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_MULTI_PHONES, false)
         set(value) = prefs.edit { putBoolean(KEY_SHOW_MULTI_PHONES, value) }
 
+    /** 是否在单据上显示客户电话，默认不显示；开启后数量由“多个电话”开关控制。 */
+    var defaultShowCustomerPhone: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_CUSTOMER_PHONE, false)
+        set(value) = prefs.edit { putBoolean(KEY_SHOW_CUSTOMER_PHONE, value) }
+
     var defaultDocCode: String
         get() = prefs.getString(KEY_DOC_CODE, "PH") ?: "PH"
         set(value) = prefs.edit { putString(KEY_DOC_CODE, value) }
@@ -109,6 +114,7 @@ class SettingsStore(context: Context) {
         private const val KEY_SHOW_REMARK = "default_show_remark"
         private const val KEY_SHOW_WATERMARK = "default_show_watermark"
         private const val KEY_SHOW_MULTI_PHONES = "default_show_multi_phones"
+        private const val KEY_SHOW_CUSTOMER_PHONE = "default_show_customer_phone"
         private const val KEY_DOC_CODE = "default_doc_code"
         private const val KEY_TITLE_SUFFIX = "default_title_suffix"
         private const val KEY_AD_TEXT = "default_ad_text"

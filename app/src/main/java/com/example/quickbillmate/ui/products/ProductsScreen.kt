@@ -707,7 +707,7 @@ private fun ProductEditDialog(
             LabeledField(
                 "单价*",
                 price,
-                { price = it },
+                { price = Money.sanitizeAmountInput(it) },
                 modifier = Modifier.testTag("product_price"),
                 keyboardType = KeyboardType.Decimal,
             )

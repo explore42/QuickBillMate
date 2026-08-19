@@ -16,6 +16,16 @@ object Money {
     /** 统一两位小数输出。 */
     fun format(value: Double): String = String.format(Locale.US, "%.2f", round2(value))
 
+    /** 金额输入过滤：仅保留数字与一个小数点，小数位最多 maxDecimals 位（默认两位）。 */
+    fun sanitizeAmountInput(raw: String, maxDecimals: Int = 2): String {
+        val digits = raw.filter { it.isDigit() || it == '.' }
+        val dot = digits.indexOf('.')
+        if (dot < 0) return digits
+        val intPart = digits.take(dot)
+        val decimals = digits.substring(dot + 1).filter { it != '.' }.take(maxDecimals)
+        return "$intPart.$decimals"
+    }
+
     /** 中文大写金额，与 DEMO toChineseAmount() 逻辑一致。 */
     fun toChineseAmount(amount: Double): String {
         val rounded = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP)

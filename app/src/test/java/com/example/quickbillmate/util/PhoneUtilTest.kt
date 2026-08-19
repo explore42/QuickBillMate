@@ -34,10 +34,13 @@ class PhoneUtilTest {
     }
 
     @Test
-    fun `display phones first or all`() {
-        assertEquals("13800000000", PhoneUtil.displayPhones("13800000000,13900000000", showMulti = false))
-        assertEquals("13800000000,13900000000", PhoneUtil.displayPhones("13800000000,13900000000", showMulti = true))
-        assertEquals("", PhoneUtil.displayPhones("", showMulti = false))
+    fun `display phones hidden first or all`() {
+        assertEquals("13800000000", PhoneUtil.displayPhones("13800000000,13900000000", show = true, showMulti = false))
+        assertEquals("13800000000,13900000000", PhoneUtil.displayPhones("13800000000,13900000000", show = true, showMulti = true))
+        assertEquals("", PhoneUtil.displayPhones("", show = true, showMulti = false))
+        // 不显示客户电话时无论内容与多电话开关，一律返回空
+        assertEquals("", PhoneUtil.displayPhones("13800000000,13900000000", show = false, showMulti = false))
+        assertEquals("", PhoneUtil.displayPhones("13800000000,13900000000", show = false, showMulti = true))
     }
 
     @Test

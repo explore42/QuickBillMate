@@ -9,6 +9,7 @@ import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
 import com.example.quickbillmate.render.StyleParams
 import com.example.quickbillmate.render.StylePresets
+import com.example.quickbillmate.render.dropRetiredColumns
 import kotlinx.coroutines.launch
 
 class PresetEditorViewModel(private val repo: AppRepository) : ViewModel() {
@@ -29,10 +30,11 @@ class PresetEditorViewModel(private val repo: AppRepository) : ViewModel() {
             if (existing != null) {
                 this@PresetEditorViewModel.presetId = existing.id
                 name = existing.name
-                params = StyleParams.fromJson(existing.paramsJson)
+                // 旧预设可能含已下架的“包装”列，加载时归一化，保存时写回新列配置
+                params = StyleParams.fromJson(existing.paramsJson).dropRetiredColumns()
             } else {
                 this@PresetEditorViewModel.presetId = 0
-                params = StylePresets.resolve(base, presets)
+                params = StylePresets.resolve(base, presets).dropRetiredColumns()
                 name = if (base == "classic") "我的预设" else StylePresets.builtInName(base) + " 副本"
             }
             loaded = true

@@ -74,6 +74,7 @@ data class RenderInvoice(
     val showRemark: Boolean = true,
     val showAd: Boolean = false,
     val showContactPhone: Boolean = false,
+    val showCustomerPhone: Boolean = true,
     val watermarkText: String = "",
     val showWatermark: Boolean = true,
     /** 全局微信二维码（设置页上传并裁剪后的方形位图）；null 表示单据不显示二维码。 */
@@ -100,13 +101,17 @@ internal val DEFAULT_COLUMNS: List<ColumnSpec> = listOf(
     ColumnSpec(3, "单位", 1.0f, TextAlign.Center),
     ColumnSpec(4, "数量", 1.3f, TextAlign.Center),
     ColumnSpec(5, "单价", 1.6f, TextAlign.Center),
-    ColumnSpec(6, "包装", 1.8f, TextAlign.Center),
-    ColumnSpec(7, "备注", 2.0f, TextAlign.Left),
     ColumnSpec(8, "金额", 2.0f, TextAlign.Center),
+    ColumnSpec(7, "备注", 2.0f, TextAlign.Left),
 )
 
 internal val DEFAULT_ORDER: List<Int> = DEFAULT_COLUMNS.map { it.id }
 internal val DEFAULT_WEIGHTS: List<Float> = DEFAULT_COLUMNS.map { it.defaultWeight }
+
+internal val COLUMNS_BY_ID: Map<Int, ColumnSpec> = DEFAULT_COLUMNS.associateBy { it.id }
+
+/** 已下架列 id：v1 的“包装”列——数据仍随单据保留，仅表格不再展示。 */
+private val RETIRED_COLUMN_IDS = setOf(6)
 
 /** 单据左上角二维码边长与标题预留间距。 */
 private val QR_SIZE_DP = 96.dp
@@ -114,20 +119,45 @@ private val QR_GAP_DP = 16.dp
 
 /** 根据样式预设解析生效的列定义；配置非法时回退默认。 */
 internal fun effectiveColumns(params: StyleParams): List<ColumnSpec> {
-    val order = params.columnOrder
-    val weights = params.columnWeights
-    val validOrder =
-        order.size == DEFAULT_COLUMNS.size &&
-            order.toSet().size == DEFAULT_COLUMNS.size &&
-            order.all { it in DEFAULT_COLUMNS.indices }
-    val validWeights = weights.size == DEFAULT_COLUMNS.size && weights.all { it > 0f }
-    return if (validOrder && validWeights) {
+    val rawOrder = params.columnOrder.ifEmpty { DEFAULT_ORDER }
+    val rawWeights = params.columnWeights
+    // 旧预设可能包含已下架列（如“包装”）：剔除后再按 id 集合校验
+    val order = rawOrder.filter { it !in RETIRED_COLUMN_IDS }
+    if (order.size != DEFAULT_COLUMNS.size || order.toSet() != COLUMNS_BY_ID.keys) {
+        return DEFAULT_COLUMNS
+    }
+    // 权重与原列序按位置配对剔除；数量不匹配时忽略（沿用 v1 行为：仅权重不生效）
+    val weights =
+        if (rawWeights.size == rawOrder.size) {
+            rawOrder.mapIndexed { index, id -> if (id in RETIRED_COLUMN_IDS) null else rawWeights[index] }
+                .filterNotNull()
+        } else {
+            emptyList()
+        }
+    return if (weights.size == order.size && weights.all { it > 0f }) {
         order.mapIndexed { index, id ->
-            DEFAULT_COLUMNS[id].copy(defaultWeight = weights[index])
+            COLUMNS_BY_ID.getValue(id).copy(defaultWeight = weights[index])
         }
     } else {
-        DEFAULT_COLUMNS
+        order.map { COLUMNS_BY_ID.getValue(it) }
     }
+}
+
+/** 旧预设列配置归一化：剔除已下架列（含按位置配对的权重），供预设编辑页加载时调用。 */
+internal fun StyleParams.dropRetiredColumns(): StyleParams {
+    val hasRetiredOrder = columnOrder.any { it in RETIRED_COLUMN_IDS }
+    // v1 中“仅权重无列序”的配置从未参与渲染（effectiveColumns 一并回退默认），归一化时直接重置
+    val legacyWeightsOnly = columnOrder.isEmpty() && columnWeights.size > DEFAULT_COLUMNS.size
+    if (!hasRetiredOrder && !legacyWeightsOnly) return this
+    val order = columnOrder.filter { it !in RETIRED_COLUMN_IDS }
+    val weights =
+        if (columnOrder.isNotEmpty() && columnWeights.size == columnOrder.size) {
+            columnOrder.mapIndexed { index, id -> if (id in RETIRED_COLUMN_IDS) null else columnWeights[index] }
+                .filterNotNull()
+        } else {
+            emptyList()
+        }
+    return copy(columnOrder = order, columnWeights = weights)
 }
 
 /**
@@ -226,13 +256,18 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
                 fontFamily = fontFamily,
             )
             Spacer(Modifier.width(24.dp))
-            Text(
-                text = "客户电话：${invoice.customerPhone.ifBlank { "—" }}",
-                fontSize = bodySize,
-                color = Color.Black,
-                fontFamily = fontFamily,
-                modifier = Modifier.weight(1f),
-            )
+            if (invoice.showCustomerPhone) {
+                Text(
+                    text = "客户电话：${invoice.customerPhone.ifBlank { "—" }}",
+                    fontSize = bodySize,
+                    color = Color.Black,
+                    fontFamily = fontFamily,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                // 电话隐藏时仍需撑开中段，保持单据日期右对齐
+                Spacer(Modifier.weight(1f))
+            }
             Text(
                 text = "单据日期：${invoice.docDate.ifBlank { "—" }}",
                 fontSize = bodySize,
@@ -273,7 +308,6 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
                             3 -> item.unit
                             4 -> item.qty.toLong().toString()
                             5 -> Money.format(item.price)
-                            6 -> item.pack
                             7 -> item.note
                             8 -> Money.format(item.amount())
                             else -> ""
@@ -474,9 +508,9 @@ private fun TotalRow(
                 8 -> totalText
                 else -> ""
             }
-            // 合并边界：序号列之后、金额列之前各一条竖线
+            // 合并边界：序号列之后、金额列之前各一条竖线；备注列保留独立单元格（空内容）贯穿到最后一行
             val drawLeft =
-                index > 0 && (columns[index - 1].id == 0 || spec.id == 8)
+                index > 0 && (columns[index - 1].id == 0 || spec.id == 8 || spec.id == 7)
             TableCell(
                 weight = spec.defaultWeight,
                 text = text,

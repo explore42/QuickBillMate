@@ -134,6 +134,7 @@ fun SettingsContentPreview() {
             defaultShowRemark = true,
             defaultShowWatermark = false,
             defaultShowMultiPhones = false,
+            defaultShowCustomerPhone = false,
             defaultShowAd = false,
             defaultRemark = "",
             defaultWatermarkText = "",

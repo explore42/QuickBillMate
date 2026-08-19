@@ -250,7 +250,11 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("默认图片样式").assertIsDisplayed()
         composeRule.onNodeWithText("默认信息").assertIsDisplayed()
 
-        composeRule.onNodeWithText("关于").performClick()
+        // “关于”是列表最后一行，初始被底部导航栏覆盖约一半：合并树中行节点的中心落在导航栏覆盖区，
+        // performClick 会点进导航栏死区（与 b235557 的 FAB 问题同模式）。
+        // 改点非合并树中完全可见的“关于”文本节点（其中心位于行的可视部分），先滚动到可见以提高稳健性。
+        composeRule.onNodeWithText("关于").performScrollTo()
+        composeRule.onNodeWithText("关于", useUnmergedTree = true).performClick()
         waitFor { composeRule.onAllNodesWithText("开源地址：").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("https://github.com/explore42/QuickBillMate").assertIsDisplayed()
     }

@@ -32,7 +32,10 @@ object PhoneUtil {
     fun splitPhones(raw: String): List<String> =
         raw.split(",").map { normalizePhone(it) }.filter { it.isNotEmpty() }
 
-    /** 展示电话：关闭多电话时只取第一个；开启时返回原串（去掉末尾多余逗号）。 */
-    fun displayPhones(raw: String, showMulti: Boolean): String =
-        if (showMulti) raw.trim().trimEnd(',') else raw.split(",").firstOrNull()?.trim().orEmpty()
+    /** 展示电话：不显示时返回空串；显示时关闭多电话只取第一个，开启返回原串（去掉末尾多余逗号）。 */
+    fun displayPhones(raw: String, show: Boolean, showMulti: Boolean): String = when {
+        !show -> ""
+        showMulti -> raw.trim().trimEnd(',')
+        else -> raw.split(",").firstOrNull()?.trim().orEmpty()
+    }
 }

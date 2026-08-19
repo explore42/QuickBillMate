@@ -28,7 +28,7 @@ data class StyleParams(
     val footerTextSizeSp: Int = 13,
     val infoLabelWidthPx: Int = 90,
     val amountBold: Boolean = false,
-    /** 表格列顺序（列 id 0..8 的排列）；空列表表示使用默认顺序。 */
+    /** 表格列顺序（现有列 id 的排列，已下架的“包装”列 id=6 会被忽略）；空列表表示使用默认顺序。 */
     val columnOrder: List<Int> = emptyList(),
     /** 表格列权重（与 columnOrder 一一对应）；空列表表示使用默认权重。 */
     val columnWeights: List<Float> = emptyList(),

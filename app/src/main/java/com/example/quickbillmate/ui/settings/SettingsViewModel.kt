@@ -55,6 +55,8 @@ class SettingsViewModel(
         private set
     var defaultShowMultiPhones by mutableStateOf(repo.settings.defaultShowMultiPhones)
         private set
+    var defaultShowCustomerPhone by mutableStateOf(repo.settings.defaultShowCustomerPhone)
+        private set
     var defaultDocCode by mutableStateOf(repo.settings.defaultDocCode)
         private set
     var defaultTitleSuffix by mutableStateOf(repo.settings.defaultTitleSuffix)
@@ -127,6 +129,7 @@ class SettingsViewModel(
         defaultTitleSuffix = values.titleSuffix
         defaultDocCode = values.docCode
         defaultShowMultiPhones = values.showMultiPhones
+        defaultShowCustomerPhone = values.showCustomerPhone
         defaultCompany = values.companyName
         defaultManager = values.manager
         defaultShowManager = values.showManager
@@ -142,6 +145,7 @@ class SettingsViewModel(
         s.defaultTitleSuffix = values.titleSuffix
         s.defaultDocCode = values.docCode
         s.defaultShowMultiPhones = values.showMultiPhones
+        s.defaultShowCustomerPhone = values.showCustomerPhone
         s.defaultCompany = values.companyName
         s.defaultManager = values.manager
         s.defaultShowManager = values.showManager

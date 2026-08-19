@@ -80,6 +80,7 @@ data class EditorUiState(
     val watermarkText: String = "",
     val showContactPhone: Boolean = true,
     val showMultiPhones: Boolean = false,
+    val showCustomerPhone: Boolean = false,
     val favorite: Boolean = false,
     val presetKey: String = "classic_plain",
     val items: List<ItemRow> = listOf(ItemRow()),
@@ -152,6 +153,7 @@ class EditorViewModel(
                 watermarkText = settings.defaultWatermarkText,
                 showContactPhone = settings.defaultShowContactPhone,
                 showMultiPhones = settings.defaultShowMultiPhones,
+                showCustomerPhone = settings.defaultShowCustomerPhone,
             )
             isNewDraft = true
             originalBill = draft
@@ -229,6 +231,7 @@ class EditorViewModel(
             watermarkText = bill.watermarkText,
             showContactPhone = bill.showContactPhone,
             showMultiPhones = bill.showMultiPhones,
+            showCustomerPhone = bill.showCustomerPhone,
             favorite = bill.favorite,
             presetKey = bill.presetKey,
             items = items.map { it.toRow() }.ifEmpty { listOf(ItemRow()) },
@@ -354,6 +357,7 @@ class EditorViewModel(
                 titleSuffix = values.titleSuffix,
                 docCode = values.docCode,
                 showMultiPhones = values.showMultiPhones,
+                showCustomerPhone = values.showCustomerPhone,
                 companyName = values.companyName,
                 salesManager = values.manager,
                 showManager = values.showManager,
@@ -637,6 +641,7 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
     watermarkText = watermarkText,
     showContactPhone = showContactPhone,
     showMultiPhones = showMultiPhones,
+    showCustomerPhone = showCustomerPhone,
     favorite = favorite,
     presetKey = presetKey,
     createdAt = createdAt,
@@ -644,7 +649,7 @@ private fun EditorUiState.toBill(serial: String): Bill = Bill(
 
 fun EditorUiState.toRenderInvoice(): RenderInvoice = RenderInvoice(
     customerName = customerName,
-    customerPhone = PhoneUtil.displayPhones(customerPhone, showMultiPhones),
+    customerPhone = PhoneUtil.displayPhones(customerPhone, showCustomerPhone, showMultiPhones),
     companyName = companyName,
     contactPhone = contactPhone,
     salesManager = salesManager,
@@ -661,6 +666,7 @@ fun EditorUiState.toRenderInvoice(): RenderInvoice = RenderInvoice(
     showWatermark = showWatermark,
     watermarkText = watermarkText,
     showContactPhone = showContactPhone,
+    showCustomerPhone = showCustomerPhone,
     items = items.map {
         RenderItem(
             name = it.name,
@@ -686,6 +692,7 @@ fun presetDisplayName(presetKey: String, presets: List<StylePreset>): String {
 fun EditorUiState.toDefaultInfoValues(): DefaultInfoValues = DefaultInfoValues(
     titleSuffix = titleSuffix,
     docCode = docCode,
+    showCustomerPhone = showCustomerPhone,
     showMultiPhones = showMultiPhones,
     companyName = companyName,
     manager = salesManager,

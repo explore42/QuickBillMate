@@ -122,6 +122,7 @@ fun SettingsScreen(
         defaultShowRemark = viewModel.defaultShowRemark,
         defaultShowWatermark = viewModel.defaultShowWatermark,
         defaultShowMultiPhones = viewModel.defaultShowMultiPhones,
+        defaultShowCustomerPhone = viewModel.defaultShowCustomerPhone,
         defaultShowAd = viewModel.defaultShowAd,
         defaultRemark = viewModel.defaultRemark,
         defaultWatermarkText = viewModel.defaultWatermarkText,
@@ -185,6 +186,7 @@ fun SettingsContent(
     defaultShowRemark: Boolean,
     defaultShowWatermark: Boolean,
     defaultShowMultiPhones: Boolean,
+    defaultShowCustomerPhone: Boolean,
     defaultShowAd: Boolean,
     defaultRemark: String,
     defaultWatermarkText: String,
@@ -353,6 +355,7 @@ fun SettingsContent(
             values = DefaultInfoValues(
                 titleSuffix = defaultTitleSuffix,
                 docCode = defaultDocCode,
+                showCustomerPhone = defaultShowCustomerPhone,
                 showMultiPhones = defaultShowMultiPhones,
                 companyName = defaultCompany,
                 manager = defaultManager,
@@ -533,13 +536,13 @@ private fun DefaultInfoDialog(
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             DefaultInfoForm(values = local, onChange = { local = it })
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Ds.lg))
             Text(
                 text = "微信二维码",
                 style = AppThemeTypography.titleSmall,
                 color = AppThemeColors.primary,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Ds.md))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -563,7 +566,7 @@ private fun DefaultInfoDialog(
                         )
                     }
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(Ds.md))
                 Column {
                     TextButton(
                         text = if (qrBitmap == null) "上传图片" else "更换图片",
@@ -577,13 +580,13 @@ private fun DefaultInfoDialog(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Ds.sm))
             Text(
                 "上传微信收款码后，会先裁剪为正方形再显示在所有单据左上角。",
                 style = AppThemeTypography.bodySmall,
                 color = AppThemeColors.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Ds.md))
             DialogButtons(
                 confirmText = "保存",
                 onCancel = onDismiss,

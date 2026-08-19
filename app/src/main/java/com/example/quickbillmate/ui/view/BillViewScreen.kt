@@ -205,7 +205,11 @@ fun BillViewScreen(
                 SectionCard("客户信息") {
                     InfoLine("客户名称", bill.customerName.ifBlank { "—" })
                     val phones = PhoneUtil.splitPhones(bill.customerPhone)
-                    val dialPhones = if (bill.showMultiPhones) phones else phones.take(1)
+                    val dialPhones = when {
+                        !bill.showCustomerPhone -> emptyList()
+                        bill.showMultiPhones -> phones
+                        else -> phones.take(1)
+                    }
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                         Text(
                             "客户电话",
@@ -322,7 +326,14 @@ fun BillViewScreen(
                     InfoLine("显示备注", if (bill.showRemark) "开" else "关")
                     InfoLine("显示广告", if (bill.showAd) "开" else "关")
                     InfoLine("显示水印", if (bill.showWatermark) "开" else "关")
-                    InfoLine("显示多个电话", if (bill.showMultiPhones) "开" else "关")
+                    InfoLine(
+                        "客户电话",
+                        when {
+                            !bill.showCustomerPhone -> "不显示"
+                            bill.showMultiPhones -> "显示多个"
+                            else -> "显示一个"
+                        },
+                    )
                 }
                 Spacer(Modifier.height(96.dp))
             }

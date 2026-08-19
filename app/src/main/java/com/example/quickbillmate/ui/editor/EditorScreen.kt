@@ -205,7 +205,10 @@ fun EditorScreen(
                         onChange = { list -> viewModel.onCustomerPhoneChange(list.joinToString(",")) },
                     )
                     val phoneHint = when {
-                        editorPhones.size > 1 && !s.showMultiPhones -> "仅显示第一个电话（可在单据设置开启全部）"
+                        !s.showCustomerPhone && editorPhones.any { it.isNotBlank() } ->
+                            "单据不显示客户电话（可在单据设置开启）"
+                        editorPhones.size > 1 && !s.showMultiPhones ->
+                            "仅显示第一个电话（可在单据设置开启全部）"
                         else -> null
                     }
                     if (phoneHint != null) {
@@ -757,7 +760,7 @@ private fun ItemCardEditor(
                 Spacer(Modifier.width(Ds.xs))
                 TextField(
                     value = row.priceText,
-                    onValueChange = { onUpdate(row.copy(priceText = it)) },
+                    onValueChange = { onUpdate(row.copy(priceText = Money.sanitizeAmountInput(it))) },
                     label = "单价",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -791,7 +794,7 @@ private fun ItemCardEditor(
                     }
                 }
             }
-            // 第三行：规格 / 单位 / 包装
+            // 第三行：规格 / 单位（包装不再在单据上编辑，商品库字段保留）
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Ds.sm),
             ) {
@@ -808,13 +811,6 @@ private fun ItemCardEditor(
                     label = "单位",
                     singleLine = true,
                     modifier = Modifier.weight(0.8f),
-                )
-                TextField(
-                    value = row.pack,
-                    onValueChange = { if (it.length <= InputLimits.PACK) onUpdate(row.copy(pack = it)) },
-                    label = "包装",
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
                 )
             }
             // 第四行：备注

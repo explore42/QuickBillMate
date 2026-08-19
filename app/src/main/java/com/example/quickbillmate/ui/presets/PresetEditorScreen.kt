@@ -33,7 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.quickbillmate.render.DEFAULT_COLUMNS
+import com.example.quickbillmate.render.COLUMNS_BY_ID
 import com.example.quickbillmate.render.DEFAULT_ORDER
 import com.example.quickbillmate.render.DEFAULT_WEIGHTS
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -156,7 +156,7 @@ fun PresetEditorScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(Ds.xs)) {
                         order.forEachIndexed { index, id ->
                             ColumnOrderRow(
-                                label = DEFAULT_COLUMNS[id].label,
+                                label = COLUMNS_BY_ID[id]?.label ?: "未知列",
                                 upEnabled = index > 0,
                                 downEnabled = index < order.lastIndex,
                                 weightValue = weights[index],

@@ -112,6 +112,7 @@ class AppRepository(
         watermarkText: String = "",
         showContactPhone: Boolean = true,
         showMultiPhones: Boolean = false,
+        showCustomerPhone: Boolean = false,
     ): Bill {
         val serial = generateUniqueSerial(docCode, docDate)
         val bill = Bill(
@@ -131,6 +132,7 @@ class AppRepository(
             watermarkText = watermarkText,
             showContactPhone = showContactPhone,
             showMultiPhones = showMultiPhones,
+            showCustomerPhone = showCustomerPhone,
             presetKey = settings.defaultPresetKey,
         )
         val id = billDao.insert(bill)
@@ -382,7 +384,7 @@ class AppRepository(
         qrBitmap: Bitmap? = null,
     ): RenderInvoice = RenderInvoice(
         customerName = bill.customerName,
-        customerPhone = PhoneUtil.displayPhones(bill.customerPhone, bill.showMultiPhones),
+        customerPhone = PhoneUtil.displayPhones(bill.customerPhone, bill.showCustomerPhone, bill.showMultiPhones),
         companyName = bill.companyName,
         contactPhone = bill.contactPhone,
         salesManager = bill.salesManager,
@@ -399,6 +401,7 @@ class AppRepository(
         showWatermark = bill.showWatermark,
         watermarkText = bill.watermarkText,
         showContactPhone = bill.showContactPhone,
+        showCustomerPhone = bill.showCustomerPhone,
         qrBitmap = qrBitmap,
         items = items.map {
             RenderItem(

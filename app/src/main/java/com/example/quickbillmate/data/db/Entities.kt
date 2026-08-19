@@ -26,6 +26,7 @@ data class Bill(
     val showWatermark: Boolean = false,
     val watermarkText: String = "",
     val showMultiPhones: Boolean = false,
+    val showCustomerPhone: Boolean = false,
     val showContactPhone: Boolean = true,
     val favorite: Boolean = false,
     val presetKey: String = "classic",
