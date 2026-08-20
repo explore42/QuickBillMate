@@ -2,7 +2,7 @@ import java.io.FileInputStream
 import java.util.Properties
 
 // 正式产物命名：QuickBillMate-v<versionName>-<buildType>.apk（如 QuickBillMate-v1.1.0-release.apk）
-val appVersionName = "1.1.1"
+val appVersionName = "1.1.2"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -46,7 +46,7 @@ android {
         applicationId = "com.example.quickbillmate"
         minSdk = 33
         targetSdk = 37
-        versionCode = 3
+        versionCode = 4
         // 版本规范（语义化版本）：
         // - versionName 遵循 MAJOR.MINOR.PATCH，首个正式版 1.0.0
         // - MAJOR=破坏性变更 / MINOR=新增功能 / PATCH=修复；预发布用 -beta.N 后缀

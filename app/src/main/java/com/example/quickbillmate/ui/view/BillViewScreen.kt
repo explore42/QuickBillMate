@@ -170,11 +170,23 @@ fun BillViewScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                s.preview?.let { bitmap ->
+                val previewBitmap = s.preview
+                if (previewBitmap == null) {
+                    // 首张预览渲染完成前的占位动画（慢速设备上渲染耗时更久）
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 220.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
                     Box {
                         // 图片自带轻微卡片观感（圆角 + 阴影），仅显示层，不影响导出位图
                         Image(
-                            bitmap = bitmap.asImageBitmap(),
+                            bitmap = previewBitmap.asImageBitmap(),
                             contentDescription = "单据预览",
                             modifier = Modifier
                                 .fillMaxWidth()

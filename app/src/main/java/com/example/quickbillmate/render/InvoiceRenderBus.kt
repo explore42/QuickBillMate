@@ -43,9 +43,9 @@ object InvoiceRenderBus {
         _pending.update { list -> list.filterNot { it.id == id } }
     }
 
-    /** 等待请求渲染完成并取回位图；超时或失败返回 null。 */
+    /** 等待请求渲染完成并取回位图；超时或失败返回 null。捕获器含最多 3 秒的排版稳定等待，超时上限需大于其与重试之和。 */
     suspend fun await(id: Long): Bitmap? {
-        val result = withTimeoutOrNull(5000) {
+        val result = withTimeoutOrNull(8000) {
             results.first { it.containsKey(id) }[id]
         }
         _results.update { it - id }

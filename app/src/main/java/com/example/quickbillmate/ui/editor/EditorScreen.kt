@@ -432,10 +432,21 @@ private fun ExitConfirmDialog(
     }
 }
 
-/** 单据预览：无标题、无卡片，仅圆角图片。 */
+/** 单据预览：无标题、无卡片，仅圆角图片；首张渲染完成前显示占位加载动画。 */
 @Composable
 private fun PreviewImage(bitmap: android.graphics.Bitmap?) {
-    if (bitmap == null) return
+    if (bitmap == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 180.dp)
+                .clip(RoundedCornerShape(Ds.md)),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()

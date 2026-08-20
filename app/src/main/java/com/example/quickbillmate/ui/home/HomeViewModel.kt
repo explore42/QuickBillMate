@@ -1,6 +1,7 @@
 package com.example.quickbillmate.ui.home
 
 import android.app.Application
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -71,6 +72,12 @@ class HomeViewModel(
     var copyMessage by mutableStateOf<String?>(null)
         private set
     var exportMessage by mutableStateOf<String?>(null)
+        private set
+
+    /** 批量导出进行中；[exportProgress] 为“当前/总数”文本（如 2/5）。 */
+    var exporting by mutableStateOf(false)
+        private set
+    var exportProgress by mutableStateOf<String?>(null)
         private set
     var pendingDeleteIds by mutableStateOf<Set<Long>>(emptySet())
         private set
@@ -193,32 +200,45 @@ class HomeViewModel(
     }
 
     fun exportSelected() {
+        if (exporting) return
         val ids = selectedIds
         viewModelScope.launch {
-            val bills = ids.mapNotNull { id -> repo.getBill(id)?.let { it to repo.getItems(id) } }
-            val presets = repo.getPresets()
-            val qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
-            val rendered = bills.mapNotNull { (bill, items) ->
-                val id = InvoiceRenderBus.enqueue(
-                    repo.buildRenderInvoice(bill, items, qrBitmap),
-                    StylePresets.resolve(bill.presetKey, presets),
-                )
-                val bitmap = InvoiceRenderBus.await(id) ?: return@mapNotNull null
-                bill to bitmap
-            }
-            var ok = 0
-            var fail = bills.size - rendered.size
-            withContext(Dispatchers.IO) {
-                rendered.forEach { (bill, bitmap) ->
-                    if (repo.exportBitmapToGallery(app, bill, bitmap)) ok++ else fail++
+            exporting = true
+            try {
+                val bills = ids.mapNotNull { id -> repo.getBill(id)?.let { it to repo.getItems(id) } }
+                val presets = repo.getPresets()
+                val qrBitmap = withContext(Dispatchers.Default) { repo.loadQrBitmap() }
+                val rendered = ArrayList<Pair<Bill, Bitmap>>()
+                var fail = 0
+                bills.forEachIndexed { index, (bill, items) ->
+                    exportProgress = "${index + 1}/${bills.size}"
+                    val id = InvoiceRenderBus.enqueue(
+                        repo.buildRenderInvoice(bill, items, qrBitmap),
+                        StylePresets.resolve(bill.presetKey, presets),
+                    )
+                    val bitmap = InvoiceRenderBus.await(id)
+                    if (bitmap != null) {
+                        rendered += bill to bitmap
+                    } else {
+                        fail++
+                    }
                 }
+                var ok = 0
+                withContext(Dispatchers.IO) {
+                    rendered.forEach { (bill, bitmap) ->
+                        if (repo.exportBitmapToGallery(app, bill, bitmap)) ok++ else fail++
+                    }
+                }
+                exportMessage = if (fail > 0) {
+                    "导出完成：成功 $ok 条，失败 $fail 条"
+                } else {
+                    "已导出 $ok 条到相册"
+                }
+            } finally {
+                exporting = false
+                exportProgress = null
+                exitSelection()
             }
-            exportMessage = if (fail > 0) {
-                "导出完成：成功 $ok 条，失败 $fail 条"
-            } else {
-                "已导出 $ok 条到相册"
-            }
-            exitSelection()
         }
     }
 

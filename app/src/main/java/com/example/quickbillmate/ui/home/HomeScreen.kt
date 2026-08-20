@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -57,6 +58,7 @@ import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.monthBubble
 import com.example.quickbillmate.ui.common.monthKey
 import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -151,6 +153,8 @@ fun HomeScreen(
         onCancelDelete = viewModel::cancelDelete,
         showDeleteConfirm = showDeleteConfirm,
         onDismissDeleteConfirm = { showDeleteConfirm = false },
+        exporting = viewModel.exporting,
+        exportProgress = viewModel.exportProgress,
     )
 }
 
@@ -178,6 +182,8 @@ fun HomeContent(
     onCancelDelete: () -> Unit,
     showDeleteConfirm: Boolean,
     onDismissDeleteConfirm: () -> Unit,
+    exporting: Boolean = false,
+    exportProgress: String? = null,
 ) {
     // 多选状态下，系统返回手势/按钮改为退出多选，而不是退出应用
     BackHandler(enabled = selectionMode) {
@@ -254,19 +260,37 @@ fun HomeContent(
             }
         },
         bottomBar = {
-            // 多选底栏滑入/滑出
+            // 多选底栏滑入/滑出；批量导出进行中替换为进度条，防止重复触发
             AnimatedVisibility(
                 visible = selectionMode,
                 enter = slideInVertically { it } + fadeIn(),
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
-                SelectionActionBar(
-                    canEdit = selectedIds.size == 1,
-                    onCopy = onCopy,
-                    onEdit = { onEdit(selectedIds.firstOrNull() ?: 0L) },
-                    onExport = onExport,
-                    onDelete = onDeleteRequest,
-                )
+                if (exporting) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            size = 18.dp,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text("正在导出 ${exportProgress.orEmpty()}…")
+                    }
+                } else {
+                    SelectionActionBar(
+                        canEdit = selectedIds.size == 1,
+                        onCopy = onCopy,
+                        onEdit = { onEdit(selectedIds.firstOrNull() ?: 0L) },
+                        onExport = onExport,
+                        onDelete = onDeleteRequest,
+                    )
+                }
             }
         },
     ) { padding ->

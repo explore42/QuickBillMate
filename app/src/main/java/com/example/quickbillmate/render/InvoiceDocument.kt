@@ -20,7 +20,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,12 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toIntSize
 import androidx.core.graphics.toColorInt
 import com.example.quickbillmate.util.Money
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class RenderItem(
     val name: String = "",
@@ -415,6 +420,12 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
  * 屏上捕获器：离屏 1×1 占位（不占布局），内部按单据真实尺寸排版并绘制，
  * 通过 GraphicsLayer 截取为位图后回调。用于把 Compose 单据导出为 PNG。
  * 该组件必须在已有 Compose 组合（Activity 窗口）内使用。
+ *
+ * 完整性保障（修复慢速设备/模拟器上偶现“图片只有上半部分/空白”）：
+ * 1. record 显式按当前绘制尺寸记录，记录区域与内容实际大小始终一致；
+ * 2. 以“绘制已发生且记录尺寸连续两帧不变”为截图时机——布局完成不等于绘制完成，
+ *    只等布局会在慢速设备上截到尚未绘制（或尺寸滞后）的图层；
+ * 3. 转换结果与记录尺寸比对，不一致时再等两帧重试（最多三次）。
  */
 @Composable
 fun InvoiceBitmapCapture(
@@ -423,6 +434,9 @@ fun InvoiceBitmapCapture(
     onBitmap: (Bitmap) -> Unit,
 ) {
     val graphicsLayer = rememberGraphicsLayer()
+
+    // 绘制阶段回写的“已记录尺寸”：null 表示该图层尚未绘制过
+    var recordedSize by remember { mutableStateOf<IntSize?>(null) }
     Box(
         modifier = Modifier
             .layout { measurable, _ ->
@@ -435,18 +449,45 @@ fun InvoiceBitmapCapture(
             modifier = Modifier
                 .width(params.paperWidthDp.dp)
                 .drawWithContent {
-                    graphicsLayer.record { this@drawWithContent.drawContent() }
+                    val layerSize = size.toIntSize()
+                    graphicsLayer.record(size = layerSize) { this@drawWithContent.drawContent() }
+                    recordedSize = layerSize
                 },
         ) {
             InvoiceDocument(invoice = invoice, params = params)
         }
     }
     LaunchedEffect(invoice, params) {
-        delay(250)
-        withFrameNanos { }
-        withFrameNanos { }
+        // 等待绘制发生且记录尺寸连续两帧不变；上限 3 秒，超时按当前状态继续
+        withTimeoutOrNull(3000) {
+            var last: IntSize? = null
+            var stableFrames = 0
+            while (stableFrames < 2) {
+                withFrameNanos { }
+                if (recordedSize != null && recordedSize == last) {
+                    stableFrames++
+                } else {
+                    stableFrames = 0
+                    last = recordedSize
+                }
+            }
+        }
         runCatching {
-            onBitmap(graphicsLayer.toImageBitmap().asAndroidBitmap())
+            var attempt = 0
+            while (true) {
+                val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
+                val recorded = recordedSize
+                val complete = recorded != null &&
+                    bitmap.width == recorded.width && bitmap.height == recorded.height
+                if (complete || attempt >= 2) {
+                    onBitmap(bitmap)
+                    break
+                }
+                // 转换结果滞后于最新记录：再等两帧重新记录后重试
+                attempt++
+                withFrameNanos { }
+                withFrameNanos { }
+            }
         }
     }
 }
