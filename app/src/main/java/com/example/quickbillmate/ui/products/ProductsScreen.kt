@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,22 +36,30 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
+import com.example.quickbillmate.ui.theme.Ds
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.importexport.ProductJsonCodec
@@ -81,12 +90,15 @@ import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -126,6 +138,8 @@ fun ProductsScreen(
 ) {
     val products by viewModel.products.collectAsState()
     val listState = rememberLazyListState()
+    // 进入商品页时刷新单位预设（设置页可能刚修改过）
+    LaunchedEffect(Unit) { viewModel.refreshUnitPresets() }
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
@@ -430,7 +444,8 @@ fun ProductsScreen(
 
     if (showNewDialog) {
         ProductEditDialog(
-            initial = Product(name = "", unit = "桶", price = 0.0),
+            initial = Product(name = "", price = 0.0),
+            unitOptions = viewModel.presetUnits,
             onSave = { product ->
                 viewModel.saveProduct(product)
                 showNewDialog = false
@@ -458,6 +473,7 @@ fun ProductsScreen(
     editing?.let { product ->
         ProductEditDialog(
             initial = product,
+            unitOptions = viewModel.presetUnits,
             onSave = { updated ->
                 viewModel.saveProduct(updated)
                 editing = null
@@ -638,6 +654,72 @@ fun ProductsScreen(
     }
 }
 
+/** 单位输入：可自由输入，聚焦或点箭头时下拉展示预置单位（内置 + 设置页自定义）。 */
+@Composable
+private fun UnitField(
+    value: String,
+    options: List<String>,
+    onChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var fieldWidth by remember { mutableIntStateOf(0) }
+    val menuOpen = expanded && options.isNotEmpty()
+
+    Box {
+        TextField(
+            value = value,
+            onValueChange = { if (it.length <= InputLimits.UNIT) onChange(it) },
+            label = "单位",
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { fieldWidth = it.width }
+                .onFocusChanged { focused -> expanded = focused.isFocused },
+            trailingIcon = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        MiuixIcons.ExpandMore,
+                        contentDescription = if (menuOpen) "收起单位" else "展开单位",
+                    )
+                }
+            },
+        )
+        if (menuOpen) {
+            val popupWidth = with(LocalDensity.current) { fieldWidth.toDp() }
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, with(LocalDensity.current) { 64.dp.roundToPx() }),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = false),
+            ) {
+                Surface(
+                    modifier = Modifier.width(popupWidth),
+                    shape = RoundedCornerShape(Ds.md),
+                    color = AppThemeColors.surfaceContainerHighest,
+                    shadowElevation = 8.dp,
+                ) {
+                    // 选项可能多于可视高度（内置 + 自定义），用可滚动列表，自定义单位在尾部可达
+                    LazyColumn(modifier = Modifier.heightIn(max = 260.dp)) {
+                        items(options) { unit ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onChange(unit)
+                                        expanded = false
+                                    }
+                                    .padding(horizontal = Ds.md, vertical = 10.dp),
+                            ) {
+                                Text(unit, style = AppThemeTypography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ProductDetailDialog(
     product: Product,
@@ -675,6 +757,7 @@ private fun ProductDetailDialog(
 @Composable
 private fun ProductEditDialog(
     initial: Product,
+    unitOptions: List<String>,
     onSave: (Product) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -702,7 +785,11 @@ private fun ProductEditDialog(
             Spacer(Modifier.height(12.dp))
             LabeledField("规格", spec, { if (it.length <= InputLimits.SPEC) spec = it })
             Spacer(Modifier.height(12.dp))
-            LabeledField("单位", unit, { if (it.length <= InputLimits.UNIT) unit = it })
+            UnitField(
+                value = unit,
+                options = unitOptions,
+                onChange = { unit = it },
+            )
             Spacer(Modifier.height(12.dp))
             LabeledField(
                 "单价*",
@@ -737,7 +824,7 @@ private fun ProductEditDialog(
                             initial.copy(
                                 name = name.trim(),
                                 spec = spec.trim(),
-                                unit = unit.trim().ifBlank { "桶" },
+                                unit = unit.trim(),
                                 price = priceValue ?: 0.0,
                                 pack = pack.trim(),
                                 note = note.trim(),

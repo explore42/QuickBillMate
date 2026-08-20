@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.importexport.ProductJsonException
@@ -38,6 +39,14 @@ class ProductsViewModel(
 
     var queryText by mutableStateOf("")
         private set
+
+    /** 商品单位预设（内置 + 设置页自定义），进入商品页时刷新。 */
+    var presetUnits by mutableStateOf(SettingsStore.BUILTIN_UNITS + repo.settings.customUnits)
+        private set
+
+    fun refreshUnitPresets() {
+        presetUnits = SettingsStore.BUILTIN_UNITS + repo.settings.customUnits
+    }
 
     val products: StateFlow<List<Product>> = query
         .debounce(300)

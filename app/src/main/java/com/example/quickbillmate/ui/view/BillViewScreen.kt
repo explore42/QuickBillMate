@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
@@ -90,6 +91,7 @@ import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Phone
 import top.yukonga.miuix.kmp.icon.extended.Share
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -483,26 +485,42 @@ private fun FullPreviewDialog(
         val enter = remember { Animatable(0f) }
         LaunchedEffect(Unit) { enter.animateTo(1f, tween(220)) }
 
-        // 下拉关闭：跟手下坠+缩小+背景变透明；松手按位移阈值判定 spring 回弹或收束关闭
-        val dragY = remember { Animatable(0f) }
+        // 下拉关闭：手势期间直接写 dragY（同步跟手，无协程排队延迟）；松手后 settleAnim 接管并
+        // 带入手势末速度（模拟“甩出/丢掉”的惯性）。按位移或竖向甩出速度判定关闭。
+        var dragY by remember { mutableFloatStateOf(0f) }
+        val settleAnim = remember { Animatable(0f) }
+        var settling by remember { mutableStateOf(false) }
+        var settleJob by remember { mutableStateOf<Job?>(null) }
+        val dragValue = if (settling) settleAnim.value else dragY
         val dismissThresholdPx = 240f
+        val dismissVelocityPx = 1300f
 
-        fun settle() {
-            if (dragY.value > dismissThresholdPx) {
+        fun settle(velocityY: Float) {
+            val vy = velocityY.coerceAtLeast(0f)
+            val start = if (settling) settleAnim.value else dragY
+            settleJob?.cancel()
+            if (start > dismissThresholdPx || vy > dismissVelocityPx) {
                 haptics.tick()
-                scope.launch {
-                    dragY.animateTo(
-                        targetValue = 1600f,
-                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                settleJob = scope.launch {
+                    settling = true
+                    settleAnim.snapTo(start)
+                    settleAnim.animateTo(
+                        targetValue = 2200f,
+                        animationSpec = spring(dampingRatio = 1f, stiffness = 400f),
+                        initialVelocity = vy,
                     )
                     onDismiss()
                 }
             } else {
-                scope.launch {
-                    dragY.animateTo(
+                settleJob = scope.launch {
+                    settling = true
+                    settleAnim.snapTo(start)
+                    settleAnim.animateTo(
                         targetValue = 0f,
-                        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium),
                     )
+                    dragY = 0f
+                    settling = false
                 }
             }
         }
@@ -510,8 +528,8 @@ private fun FullPreviewDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // 背景透明度随下拉进度联动（最低保留 0.25，避免瞬间全透明）
-                .graphicsLayer { alpha = (1f - (dragY.value / 900f)).coerceIn(0.25f, 1f) }
+                // 背景透明度随下拉/甩出进度联动，直至完全透明，避免收尾跳变
+                .graphicsLayer { alpha = (1f - (dragValue / 1500f)).coerceIn(0f, 1f) }
                 .background(Color.Black)
                 // 点击图片实际绘制区域之外的黑暗背景关闭（图片按 Fit 缩放后居中留边）
                 .pointerInput(bitmap) {
@@ -538,7 +556,7 @@ private fun FullPreviewDialog(
             var offset by remember { mutableStateOf(Offset.Zero) }
             Box(modifier = Modifier.fillMaxSize()) {
                 // 下拉进度：图片缩到 0.72、竖向位移按 0.55 阻尼跟手
-                val dragScale = 1f - (dragY.value / 1400f).coerceIn(0f, 0.28f)
+                val dragScale = 1f - (dragValue / 1400f).coerceIn(0f, 0.28f)
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = "单据预览",
@@ -550,19 +568,31 @@ private fun FullPreviewDialog(
                             scaleX = s
                             scaleY = s
                             translationX = offset.x
-                            translationY = offset.y + dragY.value * 0.55f
+                            translationY = offset.y + dragValue * 0.55f
                         }
                         // 单一手势处理器：多指/已放大 → 缩放平移；单指未放大 → 下拉关闭。
                         // 不能与 detectTransformGestures 叠加——后者会先消费移动事件，导致下拉永远不触发。
                         .pointerInput(Unit) {
+                            val velocityTracker = VelocityTracker()
                             awaitEachGesture {
-                                awaitFirstDown(requireUnconsumed = false)
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                // 新手势打断进行中的收束动画，从当前位置无缝接管
+                                settleJob?.cancel()
+                                if (settling) {
+                                    dragY = settleAnim.value
+                                    settling = false
+                                }
+                                velocityTracker.resetTracking()
+                                velocityTracker.addPosition(down.uptimeMillis, down.position)
                                 var multiTouch = false
                                 var dragged = false
                                 var slopY = 0f
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     if (event.changes.size > 1) multiTouch = true
+                                    event.changes.firstOrNull()?.let {
+                                        velocityTracker.addPosition(it.uptimeMillis, it.position)
+                                    }
                                     val zoom = event.calculateZoom()
                                     val pan = event.calculatePan()
                                     val pressed = event.changes.any { it.pressed }
@@ -581,14 +611,17 @@ private fun FullPreviewDialog(
                                         slopY += pan.y
                                         if (!dragged && abs(slopY) > viewConfiguration.touchSlop) dragged = true
                                         if (dragged && pan.y != 0f) {
-                                            val target = (dragY.value + pan.y).coerceAtLeast(0f)
-                                            scope.launch { dragY.snapTo(target) }
+                                            // 直接状态写入，当前帧立即生效，严格跟手
+                                            dragY = (dragY + pan.y).coerceAtLeast(0f)
                                             event.changes.forEach { if (it.positionChanged()) it.consume() }
                                         }
                                     }
                                     if (!pressed) break
                                 }
-                                if (!multiTouch && scale <= 1.01f && dragged) settle()
+                                if (!multiTouch && scale <= 1.01f && dragged) {
+                                    // 用手势末速度判定与驱动关闭动画
+                                    settle(velocityTracker.calculateVelocity().y)
+                                }
                             }
                         },
                 )

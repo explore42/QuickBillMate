@@ -44,6 +44,7 @@ import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
+import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.ui.editor.presetDisplayName
 import com.example.quickbillmate.ui.theme.AppThemeColors
@@ -52,6 +53,7 @@ import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.THEME_COLOR_WALLPAPER
 import com.example.quickbillmate.ui.theme.ThemeColorPresets
 import com.example.quickbillmate.util.CrashRecord
+import com.example.quickbillmate.util.InputLimits
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -127,6 +129,7 @@ fun SettingsScreen(
         defaultRemark = viewModel.defaultRemark,
         defaultWatermarkText = viewModel.defaultWatermarkText,
         defaultShowContactPhone = viewModel.defaultShowContactPhone,
+        customUnits = viewModel.customUnits,
         defaultDocCode = viewModel.defaultDocCode,
         defaultTitleSuffix = viewModel.defaultTitleSuffix,
         defaultAdText = viewModel.defaultAdText,
@@ -157,6 +160,7 @@ fun SettingsScreen(
         },
         onPresetChange = viewModel::updateDefaultPreset,
         onDefaultsSave = viewModel::updateDefaults,
+        onCustomUnitsChange = viewModel::updateCustomUnits,
         onManagePresets = onManagePresets,
         onPickQrImage = { qrPicker.launch(arrayOf("image/*")) },
         onRemoveQrImage = viewModel::removeQrImage,
@@ -191,6 +195,7 @@ fun SettingsContent(
     defaultRemark: String,
     defaultWatermarkText: String,
     defaultShowContactPhone: Boolean,
+    customUnits: List<String> = emptyList(),
     defaultDocCode: String,
     defaultTitleSuffix: String,
     defaultAdText: String,
@@ -206,6 +211,7 @@ fun SettingsContent(
     onHapticsChange: (Boolean) -> Unit = {},
     onPresetChange: (String) -> Unit,
     onDefaultsSave: (DefaultInfoValues) -> Unit,
+    onCustomUnitsChange: (List<String>) -> Unit = {},
     onManagePresets: () -> Unit,
     onPickQrImage: () -> Unit,
     onRemoveQrImage: () -> Unit,
@@ -216,6 +222,7 @@ fun SettingsContent(
     onOpenUrl: (String) -> Unit,
 ) {
     var showDefaultsDialog by remember { mutableStateOf(false) }
+    var showUnitsDialog by remember { mutableStateOf(false) }
     var showCrashLogsDialog by remember { mutableStateOf(false) }
     var showClearCrashConfirm by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -329,6 +336,17 @@ fun SettingsContent(
                     startAction = { SettingsIcon(MiuixIcons.Store) },
                     onClick = { showDefaultsDialog = true },
                 )
+                // 预置单位（弹窗）：新增商品时单位输入框的下拉选项
+                ArrowPreference(
+                    title = "预置单位",
+                    summary = if (customUnits.isEmpty()) {
+                        SettingsStore.BUILTIN_UNITS.joinToString("、")
+                    } else {
+                        "内置 ${SettingsStore.BUILTIN_UNITS.size} 个 · 自定义 ${customUnits.size} 个"
+                    },
+                    startAction = { SettingsIcon(MiuixIcons.Tune) },
+                    onClick = { showUnitsDialog = true },
+                )
             }
 
             SettingsGroup {
@@ -377,6 +395,17 @@ fun SettingsContent(
                 showDefaultsDialog = false
             },
             onDismiss = { showDefaultsDialog = false },
+        )
+    }
+
+    if (showUnitsDialog) {
+        UnitPresetsDialog(
+            customUnits = customUnits,
+            onSave = {
+                onCustomUnitsChange(it)
+                showUnitsDialog = false
+            },
+            onDismiss = { showUnitsDialog = false },
         )
     }
 
@@ -486,6 +515,97 @@ fun SettingsContent(
             onCancel = onCropCancel,
             onSave = onCropSave,
         )
+    }
+}
+
+/** 预置单位管理：内置固定展示，自定义可增删；保存后生效于新增商品的下拉选项。 */
+@Composable
+private fun UnitPresetsDialog(
+    customUnits: List<String>,
+    onSave: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var local by remember(customUnits) { mutableStateOf(customUnits) }
+    var input by remember { mutableStateOf("") }
+    val trimmed = input.trim()
+    val canAdd = trimmed.length in 1..InputLimits.UNIT &&
+        trimmed !in SettingsStore.BUILTIN_UNITS &&
+        trimmed !in local
+
+    OverlayDialog(
+        title = "预置单位",
+        summary = "新增商品时单位输入框的下拉选项",
+        show = true,
+        onDismissRequest = onDismiss,
+    ) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Text(
+                "内置单位",
+                style = AppThemeTypography.titleSmall,
+                color = AppThemeColors.primary,
+            )
+            Spacer(Modifier.height(Ds.md))
+            Text(
+                SettingsStore.BUILTIN_UNITS.joinToString("　"),
+                style = AppThemeTypography.bodyMedium,
+            )
+            Spacer(Modifier.height(Ds.lg))
+            Text(
+                "自定义单位",
+                style = AppThemeTypography.titleSmall,
+                color = AppThemeColors.primary,
+            )
+            Spacer(Modifier.height(Ds.md))
+            if (local.isEmpty()) {
+                Text(
+                    "暂无自定义单位",
+                    style = AppThemeTypography.bodySmall,
+                    color = AppThemeColors.onSurfaceVariant,
+                )
+            } else {
+                local.forEach { unit ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(unit, style = AppThemeTypography.bodyMedium, modifier = Modifier.weight(1f))
+                        SmallTextButton(
+                            text = "删除",
+                            onClick = { local = local - unit },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(Ds.md))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LabeledField(
+                    label = "新单位",
+                    value = input,
+                    onChange = { if (it.length <= InputLimits.UNIT) input = it },
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(Ds.sm))
+                SmallTextButton(
+                    text = "添加",
+                    onClick = {
+                        if (canAdd) {
+                            local = local + trimmed
+                            input = ""
+                        }
+                    },
+                    enabled = canAdd,
+                )
+            }
+            Spacer(Modifier.height(Ds.md))
+            DialogButtons(
+                confirmText = "保存",
+                onCancel = onDismiss,
+                onConfirm = { onSave(local) },
+            )
+        }
     }
 }
 

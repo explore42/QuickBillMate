@@ -96,10 +96,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_CONTACT_PHONE, true)
         set(value) = prefs.edit { putBoolean(KEY_SHOW_CONTACT_PHONE, value) }
 
+    /** 商品单位预设的自定义部分（逗号分隔存储；内置预设见 [BUILTIN_UNITS]）。 */
+    var customUnits: List<String>
+        get() = prefs.getString(KEY_CUSTOM_UNITS, "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = prefs.edit { putString(KEY_CUSTOM_UNITS, value.joinToString(",")) }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
         const val THEME_DARK = "dark"
+
+        /** 商品单位内置预设，与自定义预设合并后供新增商品下拉选择。 */
+        val BUILTIN_UNITS = listOf("桶", "筒", "代", "张", "卷", "支", "把")
 
         private const val KEY_THEME = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "theme_dynamic_color"
@@ -122,5 +130,6 @@ class SettingsStore(context: Context) {
         private const val KEY_REMARK = "default_remark"
         private const val KEY_WATERMARK_TEXT = "default_watermark_text"
         private const val KEY_SHOW_CONTACT_PHONE = "default_show_contact_phone"
+        private const val KEY_CUSTOM_UNITS = "custom_units"
     }
 }

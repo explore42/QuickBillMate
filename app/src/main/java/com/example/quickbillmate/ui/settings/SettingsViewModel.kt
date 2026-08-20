@@ -71,6 +71,8 @@ class SettingsViewModel(
         private set
     var defaultShowContactPhone by mutableStateOf(repo.settings.defaultShowContactPhone)
         private set
+    var customUnits by mutableStateOf(repo.settings.customUnits)
+        private set
     var qrBitmap by mutableStateOf<Bitmap?>(null)
         private set
     var pendingCrop by mutableStateOf<Bitmap?>(null)
@@ -122,6 +124,12 @@ class SettingsViewModel(
     fun updateDefaultPreset(key: String) {
         defaultPresetKey = key
         repo.settings.defaultPresetKey = key
+    }
+
+    /** 保存自定义预置单位（覆盖写入）。 */
+    fun updateCustomUnits(units: List<String>) {
+        customUnits = units
+        repo.settings.customUnits = units
     }
 
     /** 保存“默认信息”：全部写入全局默认值。 */
