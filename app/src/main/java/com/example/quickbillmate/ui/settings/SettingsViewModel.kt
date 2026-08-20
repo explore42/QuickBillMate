@@ -13,8 +13,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.data.repository.AppRepository
+import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.data.repository.QrImageStore
-import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.util.CrashRecord
 import com.example.quickbillmate.util.LocalCrashLogger
 import kotlinx.coroutines.Dispatchers
@@ -149,22 +149,7 @@ class SettingsViewModel(
         defaultAdText = values.adText
         defaultWatermarkText = values.watermarkText
         defaultShowWatermark = values.showWatermark
-        val s = repo.settings
-        s.defaultTitleSuffix = values.titleSuffix
-        s.defaultDocCode = values.docCode
-        s.defaultShowMultiPhones = values.showMultiPhones
-        s.defaultShowCustomerPhone = values.showCustomerPhone
-        s.defaultCompany = values.companyName
-        s.defaultManager = values.manager
-        s.defaultShowManager = values.showManager
-        s.defaultPhone = values.contactPhone
-        s.defaultShowContactPhone = values.showContactPhone
-        s.defaultShowRemark = values.showRemark
-        s.defaultShowAd = values.showAd
-        s.defaultRemark = values.remark
-        s.defaultAdText = values.adText
-        s.defaultWatermarkText = values.watermarkText
-        s.defaultShowWatermark = values.showWatermark
+        repo.settings.applyDefaults(values)
     }
 
     /** 图片选择器返回后：后台采样解码，成功后打开裁剪对话框。 */

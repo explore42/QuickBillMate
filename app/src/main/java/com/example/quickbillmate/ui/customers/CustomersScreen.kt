@@ -168,21 +168,6 @@ fun CustomersScreen(
             viewModel.consumeCopyMessage()
         }
     }
-    val exportMessage = viewModel.exportMessage
-    LaunchedEffect(exportMessage) {
-        exportMessage?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeExportMessage()
-        }
-    }
-    val exportError = viewModel.exportError
-    LaunchedEffect(exportError) {
-        exportError?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeExportError()
-        }
-    }
-
     BackHandler(enabled = viewModel.selectionMode) {
         viewModel.exitSelection()
     }
@@ -247,7 +232,7 @@ fun CustomersScreen(
                     canEdit = viewModel.selectedIds.size == 1,
                     onCopy = { viewModel.copySelected() },
                     onEdit = { viewModel.editSelected { editing = it } },
-                    onExport = { viewModel.exportSelected() },
+                    onExport = null,
                     onDelete = {
                         viewModel.requestDelete()
                         showDeleteConfirm = true

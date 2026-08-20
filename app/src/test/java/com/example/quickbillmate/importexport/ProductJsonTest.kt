@@ -105,4 +105,15 @@ class ProductJsonTest {
         val result = ProductJsonCodec.parse(text, emptyList())
         assertEquals(1, result.success)
     }
+
+    @Test
+    fun `导出包含type字段且旧格式可解析`() {
+        val text = ProductJsonCodec.export(listOf(Product(name = "甲", price = 1.0)))
+        assertTrue(text.contains("\"type\": \"products\""))
+        val legacy = """{"version":1,"products":[{"name":"乙","price":2}]}"""
+        val result = ProductJsonCodec.parse(legacy, emptyList())
+        assertEquals(1, result.success)
+        assertEquals(DataCategory.detect(legacy), DataCategory.PRODUCTS)
+        assertEquals(DataCategory.detect(text), DataCategory.PRODUCTS)
+    }
 }

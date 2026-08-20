@@ -7,11 +7,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.quickbillmate.QuickBillMateApp
 import com.example.quickbillmate.ui.contacts.ContactsImportViewModel
 import com.example.quickbillmate.ui.customers.CustomersViewModel
+import com.example.quickbillmate.ui.data.DataManagerViewModel
 import com.example.quickbillmate.ui.editor.EditorViewModel
 import com.example.quickbillmate.ui.home.HomeViewModel
+import com.example.quickbillmate.ui.onboarding.OnboardingViewModel
 import com.example.quickbillmate.ui.presets.PresetEditorViewModel
 import com.example.quickbillmate.ui.presets.PresetsViewModel
 import com.example.quickbillmate.ui.products.ProductsViewModel
+import com.example.quickbillmate.ui.report.ReportViewModel
 import com.example.quickbillmate.ui.settings.SettingsViewModel
 import com.example.quickbillmate.ui.view.BillViewViewModel
 
@@ -27,16 +30,25 @@ object AppViewModelProvider {
             BillViewViewModel(app(), app().repository)
         }
         initializer {
-            ProductsViewModel(app(), app().repository)
+            ProductsViewModel(app().repository)
         }
         initializer {
-            CustomersViewModel(app(), app().repository)
+            CustomersViewModel(app().repository)
         }
         initializer {
             ContactsImportViewModel(app(), app().repository)
         }
         initializer {
             SettingsViewModel(app(), app().repository)
+        }
+        initializer {
+            OnboardingViewModel(app().repository)
+        }
+        initializer {
+            DataManagerViewModel(app(), app().repository)
+        }
+        initializer {
+            ReportViewModel(app().repository)
         }
         initializer {
             PresetsViewModel(app(), app().repository)

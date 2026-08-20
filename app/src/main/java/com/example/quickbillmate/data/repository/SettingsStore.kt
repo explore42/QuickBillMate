@@ -101,6 +101,49 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_CUSTOM_UNITS, "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = prefs.edit { putString(KEY_CUSTOM_UNITS, value.joinToString(",")) }
 
+    /** 首次安装引导页是否已完成（老用户升级不显示引导）。 */
+    var onboardingCompleted: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+        set(value) = prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETED, value) }
+
+    /** 批量写入“默认信息”：引导页与设置页共用入口。 */
+    fun applyDefaults(values: DefaultInfoValues) {
+        defaultTitleSuffix = values.titleSuffix
+        defaultDocCode = values.docCode
+        defaultShowMultiPhones = values.showMultiPhones
+        defaultShowCustomerPhone = values.showCustomerPhone
+        defaultCompany = values.companyName
+        defaultManager = values.manager
+        defaultShowManager = values.showManager
+        defaultPhone = values.contactPhone
+        defaultShowContactPhone = values.showContactPhone
+        defaultShowRemark = values.showRemark
+        defaultShowAd = values.showAd
+        defaultRemark = values.remark
+        defaultAdText = values.adText
+        defaultWatermarkText = values.watermarkText
+        defaultShowWatermark = values.showWatermark
+    }
+
+    /** 当前“默认信息”快照（引导页预填与导出共用）。 */
+    fun defaultsSnapshot(): DefaultInfoValues = DefaultInfoValues(
+        titleSuffix = defaultTitleSuffix,
+        docCode = defaultDocCode,
+        showCustomerPhone = defaultShowCustomerPhone,
+        showMultiPhones = defaultShowMultiPhones,
+        companyName = defaultCompany,
+        manager = defaultManager,
+        showManager = defaultShowManager,
+        contactPhone = defaultPhone,
+        showContactPhone = defaultShowContactPhone,
+        showRemark = defaultShowRemark,
+        showAd = defaultShowAd,
+        remark = defaultRemark,
+        adText = defaultAdText,
+        watermarkText = defaultWatermarkText,
+        showWatermark = defaultShowWatermark,
+    )
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -131,5 +174,6 @@ class SettingsStore(context: Context) {
         private const val KEY_WATERMARK_TEXT = "default_watermark_text"
         private const val KEY_SHOW_CONTACT_PHONE = "default_show_contact_phone"
         private const val KEY_CUSTOM_UNITS = "custom_units"
+        private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
     }
 }

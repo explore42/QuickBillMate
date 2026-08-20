@@ -34,11 +34,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.quickbillmate.ui.contacts.ContactsImportScreen
 import com.example.quickbillmate.ui.customers.CustomersScreen
+import com.example.quickbillmate.ui.data.DataManagerScreen
 import com.example.quickbillmate.ui.editor.EditorScreen
 import com.example.quickbillmate.ui.home.HomeScreen
+import com.example.quickbillmate.ui.onboarding.OnboardingScreen
 import com.example.quickbillmate.ui.presets.PresetEditorScreen
 import com.example.quickbillmate.ui.presets.PresetsScreen
 import com.example.quickbillmate.ui.products.ProductsScreen
+import com.example.quickbillmate.ui.report.ReportScreen
 import com.example.quickbillmate.ui.settings.SettingsScreen
 import com.example.quickbillmate.ui.view.BillViewScreen
 import kotlinx.coroutines.launch
@@ -56,12 +59,12 @@ import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private const val TABS = "tabs"
 private const val SLIDE_DURATION_MS = 320
 
 @Composable
 fun QuickBillMateAppNavHost(
     navController: NavHostController,
+    startDestination: String = Routes.TABS,
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
@@ -104,7 +107,7 @@ fun QuickBillMateAppNavHost(
         ) {
             NavHost(
                 navController = navController,
-                startDestination = TABS,
+                startDestination = startDestination,
                 // 诊断二分 B：恢复 layerBackdrop，暂时不消费（无 textureBlur 覆盖层）
                 modifier = Modifier
                     .fillMaxSize()
@@ -134,7 +137,7 @@ fun QuickBillMateAppNavHost(
                     )
                 },
             ) {
-                composable(TABS) {
+                composable(Routes.TABS) {
                     TabPagerHost(
                         pagerState = pagerState,
                         userScrollEnabled = !selectionActive,
@@ -157,6 +160,31 @@ fun QuickBillMateAppNavHost(
                         onThemePaletteStyleChange = onThemePaletteStyleChange,
                         onHapticsChange = onHapticsChange,
                         onManagePresets = { navController.navigate(Routes.PRESETS) },
+                        onManageData = { navController.navigate(Routes.DATA_MANAGER) },
+                        onOpenReport = { navController.navigate(Routes.REPORT) },
+                    )
+                }
+
+                composable(Routes.ONBOARDING) {
+                    OnboardingScreen(
+                        onFinish = {
+                            navController.navigate(Routes.TABS) {
+                                popUpTo(Routes.ONBOARDING) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+
+                composable(Routes.DATA_MANAGER) {
+                    DataManagerScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(Routes.REPORT) {
+                    ReportScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenBill = { billId -> navController.navigate(Routes.view(billId)) },
                     )
                 }
 
@@ -229,7 +257,7 @@ fun QuickBillMateAppNavHost(
 
             // 底部导航栏覆盖层：内容从栏下滑过时透出模糊（半透明材质）
             // textureBlur 直接挂在 NavigationBar 上（不额外包 Box），与 layerBackdrop 共存验证
-            if (currentRoute == TABS && !selectionActive) {
+            if (currentRoute == Routes.TABS && !selectionActive) {
                 NavigationBar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -279,6 +307,8 @@ private fun TabPagerHost(
     onThemePaletteStyleChange: (String) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onManagePresets: () -> Unit,
+    onManageData: () -> Unit,
+    onOpenReport: () -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -289,6 +319,7 @@ private fun TabPagerHost(
             0 -> HomeScreen(
                 onNewBill = onNewBill,
                 onOpenBill = onOpenBill,
+                onOpenReport = onOpenReport,
                 onSelectionModeChange = { onSelectionModeChange(0, it) },
                 scrollToTopTick = homeScrollTicks,
             )
@@ -308,6 +339,7 @@ private fun TabPagerHost(
                 onThemePaletteStyleChange = onThemePaletteStyleChange,
                 onHapticsChange = onHapticsChange,
                 onManagePresets = onManagePresets,
+                onManageData = onManageData,
             )
         }
     }

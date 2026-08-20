@@ -29,7 +29,7 @@ fun SelectionActionBar(
     canEdit: Boolean,
     onCopy: () -> Unit,
     onEdit: () -> Unit,
-    onExport: () -> Unit,
+    onExport: (() -> Unit)?,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -41,7 +41,9 @@ fun SelectionActionBar(
     ) {
         SelectionAction(MiuixIcons.Add, "复制", true, onCopy)
         SelectionAction(MiuixIcons.Edit, "编辑", canEdit, onEdit)
-        SelectionAction(MiuixIcons.Share, "导出", true, onExport)
+        if (onExport != null) {
+            SelectionAction(MiuixIcons.Share, "导出", true, onExport)
+        }
         SelectionAction(MiuixIcons.Delete, "删除", true, onDelete)
     }
 }

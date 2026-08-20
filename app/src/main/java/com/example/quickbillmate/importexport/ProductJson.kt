@@ -18,7 +18,7 @@ data class ProductImportResult(
     val imported: List<Product>,
 )
 
-class ProductJsonException(message: String) : Exception(message)
+class ProductJsonException(message: String) : DataImportException(message)
 
 object ProductJsonCodec {
     const val MAX_SIZE_BYTES = 2 * 1024 * 1024
@@ -100,7 +100,7 @@ object ProductJsonCodec {
     /** 导出 JSON 文本，价格统一保留两位小数。 */
     fun export(products: List<Product>): String {
         val sb = StringBuilder()
-        sb.append("{\n  \"version\": 1,\n  \"products\": [\n")
+        sb.append("{\n  \"version\": 1,\n  \"type\": \"products\",\n  \"products\": [\n")
         products.forEachIndexed { index, p ->
             sb.append("    {")
             sb.append("\"name\": ").append(quote(p.name))

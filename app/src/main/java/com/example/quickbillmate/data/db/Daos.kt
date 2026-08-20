@@ -21,6 +21,12 @@ interface BillDao {
     @Query("SELECT * FROM bills WHERE id = :id")
     suspend fun getBill(id: Long): Bill?
 
+    @Query("SELECT * FROM bills WHERE docDate BETWEEN :start AND :end ORDER BY docDate DESC, id DESC")
+    suspend fun getByDateRangeOnce(start: String, end: String): List<Bill>
+
+    @Query("SELECT COUNT(*) FROM bills")
+    suspend fun count(): Int
+
     @Query(
         "SELECT COUNT(*) FROM bills WHERE docCode = :code AND docDate = :date " +
             "AND docSerial = :serial AND id != :excludeId"
@@ -78,6 +84,9 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getById(id: Long): Product?
 
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun count(): Int
+
     @Insert
     suspend fun insert(product: Product): Long
 
@@ -117,6 +126,9 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun getById(id: Long): Customer?
+
+    @Query("SELECT COUNT(*) FROM customers")
+    suspend fun count(): Int
 
     @Insert
     suspend fun insert(customer: Customer): Long

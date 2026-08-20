@@ -1,10 +1,8 @@
 package com.example.quickbillmate.data.repository
 
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.room.withTransaction
 import com.example.quickbillmate.data.db.AppDatabase
 import com.example.quickbillmate.data.db.Bill
@@ -14,10 +12,16 @@ import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.importexport.ContactsImporter
 import com.example.quickbillmate.importexport.CustomerJsonCodec
+import com.example.quickbillmate.importexport.CustomerImportMerger
+import com.example.quickbillmate.importexport.CustomerImportResult
+import com.example.quickbillmate.importexport.BillJsonCodec
+import com.example.quickbillmate.importexport.BillImportResult
+import com.example.quickbillmate.importexport.DataImportException
+import com.example.quickbillmate.importexport.DefaultsJsonCodec
+import com.example.quickbillmate.importexport.DefaultsExport
 import com.example.quickbillmate.importexport.GalleryWriter
 import com.example.quickbillmate.importexport.ProductImportResult
 import com.example.quickbillmate.importexport.ProductJsonCodec
-import com.example.quickbillmate.importexport.ProductJsonException
 import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.util.PhoneUtil
@@ -27,10 +31,9 @@ import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /** 通讯录导入结果：新增 / 合并（同名同号视为合并，无需写库）。 */
 data class ContactImportOutcome(
@@ -66,6 +69,13 @@ class AppRepository(
     // ---------- 单据 ----------
 
     fun observeRecentBills(): Flow<List<Bill>> = billDao.observeRecent()
+
+    suspend fun billCount(): Int = billDao.count()
+
+    suspend fun getBillsOnce(): List<Bill> = billDao.getRecentOnce()
+
+    suspend fun getBillsByDateRangeOnce(start: String, end: String): List<Bill> =
+        billDao.getByDateRangeOnce(start, end)
 
     /** 一次性查询当前列表：Room 失效通知偶发丢失时的兜底刷新入口。 */
     suspend fun recentBillsOnce(): List<Bill> = billDao.getRecentOnce()
@@ -171,6 +181,8 @@ class AppRepository(
 
     // ---------- 商品 ----------
 
+    suspend fun productCount(): Int = productDao.count()
+
     fun observeProducts(query: String): Flow<List<Product>> =
         if (query.isBlank()) productDao.observeAll() else productDao.observeSearch(query.trim())
 
@@ -204,6 +216,8 @@ class AppRepository(
 
     // ---------- 客户 ----------
 
+    suspend fun customerCount(): Int = customerDao.count()
+
     fun observeCustomers(query: String): Flow<List<Customer>> =
         if (query.isBlank()) customerDao.observeAll() else customerDao.observeSearch(query.trim())
 
@@ -234,6 +248,10 @@ class AppRepository(
     }
 
     suspend fun deleteCustomer(customer: Customer) = customerDao.delete(customer)
+
+    /** 首次安装判定：库中是否已有任何业务数据（单据/商品/客户）。 */
+    suspend fun hasAnyDataOnce(): Boolean =
+        billDao.count() > 0 || productDao.count() > 0 || customerDao.count() > 0
 
     /**
      * 通讯录导入客户，统一按“合并”语义：
@@ -297,7 +315,7 @@ class AppRepository(
 
     suspend fun deletePreset(preset: StylePreset) = presetDao.delete(preset)
 
-    // ---------- 商品 JSON 导入 / 导出 ----------
+    // ---------- JSON 导入 / 导出（设置页统一入口，v1.2） ----------
 
     suspend fun importProductsFromUri(context: Context, uri: Uri): ProductImportResult {
         val text = readText(context, uri)
@@ -318,25 +336,95 @@ class AppRepository(
         return result
     }
 
-    /** 导出指定商品到系统“下载”目录，返回文件名；失败返回 null。 */
-    suspend fun exportProductsToDownloads(context: Context, products: List<Product>): String? {
-        val text = ProductJsonCodec.export(products)
-        val fileName = "products_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
-        return exportJsonToDownloads(context, text, fileName)
+    /** 导入单据 JSON：按原样新增（保留编号/日期），不查重。 */
+    suspend fun importBillsFromText(text: String): BillImportResult {
+        val result = BillJsonCodec.parse(text)
+        if (result.imported.isNotEmpty()) {
+            database.withTransaction {
+                result.imported.forEach { bw ->
+                    val billId = billDao.insert(bw.bill.copy(id = 0))
+                    itemDao.insertAll(bw.items.map { it.copy(id = 0, billId = billId) })
+                }
+            }
+        }
+        return result
     }
 
-    /** 导出指定客户到系统“下载”目录，返回文件名；失败返回 null。 */
-    suspend fun exportCustomersToDownloads(context: Context, customers: List<Customer>): String? {
-        val text = CustomerJsonCodec.export(customers)
-        val fileName = "customers_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".json"
-        return exportJsonToDownloads(context, text, fileName)
+    /** 导入客户 JSON：按姓名合并（电话去重追加），不存在则新增。 */
+    suspend fun importCustomersFromText(text: String): CustomerImportResult {
+        val parsed = CustomerJsonCodec.parse(text)
+        var success = 0
+        var skipped = 0
+        parsed.forEach { customer ->
+            val existing = customerDao.findByName(customer.name)
+            if (existing != null) {
+                val merged = CustomerImportMerger.mergePhones(
+                    existing.phone,
+                    PhoneUtil.splitPhones(customer.phone),
+                )
+                if (merged != existing.phone) {
+                    customerDao.update(existing.copy(phone = merged))
+                }
+                skipped++
+            } else {
+                customerDao.insert(customer.withPinyin())
+                success++
+            }
+        }
+        return CustomerImportResult(success, skipped, emptyList())
     }
+
+    /** 导入默认信息 JSON：只覆盖文件中出现的字段（含预置单位，不含二维码）。 */
+    suspend fun importDefaultsFromText(text: String): DefaultsExport {
+        val parsed = DefaultsJsonCodec.parse(text)
+        val v = parsed.values
+        val present = parsed.presentFields
+        val s = settings
+        if ("titleSuffix" in present) s.defaultTitleSuffix = v.titleSuffix
+        if ("docCode" in present) s.defaultDocCode = v.docCode
+        if ("showCustomerPhone" in present) s.defaultShowCustomerPhone = v.showCustomerPhone
+        if ("showMultiPhones" in present) s.defaultShowMultiPhones = v.showMultiPhones
+        if ("companyName" in present) s.defaultCompany = v.companyName
+        if ("manager" in present) s.defaultManager = v.manager
+        if ("showManager" in present) s.defaultShowManager = v.showManager
+        if ("contactPhone" in present) s.defaultPhone = v.contactPhone
+        if ("showContactPhone" in present) s.defaultShowContactPhone = v.showContactPhone
+        if ("showRemark" in present) s.defaultShowRemark = v.showRemark
+        if ("showAd" in present) s.defaultShowAd = v.showAd
+        if ("remark" in present) s.defaultRemark = v.remark
+        if ("adText" in present) s.defaultAdText = v.adText
+        if ("watermarkText" in present) s.defaultWatermarkText = v.watermarkText
+        if ("showWatermark" in present) s.defaultShowWatermark = v.showWatermark
+        parsed.customUnits?.let { s.customUnits = it }
+        return parsed
+    }
+
+    /** 将导出的 JSON 写入缓存并返回 FileProvider 分享 URI（失败返回 null）。 */
+    suspend fun exportJsonShareUri(context: Context, text: String, fileName: String): Uri? =
+        withContext(Dispatchers.IO) {
+            val dir = File(context.cacheDir, "shared").apply { mkdirs() }
+            val file = File(dir, fileName)
+            try {
+                file.writeText(text, Charsets.UTF_8)
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "com.example.quickbillmate.fileprovider",
+                    file,
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    /** 读取外部文件文本（2MB/UTF-8 校验，数据管理页导入共用）。 */
+    suspend fun readExternalText(context: Context, uri: Uri): String =
+        withContext(Dispatchers.IO) { readText(context, uri) }
 
     private fun readText(context: Context, uri: Uri): String {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: throw ProductJsonException("无法读取文件")
+            ?: throw DataImportException("无法读取文件")
         if (bytes.size > ProductJsonCodec.MAX_SIZE_BYTES) {
-            throw ProductJsonException("文件超过 2MB，已拒绝导入")
+            throw DataImportException("文件超过 2MB，已拒绝导入")
         }
         val decoder = Charsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
@@ -344,32 +432,7 @@ class AppRepository(
         return try {
             decoder.decode(ByteBuffer.wrap(bytes)).toString()
         } catch (_: Exception) {
-            throw ProductJsonException("文件编码不支持")
-        }
-    }
-
-    private fun exportJsonToDownloads(context: Context, text: String, fileName: String): String? {
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, "application/json")
-            put(MediaStore.Downloads.RELATIVE_PATH, "Download/QuickBillMate")
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
-        return try {
-            context.contentResolver.openOutputStream(uri)?.use { out ->
-                out.write(text.toByteArray(Charsets.UTF_8))
-            } ?: return null
-            values.clear()
-            values.put(MediaStore.Downloads.IS_PENDING, 0)
-            context.contentResolver.update(uri, values, null, null)
-            fileName
-        } catch (_: Exception) {
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {
-            }
-            null
+            throw DataImportException("文件编码不支持")
         }
     }
 

@@ -37,15 +37,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.StylePreset
-import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.data.repository.DefaultInfoValues
+import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.ui.common.AppTopBar
 import androidx.compose.foundation.layout.Arrangement
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.DefaultInfoForm
-import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.SmallTextButton
@@ -70,6 +70,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Alarm
+import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.Report
@@ -104,6 +105,7 @@ fun SettingsScreen(
     onThemePaletteStyleChange: (String) -> Unit = {},
     onHapticsChange: (Boolean) -> Unit = {},
     onManagePresets: () -> Unit = {},
+    onManageData: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val presets by viewModel.presets.collectAsState()
@@ -166,6 +168,7 @@ fun SettingsScreen(
         onDefaultsSave = viewModel::updateDefaults,
         onCustomUnitsChange = viewModel::updateCustomUnits,
         onManagePresets = onManagePresets,
+        onManageData = onManageData,
         onPickQrImage = { qrPicker.launch(arrayOf("image/*")) },
         onRemoveQrImage = viewModel::removeQrImage,
         onCropSave = viewModel::saveQrImage,
@@ -217,6 +220,7 @@ fun SettingsContent(
     onDefaultsSave: (DefaultInfoValues) -> Unit,
     onCustomUnitsChange: (List<String>) -> Unit = {},
     onManagePresets: () -> Unit,
+    onManageData: () -> Unit = {},
     onPickQrImage: () -> Unit,
     onRemoveQrImage: () -> Unit,
     onCropSave: (Bitmap) -> Unit,
@@ -350,6 +354,12 @@ fun SettingsContent(
                     },
                     startAction = { SettingsIcon(MiuixIcons.Tune) },
                     onClick = { showUnitsDialog = true },
+                )
+                ArrowPreference(
+                    title = "数据导入导出",
+                    summary = "单据、商品、客户、默认信息的 JSON 备份与迁移",
+                    startAction = { SettingsIcon(MiuixIcons.File) },
+                    onClick = onManageData,
                 )
             }
 

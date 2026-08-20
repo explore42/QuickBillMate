@@ -21,7 +21,7 @@ import com.example.quickbillmate.render.RenderInvoice
 import com.example.quickbillmate.render.RenderItem
 import com.example.quickbillmate.render.InvoiceRenderBus
 import com.example.quickbillmate.render.StylePresets
-import com.example.quickbillmate.ui.common.DefaultInfoValues
+import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil

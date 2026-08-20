@@ -1,6 +1,6 @@
 # 快贝智单（QuickBillMate）APP 设计文档
 
-> 版本：v1.1 日期：2026-08-14 状态：v1.1 已实现，本文档为当前仓库代码对应的设计基线
+> 版本：v1.2 日期：2026-08-20 状态：v1.2 已实现，本文档为当前仓库代码对应的设计基线
 >
 > 本文档描述 v1.0 实际实现的界面、数据模型、业务规则与工程结构；后续迭代以本文档为基线进行修订。
 
@@ -242,25 +242,13 @@ QuickBillMate（MainActivity）
 - 编辑弹窗字段：名称*、规格、单位（默认空，可自由输入或从预置下拉选择；预置=内置 桶/筒/代/张/卷/支/把 + 设置页
   自定义，保存空即空不再回退“桶”）、单价*（非负数字，输入限两位小数）、包装规格、备注、收藏。
 - 列表按“收藏 → 拼音首字母 A–Z → #”分组，右侧字母索引栏，可点击跳转；搜索按名称/规格（300ms 防抖）。
-- 多选操作栏：复制（名称加“（副本）”）、编辑（仅 1 条）、导出（JSON）、删除（二次确认）。
-
-**JSON 导入**：
-
-- 入口：右上角菜单 →【导入 JSON】→ 系统文件选择器（SAF，`application/json`、`text/plain`、`*/*`）。
-- 入口：右上角菜单 →【从剪贴板导入】→ 直接解析剪贴板 JSON 文本（复用同一套校验与结果弹窗）；剪贴板为空或非文本时提示错误。
-- 弹窗提供【查看模板】：内嵌模板文本，支持按钮复制到剪贴板；模板同步存放于 `docs/products_template.json`。
-- 解析校验规则见第 7 节。
-- 结果弹窗：成功 N 条 / 跳过重复 M 条 / 失败 K 条（失败超过 20 条仅展示前 20 条及行号原因）。
-
-**JSON 导出**：
-
-- 入口：右上角菜单 →【导出 JSON】导出全部；多选操作栏【导出】导出选中项。
-- 写入系统“下载”目录 `Download/QuickBillMate`，文件名 `products_yyyyMMdd_HHmmss.json`。
-- 完成后弹窗提示文件名，并提供【分享】按钮（写缓存 + `ACTION_SEND` 分享）。
+- 多选操作栏：复制（名称加“（副本）”）、编辑（仅 1 条）、删除（二次确认）。JSON 导入导出已统一迁移到
+  设置页【数据导入导出】（见 4.11），商品页不再提供。
 
 ### 4.5 客户管理页（一级“客户”）
 
-**页面职责**：客户库 CRUD、收藏、多电话、搜索、拼音分组、通讯录导入入口、客户 JSON 导出。
+**页面职责**：客户库 CRUD、收藏、多电话、搜索、拼音分组、通讯录导入入口。客户 JSON 导出统一迁移到
+设置页【数据导入导出】（见 4.11）。
 
 **布局草图（ASCII）**：
 
@@ -389,6 +377,35 @@ QuickBillMate（MainActivity）
 - “默认信息”弹窗底部可上传微信收款码：选图后进入全屏方形裁剪页（拖动 + 双指缩放 1–4 倍，初始定位图片顶部，适配
   1094×1625 收款码），保存后写入内部存储 `filesDir/qr_code.png`，所有单据（含历史单据）左上角显示；未上传不显示，可随时移除。
 - “崩溃日志”展示本地记录（时间 + 异常摘要），支持复制全部与二次确认后清除；无记录时显示“暂无崩溃记录”。
+
+### 4.10 首次启动引导页
+
+- 触发条件：仅全新安装——未完成引导（`SettingsStore.onboardingCompleted=false`）且库中无任何单据/商品/客户；
+  老用户升级不显示。
+- 两页式：欢迎页（Logo、标语、3 张功能卡、【去填写默认信息】主按钮、【跳过】）→ 默认信息表单页
+  （复用 `DefaultInfoForm`，预填当前设置；【保存并开始使用】写入全部默认字段并置位完成标志，【跳过】仅置位）。
+- 完成后跳转主界面并清空引导页回退栈；默认信息之后可在设置页随时修改。
+
+### 4.11 数据导入导出页（设置页入口）
+
+- 设置页新增【数据导入导出】行 → 数据管理页，四类：单据、商品、客户、默认信息（不含微信二维码）。
+- 每类支持：导出全部（直接调起系统分享）、选择导出（多选列表；单据支持按日期范围 全部/本月/上月/近3月/今年/自定义
+  筛选后再多选；默认信息按 标题栏/公司信息/其他信息/预置单位 分组选择）、导入 JSON（系统文件选择）。
+- 导出文件为自描述 JSON：根对象含 `version` 与 `type`（bills/products/customers/defaults），写入
+  `cacheDir/shared` 后经 FileProvider 分享，文件名 `bills_/products_/customers_/defaults_yyyyMMdd_HHmmss.json`。
+- 导入按 `type` 自动识别分类（旧版商品/客户文件按数组名兜底），先预览（分类、条数）再确认；合并规则：
+  商品按 name+spec 去重、客户按姓名合并（电话去重追加）、单据按原样新增（不查重）、默认信息覆盖文件中出现的字段。
+- 外部打开：`MainActivity` 声明 `ACTION_VIEW`（mime `application/json`，`singleTop`），其他应用打开 JSON
+  选择“快贝智单”后自动进入导入确认流程。
+
+### 4.12 报表页（首页顶栏入口）
+
+- 首页非多选顶栏图标（`MiuixIcons.Report`）→ 数据报表页。
+- 时间范围：全部/本月/上月/近3月/今年/自定义（起止日期选择）；汇总卡：单据数、总金额、客单价、客户数。
+- 三个维度：按时间（Vico 柱状图 + 按月列表）、按客户（环形占比 + 排名进度条）、按商品（销量+金额排名）；
+  点击月份/客户/商品可查看该维度单据列表，点击单据跳转单据详情。
+- 金额口径与单据详情一致：`max(0, Σqty×price − discount)`；聚合为纯函数 `ReportAggregator`，
+  在 `Dispatchers.Default` 计算，时间区间 ≤31 天时按天统计。
 
 ---
 
@@ -555,6 +572,9 @@ Product、Customer 独立表
 
 ## 7. 数据交换规范
 
+所有导出文件为自描述 JSON：根对象含 `version: 1` 与 `type`（`bills`/`products`/`customers`/`defaults`），
+导入时按 `type` 自动识别；旧版无 `type` 的商品/客户文件按数组名兜底解析。文件大小上限 2MB、必须为合法 UTF-8。
+
 ### 7.1 商品 JSON（导入与导出一致）
 
 顶层对象含 `version` 与 `products` 数组：
@@ -602,6 +622,52 @@ Product、Customer 独立表
 ```
 
 name 为空的对象跳过；解析供测试/工具使用，客户 JSON 目前仅导出。
+
+### 7.3.1 单据 JSON（v1.2）
+
+```json
+{
+  "version": 1,
+  "type": "bills",
+  "bills": [
+    {
+      "docCode": "PH", "docSerial": "007", "docDate": "2026-08-20",
+      "customerName": "张老板", "customerPhone": "13800000000",
+      "companyName": "", "contactPhone": "", "salesManager": "",
+      "discount": 10, "titleSuffix": "单据", "remark": "", "adText": "",
+      "showManager": true, "showRemark": true, "showAd": false,
+      "showWatermark": false, "watermarkText": "", "showMultiPhones": false,
+      "showCustomerPhone": false, "showContactPhone": true, "favorite": false,
+      "presetKey": "classic",
+      "items": [
+        { "name": "腻子粉", "spec": "20kg", "unit": "袋", "qty": 2, "price": 35, "pack": "", "note": "", "sortOrder": 0 }
+      ]
+    }
+  ]
+}
+```
+
+不含 id/时间戳；导入时按原样新增（新 id），商品行 qty/price 必须为非负数，否则该单据整条失败并记录行号。
+
+### 7.3.2 默认信息 JSON（v1.2）
+
+```json
+{
+  "version": 1,
+  "type": "defaults",
+  "defaults": {
+    "titleSuffix": "单据", "docCode": "PH",
+    "companyName": "", "manager": "", "showManager": true,
+    "contactPhone": "", "showContactPhone": true,
+    "showCustomerPhone": false, "showMultiPhones": false,
+    "showRemark": true, "showAd": false, "remark": "",
+    "adText": "", "watermarkText": "", "showWatermark": false
+  },
+  "customUnits": ["桶", "袋"]
+}
+```
+
+不含微信二维码；支持按分组（标题栏/公司信息/其他信息/预置单位）部分导出，导入时只覆盖文件中出现的字段。
 
 ### 7.3 解析与校验（商品导入）
 
@@ -788,7 +854,10 @@ app/src/main/java/com/example/quickbillmate/
 │   ├── db/                                 // AppDatabase、实体、DAO
 │   └── repository/                         // AppRepository、SettingsStore
 ├── render/                                 // InvoiceDocument、StyleParams、InvoiceRenderBus
-├── importexport/                           // ProductJson、CustomerJsonCodec、ContactsImporter、GalleryWriter
+├── importexport/                           // 四类 JSON Codec、DataCategory、ContactsImporter、GalleryWriter
+├── ui/report/                              // 报表聚合器、ViewModel、Vico 图表页
+├── ui/data/                                // 数据导入导出管理页
+├── ui/onboarding/                          // 首次安装引导页
 └── util/                                   // Money、BillNumber、DateUtils、PhoneUtil、Pinyin、InputLimits
 ```
 
@@ -803,6 +872,7 @@ app/src/main/java/com/example/quickbillmate/
 | androidx.lifecycle:viewmodel-compose / runtime-compose      | ViewModel 与状态           |
 | androidx.room:room-runtime + room-ktx + room-compiler (KSP) | 数据存储                    |
 | org.jetbrains.kotlinx:kotlinx-serialization-json            | JSON 导入导出               |
+| com.patrykandpatrick.vico:compose-m3 (2.1.3)                 | 报表柱状图（Vico）           |
 | kotlinx-coroutines-android                                  | 异步与 Flow                |
 | androidx.core:core-ktx                                      | 基础工具                    |
 
@@ -823,6 +893,8 @@ app/src/main/java/com/example/quickbillmate/
 - `FileProvider`：authority `com.example.quickbillmate.fileprovider`，路径指向缓存 `shared` 目录。
 - `MainActivity` 使用 `windowSoftInputMode="adjustResize"`：配合 edge-to-edge 让输入法 insets 正常下发，
   由 Compose `imePadding` 处理键盘避让（不用默认的 `adjustPan`，否则键盘弹出时会整窗平移）。
+- `MainActivity` 为 `singleTop` 并声明 `ACTION_VIEW`（`application/json`）：其他应用打开 JSON 文件时可选择
+  快贝智单导入，`onCreate/onNewIntent` 捕获 URI 后跳转数据管理页。
 - 无需 INTERNET 权限（应用不联网，崩溃日志仅本地记录）。
 
 ### 11.6 本地崩溃日志（无联网）
@@ -875,6 +947,9 @@ app/src/main/java/com/example/quickbillmate/
 - 拼音首字母/全拼/排序（`PinyinFullTest`、`PinyinSortTest`）。
 - 商品 JSON：合法/非法/缺字段/负数价格/重复/空 name 行/2MB 限制（`ProductJsonTest`）。
 - 客户 JSON 导出解析（`CustomerJsonCodecTest`）。
+- 单据/默认信息 JSON 往返、非法行、分组导出（`BillJsonCodecTest`、`DefaultsJsonCodecTest`）。
+- 报表聚合：时间/客户/商品维度、折扣扣减、日期过滤、TopN 合并（`ReportAggregatorTest`）。
+- 客户导入合并：电话规范化去重追加（`CustomerJsonCodecTest`）。
 - 本地崩溃日志：格式化内容、保留策略裁剪、列表排序与摘要解析（`LocalCrashLoggerTest`）。
 - 分组与索引：单据/商品/客户/通讯录分组（`BillGroupTest`、`HomeBillsTest`、`ProductGroupTest`、
   `CustomerGroupTest`、`ContactGroupTest`、`IndexSectionsTest`）。
@@ -898,6 +973,9 @@ app/src/main/java/com/example/quickbillmate/
 4. 商品 JSON 导入/导出往返一致；模板可从商品页查看并复制。
 5. 通讯录导入后客户库出现新增/合并结果；编辑页联想可选中并回填。
 6. 自定义预设编辑后缩略预览与单据渲染同步变化。
+7. 全新安装首次打开显示引导页，填写默认信息后进入主界面且不再出现；库有数据时升级不显示。
+8. 设置页【数据导入导出】四类均可导出并分享；重装后用系统文件管理器打开导出的 JSON 选快贝智单导入，合并正确。
+9. 报表页汇总卡与单据详情金额一致；按时间/客户/商品切换与明细跳转正常。
 
 ---
 

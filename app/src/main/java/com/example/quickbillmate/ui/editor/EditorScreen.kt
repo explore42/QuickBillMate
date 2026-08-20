@@ -57,12 +57,12 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
+import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.DatePickerDialog
 import com.example.quickbillmate.ui.common.DefaultInfoForm
-import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.LabeledField

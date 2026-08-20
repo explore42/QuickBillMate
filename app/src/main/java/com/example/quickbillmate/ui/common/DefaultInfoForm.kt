@@ -13,28 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.util.InputLimits
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
-
-/** “默认信息”表单的数据集合：设置页（全局默认）与单据编辑页（仅当前单据）共用。 */
-data class DefaultInfoValues(
-    val titleSuffix: String = "单据",
-    val docCode: String = "PH",
-    val showCustomerPhone: Boolean = false,
-    val showMultiPhones: Boolean = false,
-    val companyName: String = "",
-    val manager: String = "",
-    val showManager: Boolean = true,
-    val contactPhone: String = "",
-    val showContactPhone: Boolean = true,
-    val remark: String = "",
-    val showRemark: Boolean = true,
-    val showAd: Boolean = false,
-    val adText: String = "",
-    val watermarkText: String = "",
-    val showWatermark: Boolean = false,
-)
 
 /** 默认信息表单：顺序与单据表单一致（标题栏 → 客户信息 → 公司信息 → 其他信息），分组展示。 */
 @Composable

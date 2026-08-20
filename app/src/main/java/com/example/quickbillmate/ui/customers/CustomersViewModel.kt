@@ -1,6 +1,5 @@
 package com.example.quickbillmate.ui.customers
 
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -26,7 +25,6 @@ import kotlinx.coroutines.withContext
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class CustomersViewModel(
-    private val app: Application,
     private val repo: AppRepository,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
@@ -41,10 +39,6 @@ class CustomersViewModel(
     var pendingDeleteIds by mutableStateOf<Set<Long>>(emptySet())
         private set
     var copyMessage by mutableStateOf<String?>(null)
-        private set
-    var exportMessage by mutableStateOf<String?>(null)
-        private set
-    var exportError by mutableStateOf<String?>(null)
         private set
 
     val customers: StateFlow<List<Customer>> = query
@@ -121,24 +115,6 @@ class CustomersViewModel(
         }
     }
 
-    fun exportSelected() {
-        val ids = selectedIds
-        viewModelScope.launch {
-            val list = customers.value.filter { it.id in ids }
-            exportError = null
-            exportMessage = null
-            try {
-                exportMessage = withContext(Dispatchers.IO) {
-                    repo.exportCustomersToDownloads(app, list)
-                }
-                if (exportMessage == null) exportError = "导出失败，请检查存储空间"
-            } catch (_: Exception) {
-                exportError = "导出失败，请检查存储空间"
-            }
-            exitSelection()
-        }
-    }
-
     fun requestDelete() {
         if (selectedIds.isNotEmpty()) pendingDeleteIds = selectedIds
     }
@@ -158,13 +134,5 @@ class CustomersViewModel(
 
     fun consumeCopyMessage() {
         copyMessage = null
-    }
-
-    fun consumeExportMessage() {
-        exportMessage = null
-    }
-
-    fun consumeExportError() {
-        exportError = null
     }
 }

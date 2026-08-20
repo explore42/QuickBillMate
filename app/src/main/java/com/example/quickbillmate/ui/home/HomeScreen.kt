@@ -69,6 +69,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Report
 import top.yukonga.miuix.kmp.icon.extended.Store
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -100,6 +101,7 @@ internal fun groupBills(bills: List<HomeBill>): List<BillSection> {
 fun HomeScreen(
     onNewBill: () -> Unit,
     onOpenBill: (Long) -> Unit,
+    onOpenReport: () -> Unit = {},
     onSelectionModeChange: (Boolean) -> Unit,
     scrollToTopTick: Int = 0,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory),
@@ -138,6 +140,7 @@ fun HomeScreen(
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onNewBill = onNewBill,
         onOpenBill = onOpenBill,
+        onOpenReport = onOpenReport,
         onEnterSelection = viewModel::enterSelection,
         onToggleSelection = viewModel::toggleSelection,
         onExitSelection = viewModel::exitSelection,
@@ -170,6 +173,7 @@ fun HomeContent(
     onSearchQueryChange: (String) -> Unit,
     onNewBill: () -> Unit,
     onOpenBill: (Long) -> Unit,
+    onOpenReport: () -> Unit = {},
     onEnterSelection: (Long) -> Unit,
     onToggleSelection: (Long) -> Unit,
     onExitSelection: () -> Unit,
@@ -239,6 +243,11 @@ fun HomeContent(
                     searchPlaceholder = "搜索商品 / 客户 / 时间",
                     query = searchQuery,
                     onQueryChange = onSearchQueryChange,
+                    actions = {
+                        IconButton(onClick = onOpenReport) {
+                            Icon(MiuixIcons.Report, contentDescription = "报表")
+                        }
+                    },
                 )
             }
         },

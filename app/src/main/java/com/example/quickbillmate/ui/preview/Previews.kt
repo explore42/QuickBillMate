@@ -153,6 +153,7 @@ fun SettingsContentPreview() {
             onPresetChange = {},
             onDefaultsSave = {},
             onManagePresets = {},
+            onManageData = {},
             onPickQrImage = {},
             onRemoveQrImage = {},
             onCropSave = {},

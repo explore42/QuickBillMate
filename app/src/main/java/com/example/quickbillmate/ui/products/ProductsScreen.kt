@@ -1,12 +1,6 @@
 package com.example.quickbillmate.ui.products
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,7 +11,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -60,7 +52,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
-import com.example.quickbillmate.importexport.ProductJsonCodec
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DetailLine
@@ -80,11 +71,7 @@ import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.ui.common.TopBarActionTextButton
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Checkbox
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.DropdownEntry
-import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -98,8 +85,6 @@ import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.ExpandMore
-import top.yukonga.miuix.kmp.icon.extended.More
-import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -163,12 +148,9 @@ fun ProductsScreen(
         }
     }
     val context = LocalContext.current
-    var showMenu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Product?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
-    var showTemplate by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<Product?>(null) }
 
     LaunchedEffect(viewModel.selectionMode) {
@@ -182,40 +164,6 @@ fun ProductsScreen(
             viewModel.consumeCopyMessage()
         }
     }
-    val exportMessage = viewModel.exportMessage
-    LaunchedEffect(exportMessage) {
-        exportMessage?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeExportMessage()
-        }
-    }
-    val exportError = viewModel.exportError
-    LaunchedEffect(exportError) {
-        exportError?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeExportError()
-        }
-    }
-
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) viewModel.importFromUri(uri)
-    }
-
-    val shareJsonUri = viewModel.shareJsonUri
-    LaunchedEffect(shareJsonUri) {
-        shareJsonUri?.let { uri ->
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/json"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(intent, "分享商品 JSON"))
-            viewModel.consumeShareJson()
-        }
-    }
-
     BackHandler(enabled = viewModel.selectionMode) {
         viewModel.exitSelection()
     }
@@ -246,44 +194,6 @@ fun ProductsScreen(
                 searchPlaceholder = "搜索名称/规格",
                 query = viewModel.queryText,
                 onQueryChange = viewModel::setQuery,
-                actions = {
-                    OverlayIconDropdownMenu(
-                        entry = DropdownEntry(
-                            items = listOf(
-                                DropdownItem(
-                                    text = "导出 JSON",
-                                    onClick = {
-                                        showMenu = false
-                                        viewModel.exportProducts()
-                                    },
-                                ),
-                                DropdownItem(
-                                    text = "导入 JSON",
-                                    onClick = {
-                                        showMenu = false
-                                        showImportDialog = true
-                                    },
-                                ),
-                                DropdownItem(
-                                    text = "从剪贴板导入",
-                                    onClick = {
-                                        showMenu = false
-                                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        val text = cm.primaryClip
-                                            ?.getItemAt(0)
-                                            ?.coerceToText(context)
-                                            ?.toString()
-                                            ?.trim()
-                                        viewModel.importFromClipboard(text.orEmpty())
-                                    },
-                                ),
-                            )
-                        ),
-                        onExpandedChange = { showMenu = it },
-                    ) {
-                        Icon(MiuixIcons.More, contentDescription = "更多")
-                    }
-                },
             )
             }
         },
@@ -310,7 +220,7 @@ fun ProductsScreen(
                     canEdit = viewModel.selectedIds.size == 1,
                     onCopy = { viewModel.copySelected() },
                     onEdit = { viewModel.editSelected { editing = it } },
-                    onExport = { viewModel.exportSelected() },
+                    onExport = null,
                     onDelete = {
                         viewModel.requestDelete()
                         showDeleteConfirm = true
@@ -319,22 +229,7 @@ fun ProductsScreen(
             }
         },
     ) { padding ->
-        if (viewModel.importing) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "正在导入…",
-                        style = AppThemeTypography.bodySmall,
-                        color = AppThemeColors.onSurfaceVariant,
-                    )
-                }
-            }
-        } else if (products.isEmpty()) {
+        if (products.isEmpty()) {
             EmptyState(
                 icon = MiuixIcons.Edit,
                 text = if (viewModel.queryText.isNotBlank()) "没有找到匹配的商品" else "还没有商品，点击右下角新增",
@@ -497,160 +392,6 @@ fun ProductsScreen(
         )
     }
 
-    if (showImportDialog) {
-        OverlayDialog(
-            title = "导入 JSON",
-            summary = "从 JSON 文件批量导入商品。支持 application/json 或文本文件，文件不超过 2MB。",
-            show = true,
-            onDismissRequest = { showImportDialog = false },
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TextButton(
-                    text = "查看模板",
-                    onClick = {
-                        showImportDialog = false
-                        showTemplate = true
-                    },
-                )
-                TextButton(
-                    text = "选择文件",
-                    onClick = {
-                        showImportDialog = false
-                        filePicker.launch(arrayOf("application/json", "text/plain", "*/*"))
-                    },
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
-        }
-    }
-
-    if (showTemplate) {
-        OverlayDialog(
-            title = "JSON 模板",
-            show = true,
-            onDismissRequest = { showTemplate = false },
-        ) {
-            Column {
-                Text(
-                    text = ProductJsonCodec.templateText(),
-                    fontFamily = FontFamily.Monospace,
-                    style = AppThemeTypography.bodySmall,
-                    modifier = Modifier.heightIn(max = 220.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                TextButton(
-                    text = "复制模板",
-                    onClick = {
-                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("json", ProductJsonCodec.templateText()))
-                    },
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        text = "关闭",
-                        onClick = { showTemplate = false },
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
-            }
-        }
-    }
-
-    viewModel.importResult?.let { result ->
-        val failureText = result.failures.take(20).joinToString("\n") { "第${it.first}行：${it.second}" }
-        OverlayDialog(
-            title = "导入完成",
-            show = true,
-            onDismissRequest = viewModel::consumeImportResult,
-        ) {
-            Column {
-                Text("成功 ${result.success} 条 / 跳过重复 ${result.skipped} 条 / 失败 ${result.failures.size} 条")
-                if (failureText.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        failureText,
-                        style = AppThemeTypography.bodySmall,
-                        color = AppThemeColors.error,
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        text = "完成",
-                        onClick = viewModel::consumeImportResult,
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
-            }
-        }
-    }
-
-    viewModel.importError?.let { message ->
-        OverlayDialog(
-            title = "导入失败",
-            summary = message,
-            show = true,
-            onDismissRequest = viewModel::consumeImportError,
-        ) {
-            TextButton(
-                text = "完成",
-                onClick = viewModel::consumeImportError,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
-    }
-
-    viewModel.exportFileName?.let { fileName ->
-        OverlayDialog(
-            title = "导出完成",
-            summary = "已保存到下载目录：$fileName",
-            show = true,
-            onDismissRequest = viewModel::consumeExport,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TextButton(
-                    text = "分享",
-                    onClick = {
-                        viewModel.shareExportedJson()
-                        viewModel.consumeExport()
-                    },
-                )
-                TextButton(
-                    text = "完成",
-                    onClick = viewModel::consumeExport,
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
-        }
-    }
-
-    viewModel.exportError?.let { message ->
-        OverlayDialog(
-            title = "导出失败",
-            summary = message,
-            show = true,
-            onDismissRequest = viewModel::consumeExport,
-        ) {
-            TextButton(
-                text = "完成",
-                onClick = viewModel::consumeExport,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
-    }
 }
 
 /** 单位输入：可自由输入，聚焦或点箭头时下拉展示预置单位（内置 + 设置页自定义）。 */
