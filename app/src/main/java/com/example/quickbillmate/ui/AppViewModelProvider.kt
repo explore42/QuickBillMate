@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.quickbillmate.QuickBillMateApp
+import com.example.quickbillmate.ui.changelog.ChangelogViewModel
 import com.example.quickbillmate.ui.contacts.ContactsImportViewModel
 import com.example.quickbillmate.ui.customers.CustomersViewModel
 import com.example.quickbillmate.ui.data.DataManagerViewModel
@@ -42,7 +43,10 @@ object AppViewModelProvider {
             SettingsViewModel(app(), app().repository)
         }
         initializer {
-            OnboardingViewModel(app().repository)
+            OnboardingViewModel(app(), app().repository)
+        }
+        initializer {
+            ChangelogViewModel(app(), app().repository)
         }
         initializer {
             DataManagerViewModel(app(), app().repository)

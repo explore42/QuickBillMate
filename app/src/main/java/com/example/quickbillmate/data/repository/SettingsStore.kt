@@ -106,6 +106,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
         set(value) = prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETED, value) }
 
+    /** 用户已看过升级更新说明的最高 versionCode（0=从未看过）。 */
+    var lastSeenVersionCode: Int
+        get() = prefs.getInt(KEY_LAST_SEEN_VERSION_CODE, 0)
+        set(value) = prefs.edit { putInt(KEY_LAST_SEEN_VERSION_CODE, value) }
+
     /** 批量写入“默认信息”：引导页与设置页共用入口。 */
     fun applyDefaults(values: DefaultInfoValues) {
         defaultTitleSuffix = values.titleSuffix
@@ -175,5 +180,6 @@ class SettingsStore(context: Context) {
         private const val KEY_SHOW_CONTACT_PHONE = "default_show_contact_phone"
         private const val KEY_CUSTOM_UNITS = "custom_units"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+        private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
     }
 }

@@ -15,6 +15,7 @@ import com.example.quickbillmate.data.db.AppDatabase
 import com.example.quickbillmate.data.db.Bill
 import com.example.quickbillmate.data.db.BillItem
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -34,8 +35,22 @@ class ReportUiTest {
         runBlocking {
             db.clearAllTables()
         }
+        // 保留“已引导、已看过当前版本说明”状态，避免升级说明/引导页拦截主界面
         context.getSharedPreferences("quickbillmate_settings", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .putInt("last_seen_version_code", com.example.quickbillmate.util.AppVersion.code(context))
+            .commit()
+    }
+
+    @After
+    fun restoreSafeState() {
+        context.getSharedPreferences("quickbillmate_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("onboarding_completed", true)
+            .putInt("last_seen_version_code", com.example.quickbillmate.util.AppVersion.code(context))
+            .commit()
+        runBlocking { AppDatabase.get(context).clearAllTables() }
     }
 
     private fun waitFor(timeoutMs: Long = 10000, condition: () -> Boolean) {

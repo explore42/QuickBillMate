@@ -14,6 +14,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import com.example.quickbillmate.ui.changelog.ChangelogScreen
 import com.example.quickbillmate.ui.contacts.ContactsImportScreen
 import com.example.quickbillmate.ui.customers.CustomersScreen
 import com.example.quickbillmate.ui.data.DataManagerScreen
@@ -138,6 +140,12 @@ fun QuickBillMateAppNavHost(
                 },
             ) {
                 composable(Routes.TABS) {
+                    // 外部应用打开 JSON：主界面就绪后再进入导入确认（引导/更新说明页不提前弹走）
+                    LaunchedEffect(PendingImport.uri) {
+                        if (PendingImport.uri != null) {
+                            navController.navigate(Routes.DATA_MANAGER) { launchSingleTop = true }
+                        }
+                    }
                     TabPagerHost(
                         pagerState = pagerState,
                         userScrollEnabled = !selectionActive,
@@ -170,6 +178,16 @@ fun QuickBillMateAppNavHost(
                         onFinish = {
                             navController.navigate(Routes.TABS) {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+
+                composable(Routes.CHANGELOG) {
+                    ChangelogScreen(
+                        onFinish = {
+                            navController.navigate(Routes.TABS) {
+                                popUpTo(Routes.CHANGELOG) { inclusive = true }
                             }
                         },
                     )

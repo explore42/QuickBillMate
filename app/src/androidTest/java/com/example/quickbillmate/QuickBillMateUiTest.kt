@@ -17,6 +17,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.swipeUp
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -250,11 +253,9 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("默认图片样式").assertIsDisplayed()
         composeRule.onNodeWithText("默认信息").assertIsDisplayed()
 
-        // “关于”是列表最后一行，初始被底部导航栏覆盖约一半：合并树中行节点的中心落在导航栏覆盖区，
-        // performClick 会点进导航栏死区（与 b235557 的 FAB 问题同模式）。
-        // 改点非合并树中完全可见的“关于”文本节点（其中心位于行的可视部分），先滚动到可见以提高稳健性。
+        // “关于”是列表最后一行，先滚动到可见；底部导航栏覆盖区会吞掉坐标点击，改用语义点击直接触发行点击
         composeRule.onNodeWithText("关于").performScrollTo()
-        composeRule.onNodeWithText("关于", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("关于").performSemanticsAction(SemanticsActions.OnClick)
         waitFor { composeRule.onAllNodesWithText("开源地址：").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("https://github.com/explore42/QuickBillMate").assertIsDisplayed()
     }

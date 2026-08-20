@@ -407,6 +407,16 @@ QuickBillMate（MainActivity）
 - 金额口径与单据详情一致：`max(0, Σqty×price − discount)`；聚合为纯函数 `ReportAggregator`，
   在 `Dispatchers.Default` 计算，时间区间 ≤31 天时按天统计。
 
+### 4.13 升级更新说明
+
+- 触发条件：版本升级（`lastSeenVersionCode < 当前 versionCode`）或老用户首次运行本功能
+  （`lastSeenVersionCode==0` 但库中有数据/已完成引导）；全新安装仍走引导页，不展示更新说明。
+- 展示内容：累积展示 `(上次已读, 当前]` 区间内所有版本说明（最新在前），注册表
+  `VersionChangelog` 无条目时兜底显示「已更新至 vX.Y.Z」。
+- 交互：顶部「更新说明」标题 + 版本卡片列表 + 底部【开始使用】按钮；跳转主界面并清空回退栈。
+- 已读策略：页面显示即写入 `lastSeenVersionCode=当前`，中途退出不再重复弹出；
+  引导页完成时同样写入该字段。
+
 ---
 
 ## 5. 数据模型（Room）
@@ -950,6 +960,7 @@ app/src/main/java/com/example/quickbillmate/
 - 单据/默认信息 JSON 往返、非法行、分组导出（`BillJsonCodecTest`、`DefaultsJsonCodecTest`）。
 - 报表聚合：时间/客户/商品维度、折扣扣减、日期过滤、TopN 合并（`ReportAggregatorTest`）。
 - 客户导入合并：电话规范化去重追加（`CustomerJsonCodecTest`）。
+- 升级说明：区间边界、累积排序、通用兜底（`VersionChangelogTest`）。
 - 本地崩溃日志：格式化内容、保留策略裁剪、列表排序与摘要解析（`LocalCrashLoggerTest`）。
 - 分组与索引：单据/商品/客户/通讯录分组（`BillGroupTest`、`HomeBillsTest`、`ProductGroupTest`、
   `CustomerGroupTest`、`ContactGroupTest`、`IndexSectionsTest`）。
@@ -976,6 +987,7 @@ app/src/main/java/com/example/quickbillmate/
 7. 全新安装首次打开显示引导页，填写默认信息后进入主界面且不再出现；库有数据时升级不显示。
 8. 设置页【数据导入导出】四类均可导出并分享；重装后用系统文件管理器打开导出的 JSON 选快贝智单导入，合并正确。
 9. 报表页汇总卡与单据详情金额一致；按时间/客户/商品切换与明细跳转正常。
+10. 升级后首次打开显示更新说明，开始使用后不再重复；外部 JSON 打开在说明页结束后正常进入导入确认。
 
 ---
 

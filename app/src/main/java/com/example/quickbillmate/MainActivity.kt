@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.navigation.QuickBillMateAppNavHost
@@ -25,10 +24,9 @@ import com.example.quickbillmate.render.InvoiceRenderEngine
 import com.example.quickbillmate.ui.common.ProvideHaptics
 import com.example.quickbillmate.ui.theme.QuickBillMateTheme
 import com.example.quickbillmate.ui.theme.paletteStyleOf
+import com.example.quickbillmate.util.AppVersion
 
 class MainActivity : ComponentActivity() {
-    private var navControllerRef: NavHostController? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 全面屏适配：内容延伸到系统栏，由标题栏按标准窗口边距留出合适区域
@@ -58,23 +56,18 @@ class MainActivity : ComponentActivity() {
                 Box {
                     ProvideHaptics(enabled = hapticsEnabled) {
                         val repo = (application as QuickBillMateApp).repository
-                        // 首启判定：仅全新安装（未完成引导且库中无任何数据）显示引导页
+                        val currentVersionCode = remember { AppVersion.code(applicationContext) }
+                        // 启动目的地：全新安装→引导页；升级/老用户首启本功能→更新说明；其余→主界面
                         var startDestination by remember { mutableStateOf<String?>(null) }
                         LaunchedEffect(Unit) {
-                            startDestination = if (!repo.settings.onboardingCompleted && !repo.hasAnyDataOnce()) {
-                                Routes.ONBOARDING
-                            } else {
-                                Routes.TABS
+                            val lastSeen = repo.settings.lastSeenVersionCode
+                            startDestination = when {
+                                !repo.settings.onboardingCompleted && !repo.hasAnyDataOnce() -> Routes.ONBOARDING
+                                lastSeen == 0 || lastSeen < currentVersionCode -> Routes.CHANGELOG
+                                else -> Routes.TABS
                             }
                         }
                         val navController = rememberNavController()
-                        navControllerRef = navController
-                        // 外部应用打开 JSON：进入主界面后自动跳转到数据管理页
-                        LaunchedEffect(startDestination, PendingImport.uri) {
-                            if (startDestination != null && PendingImport.uri != null) {
-                                navController.navigate(Routes.DATA_MANAGER) { launchSingleTop = true }
-                            }
-                        }
                         val destination = startDestination
                         if (destination == null) {
                             Box(modifier = Modifier.fillMaxSize())
@@ -117,7 +110,6 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         if (intent.action == Intent.ACTION_VIEW) {
             PendingImport.uri = intent.data
-            navControllerRef?.navigate(Routes.DATA_MANAGER) { launchSingleTop = true }
         }
     }
 }
