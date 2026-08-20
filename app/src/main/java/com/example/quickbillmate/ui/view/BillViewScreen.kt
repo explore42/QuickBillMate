@@ -119,6 +119,15 @@ fun BillViewScreen(
         context.startActivity(Intent(Intent.ACTION_DIAL, "tel:$phone".toUri()))
     }
 
+    // 保存图片结果：仅 Toast 提示，不弹确认框（保存动作本身在提示前已完成）
+    val saveToast = s.saveToast
+    LaunchedEffect(saveToast) {
+        saveToast?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.consumeSaveToast()
+        }
+    }
+
     val shareOutcome = s.shareOutcome
     LaunchedEffect(shareOutcome) {
         shareOutcome?.let { outcome ->
@@ -424,39 +433,6 @@ fun BillViewScreen(
                 onExport = viewModel::exportToGallery,
                 onShare = viewModel::shareNow,
             )
-        }
-    }
-
-    s.exportOutcome?.let { outcome ->
-        OverlayDialog(
-            title = if (outcome.saved) "保存成功" else "保存失败",
-            summary = outcome.message,
-            show = true,
-            onDismissRequest = viewModel::consumeExportOutcome,
-        ) {
-            Spacer(Modifier.height(8.dp))
-            if (outcome.saved && outcome.shareUri != null) {
-                DialogButtons(
-                    confirmText = "完成",
-                    cancelText = "分享",
-                    onCancel = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "image/png"
-                            putExtra(Intent.EXTRA_STREAM, outcome.shareUri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享单据"))
-                        viewModel.consumeExportOutcome()
-                    },
-                    onConfirm = viewModel::consumeExportOutcome,
-                )
-            } else {
-                DialogButtons(
-                    confirmText = "完成",
-                    cancelText = null,
-                    onConfirm = viewModel::consumeExportOutcome,
-                )
-            }
         }
     }
 }

@@ -157,8 +157,8 @@ QuickBillMate（MainActivity）
 - 客户电话按胶囊标签展示，点击 `ACTION_DIAL` 拨号；`showCustomerPhone` 关闭时显示"—"，开启时由
   `showMultiPhones` 控制展示全部电话或仅第一个。
 - 商品区逐行展示 数量 × 单价 与行金额，底部汇总 合计/优惠/应收（含中文大写）。
-- 【修改】进入单据编辑页；【导出图片】渲染保存到相册（API 29+ 经 MediaStore 写入，无需存储权限）；【分享图片】直接唤起系统分享面板。
-- 导出成功弹窗提供【分享】快捷入口；失败弹窗说明，不崩溃。
+- 【修改】进入单据编辑页；【导出图片】直接渲染保存到相册（API 29+ 经 MediaStore 写入，无需存储权限），结果以
+  Toast 提示“已保存到相册”，不弹确认框，失败时 Toast 说明原因、不崩溃；【分享图片】直接唤起系统分享面板。
 
 ### 4.3 单据编辑页（核心页面）
 
@@ -691,7 +691,7 @@ name 为空的对象跳过；解析供测试/工具使用，客户 JSON 目前�
 2. 写入相册：`MediaStore.Images`，`RELATIVE_PATH=Pictures/QuickBillMate`，`IS_PENDING` 事务式写入后置
    0（API 29+ 统一 MediaStore 写入）。
 3. 文件名：`单据_{编号代码}{yyyyMMdd}{流水号}.png`（如 `单据_PH20251121482.png`）。
-4. 成功后弹窗“已保存到相册”，可【分享】；失败弹窗说明，不崩溃。
+4. 成功后 Toast 提示“已保存到相册”（无需手动确认）；失败 Toast 说明原因，不崩溃。
 5. 分享：PNG 写入应用缓存 `cacheDir/shared`，经 `FileProvider`（authority
    `com.example.quickbillmate.fileprovider`）生成 URI，`ACTION_SEND` 分享。
 

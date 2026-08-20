@@ -33,7 +33,8 @@ data class BillViewState(
     val presets: List<StylePreset> = emptyList(),
     val preview: Bitmap? = null,
     val exporting: Boolean = false,
-    val exportOutcome: ViewOutcome? = null,
+    /** 保存到相册的结果提示（Toast 文案），弹出的时机由界面层消费。 */
+    val saveToast: String? = null,
     val shareOutcome: ViewOutcome? = null,
 )
 
@@ -81,6 +82,7 @@ class BillViewViewModel(
         return InvoiceRenderBus.await(id)
     }
 
+    /** 保存图片：渲染完成后直接写入相册，结果以 Toast 提示，不弹确认框。 */
     fun exportToGallery() {
         val bill = state.bill ?: return
         if (state.exporting) return
@@ -90,19 +92,13 @@ class BillViewViewModel(
             val ok = fullRes != null && withContext(Dispatchers.IO) {
                 repo.exportBitmapToGallery(app, bill, fullRes)
             }
-            val shareUri = fullRes?.let { repo.shareBill(app, bill, it) }
             state = state.copy(
                 exporting = false,
-                exportOutcome = ViewOutcome(
-                    saved = ok,
-                    fileName = repo.billFileName(bill),
-                    shareUri = shareUri,
-                    message = when {
-                        fullRes == null -> "渲染失败，请重试"
-                        ok -> "已保存到相册"
-                        else -> "保存失败，请检查存储空间或权限"
-                    },
-                ),
+                saveToast = when {
+                    fullRes == null -> "渲染失败，请重试"
+                    ok -> "已保存到相册"
+                    else -> "保存失败，请检查存储空间或权限"
+                },
             )
         }
     }
@@ -114,15 +110,7 @@ class BillViewViewModel(
             state = state.copy(exporting = true)
             val fullRes = renderFullRes()
             if (fullRes == null) {
-                state = state.copy(
-                    exporting = false,
-                    exportOutcome = ViewOutcome(
-                        saved = false,
-                        fileName = repo.billFileName(bill),
-                        shareUri = null,
-                        message = "渲染失败，请重试",
-                    ),
-                )
+                state = state.copy(exporting = false, saveToast = "渲染失败，请重试")
                 return@launch
             }
             val uri = withContext(Dispatchers.IO) {
@@ -140,8 +128,8 @@ class BillViewViewModel(
         }
     }
 
-    fun consumeExportOutcome() {
-        state = state.copy(exportOutcome = null)
+    fun consumeSaveToast() {
+        state = state.copy(saveToast = null)
     }
 
     fun consumeShareOutcome() {
