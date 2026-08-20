@@ -64,6 +64,7 @@ import com.example.quickbillmate.ui.common.DatePickerDialog
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
 import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.LabeledSwitch
@@ -601,7 +602,7 @@ private fun EditorSettingsDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DialogScrollColumn {
             PresetInlineList(
                 currentKey = currentPresetKey,
                 presets = presets,

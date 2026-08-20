@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +46,7 @@ import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DialogButtons
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DefaultInfoValues
+import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.LabeledField
 import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.ui.editor.presetDisplayName
@@ -59,6 +62,7 @@ import java.util.Date
 import java.util.Locale
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -401,10 +405,7 @@ fun SettingsContent(
     if (showUnitsDialog) {
         UnitPresetsDialog(
             customUnits = customUnits,
-            onSave = {
-                onCustomUnitsChange(it)
-                showUnitsDialog = false
-            },
+            onUnitsChange = onCustomUnitsChange,
             onDismiss = { showUnitsDialog = false },
         )
     }
@@ -518,15 +519,16 @@ fun SettingsContent(
     }
 }
 
-/** 预置单位管理：内置固定展示，自定义可增删；保存后生效于新增商品的下拉选项。 */
+/** 预置单位管理：内置固定展示，自定义可增删；增删即时生效（点击“添加”即保存）。 */
 @Composable
 private fun UnitPresetsDialog(
     customUnits: List<String>,
-    onSave: (List<String>) -> Unit,
+    onUnitsChange: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var local by remember(customUnits) { mutableStateOf(customUnits) }
     var input by remember { mutableStateOf("") }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
     val trimmed = input.trim()
     val canAdd = trimmed.length in 1..InputLimits.UNIT &&
         trimmed !in SettingsStore.BUILTIN_UNITS &&
@@ -538,7 +540,7 @@ private fun UnitPresetsDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DialogScrollColumn {
             Text(
                 "内置单位",
                 style = AppThemeTypography.titleSmall,
@@ -565,13 +567,19 @@ private fun UnitPresetsDialog(
             } else {
                 local.forEach { unit ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(unit, style = AppThemeTypography.bodyMedium, modifier = Modifier.weight(1f))
-                        SmallTextButton(
+                        TextButton(
                             text = "删除",
-                            onClick = { local = local - unit },
+                            onClick = { pendingDelete = unit },
+                            minHeight = 24.dp,
+                            insideMargin = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                color = AppThemeColors.error,
+                                textColor = Color.White,
+                            ),
                         )
                     }
                 }
@@ -592,20 +600,31 @@ private fun UnitPresetsDialog(
                     text = "添加",
                     onClick = {
                         if (canAdd) {
-                            local = local + trimmed
+                            val next = local + trimmed
+                            local = next
                             input = ""
+                            onUnitsChange(next)
                         }
                     },
                     enabled = canAdd,
                 )
             }
-            Spacer(Modifier.height(Ds.md))
-            DialogButtons(
-                confirmText = "保存",
-                onCancel = onDismiss,
-                onConfirm = { onSave(local) },
-            )
         }
+    }
+
+    pendingDelete?.let { unit ->
+        ConfirmDialog(
+            title = "删除单位",
+            text = "确定删除自定义单位“$unit”吗？",
+            destructive = true,
+            onConfirm = {
+                val next = local - unit
+                local = next
+                pendingDelete = null
+                onUnitsChange(next)
+            },
+            onDismiss = { pendingDelete = null },
+        )
     }
 }
 
@@ -653,7 +672,7 @@ private fun DefaultInfoDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DialogScrollColumn {
             DefaultInfoForm(values = local, onChange = { local = it })
 
             Spacer(Modifier.height(Ds.lg))

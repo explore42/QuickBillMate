@@ -32,8 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.Ds
@@ -67,6 +65,7 @@ import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DetailLine
 import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
 import com.example.quickbillmate.ui.common.IndexSection
@@ -775,7 +774,7 @@ private fun ProductEditDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DialogScrollColumn {
             LabeledField(
                 "名称*",
                 name,

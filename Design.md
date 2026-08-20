@@ -373,7 +373,7 @@ QuickBillMate（MainActivity）
 | 主题色    | 跟随壁纸 / 预置种子色（品牌紫 #9c11e1 等）                  | 品牌紫                |
 | 默认图片样式 | 内置 + 自定义预设列表，可进入样式管理页                        | 经典单据（简洁）           |
 | 默认信息   | 标题后缀、编号代码、公司名称、客户经理、联系电话、备注、广告文案、水印文案及对应显示开关 | 标题后缀“单据”、编号代码“PH”等 |
-| 预置单位   | 新增商品单位下拉选项：内置 桶/筒/代/张/卷/支/把 + 自定义增删（弹窗管理）            | 仅内置 7 个            |
+| 预置单位   | 新增商品单位下拉选项：内置 桶/筒/代/张/卷/支/把 + 自定义增删（弹窗管理，增删即时生效，删除需二次确认，无保存/取消按钮） | 仅内置 7 个 |
 | 微信二维码  | 上传收款码图片 → 方形裁剪 → 全局显示；可移除                    | 未设置                |
 | 崩溃日志   | 查看/复制/清除本地崩溃记录（无联网）                          | 无                  |
 | 关于     | 版本号、开源协议（Apache License 2.0）、GitHub 地址       | —                  |
@@ -767,6 +767,12 @@ Data 层（Room 实体/DAO/数据库；MediaStore；FileProvider）
 
 依赖注入采用手写构造（`AppViewModelProvider`），不引入 Hilt。
 
+弹窗键盘适配规范：含输入框的弹窗（新增/编辑商品、客户、默认信息、预置单位、单据设置）内容统一使用
+`DialogScrollColumn`——高度上限 = 屏幕高 − 状态栏 − 输入法高度 − 12dp 余量，键盘弹出时卡片收缩到可视区内、
+超长内容在内部滚动、聚焦字段自动 bringIntoView；纯展示/按钮弹窗（关于、确认、详情等）不限高。
+`MainActivity` 显式设置 `windowSoftInputMode=adjustResize`（禁止 `adjustPan` 平移窗口），键盘定位完全由
+`imePadding`/insets 负责，避免“弹窗被抬高、与键盘留出大空隙”的问题。
+
 ### 11.2 工程结构（app 模块内）
 
 ```
@@ -777,7 +783,7 @@ app/src/main/java/com/example/quickbillmate/
 │   ├── theme/                              // Material 3 深浅色主题
 │   ├── home/  editor/  view/  products/  customers/
 │   ├── contacts/  presets/  settings/
-│   └── common/                             // 顶栏、搜索框、分组头、索引栏、多选操作栏、默认信息表单等
+│   └── common/                             // 顶栏、搜索框、分组头、索引栏、多选操作栏、默认信息表单、弹窗滚动容器等
 ├── data/
 │   ├── db/                                 // AppDatabase、实体、DAO
 │   └── repository/                         // AppRepository、SettingsStore
@@ -815,6 +821,8 @@ app/src/main/java/com/example/quickbillmate/
 
 - `READ_CONTACTS`：通讯录导入/编辑页联想时运行时申请。
 - `FileProvider`：authority `com.example.quickbillmate.fileprovider`，路径指向缓存 `shared` 目录。
+- `MainActivity` 使用 `windowSoftInputMode="adjustResize"`：配合 edge-to-edge 让输入法 insets 正常下发，
+  由 Compose `imePadding` 处理键盘避让（不用默认的 `adjustPan`，否则键盘弹出时会整窗平移）。
 - 无需 INTERNET 权限（应用不联网，崩溃日志仅本地记录）。
 
 ### 11.6 本地崩溃日志（无联网）

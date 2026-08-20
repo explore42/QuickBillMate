@@ -28,8 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
@@ -54,6 +52,7 @@ import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.DetailLine
 import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.common.AppTopBar
 import com.example.quickbillmate.ui.common.EmptyState
 import com.example.quickbillmate.ui.common.GroupSectionHeader
@@ -508,7 +507,7 @@ private fun CustomerEditDialog(
         show = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DialogScrollColumn {
             LabeledField("姓名*", name, { if (it.length <= InputLimits.NAME) name = it })
             Spacer(Modifier.height(12.dp))
             Text("电话", style = AppThemeTypography.titleSmall)
