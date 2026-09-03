@@ -39,10 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
@@ -69,7 +72,6 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.basic.Close
 import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.Report
 import top.yukonga.miuix.kmp.icon.extended.Store
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -245,7 +247,12 @@ fun HomeContent(
                     onQueryChange = onSearchQueryChange,
                     actions = {
                         IconButton(onClick = onOpenReport) {
-                            Icon(MiuixIcons.Report, contentDescription = "报表")
+                            // 数据报表入口：用 📊 表意（miuix 的 Report 是举报/防护语义图标）
+                            Text(
+                                "📊",
+                                fontSize = 18.sp,
+                                modifier = Modifier.semantics { contentDescription = "报表" },
+                            )
                         }
                     },
                 )

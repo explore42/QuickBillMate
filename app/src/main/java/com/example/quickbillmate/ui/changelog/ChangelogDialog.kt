@@ -104,29 +104,55 @@ private fun VersionCard(section: VersionChange) {
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(Ds.sm))
-            if (section.changes.isEmpty()) {
+            if (section.important.isEmpty() && section.others.isEmpty()) {
                 Text(
                     "欢迎体验新版本",
                     style = AppThemeTypography.bodyMedium,
                     color = AppThemeColors.onSurfaceVariant,
                 )
             } else {
-                section.changes.forEach { change ->
-                    Row(modifier = Modifier.padding(vertical = 3.dp)) {
-                        Text(
-                            "•",
-                            style = AppThemeTypography.bodyMedium,
-                            color = AppThemeColors.primary,
-                        )
-                        Spacer(Modifier.width(Ds.sm))
-                        Text(
-                            change,
-                            style = AppThemeTypography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                if (section.important.isNotEmpty()) {
+                    GroupCaption("重要")
+                    section.important.forEach { ChangeLine("★", it, highlighted = true) }
+                }
+                if (section.important.isNotEmpty() && section.others.isNotEmpty()) {
+                    Spacer(Modifier.height(Ds.md))
+                }
+                if (section.others.isNotEmpty()) {
+                    GroupCaption("其他")
+                    section.others.forEach { ChangeLine("•", it, highlighted = false) }
                 }
             }
         }
+    }
+}
+
+/** 版本卡片内的分组小标题（重要 / 其他）。 */
+@Composable
+private fun GroupCaption(text: String) {
+    Text(
+        text,
+        style = AppThemeTypography.labelMedium,
+        color = AppThemeColors.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(2.dp))
+}
+
+/** 单条变更：重要条目用主色实心圆点强调，一般条目用普通圆点。 */
+@Composable
+private fun ChangeLine(marker: String, text: String, highlighted: Boolean) {
+    Row(modifier = Modifier.padding(vertical = 3.dp)) {
+        Text(
+            marker,
+            style = AppThemeTypography.bodyMedium,
+            color = AppThemeColors.primary,
+        )
+        Spacer(Modifier.width(Ds.sm))
+        Text(
+            text,
+            style = AppThemeTypography.bodyMedium,
+            color = if (highlighted) AppThemeColors.onSurface else AppThemeColors.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
     }
 }

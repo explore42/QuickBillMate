@@ -828,7 +828,7 @@ private fun ItemCardEditor(
             // 第四行：备注
             TextField(
                 value = row.note,
-                onValueChange = { if (it.length <= InputLimits.REMARK) onUpdate(row.copy(note = it)) },
+                onValueChange = { onUpdate(row.copy(note = it.take(InputLimits.REMARK))) },
                 label = "备注",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),

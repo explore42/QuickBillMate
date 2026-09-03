@@ -374,6 +374,8 @@ QuickBillMate（MainActivity）
 - 动态取色默认开启：`ThemeController(ColorSchemeMode.MonetSystem/…, keyColor)` 生成配色；
   `keyColor=null` 时跟随壁纸，否则使用预置种子色（默认品牌紫 #9c11e1）。
 - “默认信息”用于新建单据时带入：`titleSuffix=单据`、`docCode=PH`、公司/经理/电话为空、显示经理/备注/联系电话开、多电话/广告/水印关。
+- 广告文案支持多行输入（`InputLimits.AD=200`，录入侧超限截断不拒绝），并附单据页脚实时预览；
+  水印文案独立限制 ≤60。备注/客户备注/行备注等输入同采用截断式限制（粘贴超长内容保留前缀）。
 - “默认信息”弹窗底部可上传微信收款码：选图后进入全屏方形裁剪页（拖动 + 双指缩放 1–4 倍，初始定位图片顶部，适配
   1094×1625 收款码），保存后写入内部存储 `filesDir/qr_code.png`，所有单据（含历史单据）左上角显示；未上传不显示，可随时移除。
 - “崩溃日志”展示本地记录（时间 + 异常摘要），支持复制全部与二次确认后清除；无记录时显示“暂无崩溃记录”。
@@ -416,6 +418,7 @@ QuickBillMate（MainActivity）
 - 展示形式：主界面之上的覆盖对话框（`ChangelogDialog`，miuix `OverlayDialog` + `DialogScrollColumn`），
   不再使用独立页面、不进入导航栈；内容为版本卡片列表（最新在前），注册表 `VersionChangelog`
   无条目时兜底显示「已更新至 vX.Y.Z」；底部【开始使用】关闭对话框。
+- 条目分级：每版本分「重要」（`important`，★ 主色圆点强调）与「其他」（`others`，普通圆点）两组展示。
 - 历史查看：设置页【关于】对话框内新增【查看升级说明】入口 → `ChangelogHistoryDialog`
   按版本倒序列出注册表全部条目（`VersionChangelog.entries`）。
 - 已读策略：对话框组合即写入 `lastSeenVersionCode=当前`，中途退出不再重复弹出；

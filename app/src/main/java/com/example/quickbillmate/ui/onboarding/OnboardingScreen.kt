@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.ui.AppViewModelProvider
@@ -39,7 +40,6 @@ import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.File
-import top.yukonga.miuix.kmp.icon.extended.Report
 import top.yukonga.miuix.kmp.icon.extended.Store
 
 /** 首次安装引导页：欢迎 → 填写默认信息（可跳过）。 */
@@ -101,11 +101,11 @@ private fun WelcomeStep(
                 color = AppThemeColors.onSurfaceVariant,
             )
             Spacer(Modifier.height(Ds.lg))
-            FeatureRow(MiuixIcons.Store, "开单更快", "客户、商品、默认信息一次填好，新建单据直接带入")
+            FeatureRow(leading = { Icon(MiuixIcons.Store, contentDescription = null, tint = AppThemeColors.primary) }, title = "开单更快", desc = "客户、商品、默认信息一次填好，新建单据直接带入")
             Spacer(Modifier.height(Ds.md))
-            FeatureRow(MiuixIcons.Report, "报表分析", "按时间、客户、商品统计单据与金额，辅助经营决策")
+            FeatureRow(leading = { Text("📊", fontSize = 20.sp) }, title = "报表分析", desc = "按时间、客户、商品统计单据与金额，辅助经营决策")
             Spacer(Modifier.height(Ds.md))
-            FeatureRow(MiuixIcons.File, "数据自主", "单据、商品、客户、默认信息可随时导入导出，不锁数据")
+            FeatureRow(leading = { Icon(MiuixIcons.File, contentDescription = null, tint = AppThemeColors.primary) }, title = "数据自主", desc = "单据、商品、客户、默认信息可随时导入导出，不锁数据")
             Spacer(Modifier.height(Ds.lg))
             Button(
                 onClick = onGo,
@@ -138,7 +138,7 @@ private fun SkipText(onSkip: () -> Unit) {
 
 @Composable
 private fun FeatureRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    leading: @Composable () -> Unit,
     title: String,
     desc: String,
 ) {
@@ -151,7 +151,7 @@ private fun FeatureRow(
             modifier = Modifier.padding(Ds.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = AppThemeColors.primary)
+            leading()
             Spacer(Modifier.width(Ds.md))
             Column {
                 Text(title, style = AppThemeTypography.titleSmall)

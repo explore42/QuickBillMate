@@ -11,7 +11,8 @@ class VersionChangelogTest {
         val result = VersionChangelog.entriesFor(lastSeen = 4, current = 5)
         assertEquals(1, result.size)
         assertEquals(5, result[0].versionCode)
-        assertTrue(result[0].changes.isNotEmpty())
+        assertTrue(result[0].important.isNotEmpty())
+        assertTrue(result[0].others.isNotEmpty())
     }
 
     @Test
@@ -47,7 +48,8 @@ class VersionChangelogTest {
         )
         assertEquals(1, result.size)
         assertEquals("已更新至 v1.2.1", result[0].title)
-        assertTrue(result[0].changes.isEmpty())
+        assertTrue(result[0].important.isEmpty())
+        assertTrue(result[0].others.isEmpty())
     }
 
     @Test

@@ -510,7 +510,7 @@ private fun CustomerEditDialog(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            LabeledField("备注", remark, { if (it.length <= InputLimits.REMARK) remark = it })
+            LabeledField("备注", remark, { remark = it.take(InputLimits.REMARK) })
             Spacer(Modifier.height(4.dp))
             LabeledSwitch("收藏", favorite, { favorite = it })
             error?.let {

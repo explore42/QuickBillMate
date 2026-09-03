@@ -541,7 +541,7 @@ private fun ProductEditDialog(
             Spacer(Modifier.height(12.dp))
             LabeledField("包装规格", pack, { if (it.length <= InputLimits.PACK) pack = it })
             Spacer(Modifier.height(12.dp))
-            LabeledField("备注", note, { if (it.length <= InputLimits.REMARK) note = it })
+            LabeledField("备注", note, { note = it.take(InputLimits.REMARK) })
             Spacer(Modifier.height(12.dp))
             LabeledSwitch("收藏", favorite, { favorite = it })
             error?.let {

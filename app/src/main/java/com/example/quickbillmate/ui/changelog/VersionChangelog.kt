@@ -1,11 +1,12 @@
 package com.example.quickbillmate.ui.changelog
 
-/** 单个版本的升级说明条目。 */
+/** 单个版本的升级说明条目：important 为重要功能/修复，others 为一般优化。 */
 data class VersionChange(
     val versionCode: Int,
     val versionName: String,
     val title: String,
-    val changes: List<String>,
+    val important: List<String> = emptyList(),
+    val others: List<String> = emptyList(),
 )
 
 /**
@@ -19,14 +20,17 @@ object VersionChangelog {
             versionCode = 5,
             versionName = "1.2.0",
             title = "v1.2.0 主要更新",
-            changes = listOf(
-                "修复：软键盘弹出时弹窗不再被顶出屏幕或留出大空隙，底部输入更顺手",
-                "优化：预置单位弹窗支持即时保存，删除需二次确认",
-                "新增：首次安装引导页，突出填写默认信息入口",
-                "新增：设置页数据导入导出——单据、商品、客户、默认信息可备份与迁移",
+            important = listOf(
                 "新增：首页数据报表——按时间、客户、商品统计单据与金额",
-                "新增：广告文案支持多行输入，默认信息中可实时预览单据页脚效果",
-                "新增：升级更新说明——升级后弹窗展示新功能，设置-关于可随时回看历史版本",
+                "新增：设置页数据导入导出——单据、商品、客户、默认信息可备份与迁移",
+                "新增：广告文案支持多行输入与长文本粘贴，可实时预览单据页脚效果",
+                "新增：首次安装引导页，引导填写默认信息",
+                "新增：升级更新说明——升级后弹窗展示新功能，设置-关于可回看历史版本",
+                "修复：软键盘弹出时弹窗不再被顶出屏幕，底部输入更顺手",
+            ),
+            others = listOf(
+                "优化：预置单位弹窗支持即时保存，删除需二次确认",
+                "优化：引导页按钮层级调整，突出主操作入口",
             ),
         ),
     )
@@ -59,7 +63,6 @@ object VersionChangelog {
                     versionCode = current,
                     versionName = currentVersionName,
                     title = "已更新至 v${currentVersionName.ifBlank { "新版本" }}",
-                    changes = emptyList(),
                 )
             )
         } else {
