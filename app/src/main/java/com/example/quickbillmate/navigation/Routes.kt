@@ -3,7 +3,6 @@ package com.example.quickbillmate.navigation
 object Routes {
     const val TABS = "tabs"
     const val ONBOARDING = "onboarding"
-    const val CHANGELOG = "changelog"
     const val DATA_MANAGER = "data_manager"
     const val REPORT = "report"
     const val HOME = "home"

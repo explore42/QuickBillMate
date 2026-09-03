@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.StylePreset
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
+import com.example.quickbillmate.ui.changelog.ChangelogHistoryDialog
 import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.data.repository.SettingsStore
 import com.example.quickbillmate.ui.common.AppTopBar
@@ -234,6 +235,7 @@ fun SettingsContent(
     var showCrashLogsDialog by remember { mutableStateOf(false) }
     var showClearCrashConfirm by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showChangelogHistory by remember { mutableStateOf(false) }
 
     val paletteStyleLabels = listOf("标准", "柔和", "鲜艳", "个性")
     val paletteStyleValues = listOf("TonalSpot", "Neutral", "Vibrant", "Expressive")
@@ -446,6 +448,14 @@ fun SettingsContent(
                     onClick = { onOpenUrl(PROJECT_URL) },
                 )
                 Spacer(Modifier.height(8.dp))
+                TextButton(
+                    text = "查看升级说明",
+                    onClick = {
+                        showAboutDialog = false
+                        showChangelogHistory = true
+                    },
+                )
+                Spacer(Modifier.height(8.dp))
                 DialogButtons(
                     confirmText = "关闭",
                     cancelText = null,
@@ -453,6 +463,10 @@ fun SettingsContent(
                 )
             }
         }
+    }
+
+    if (showChangelogHistory) {
+        ChangelogHistoryDialog(onDismiss = { showChangelogHistory = false })
     }
 
     if (showCrashLogsDialog) {

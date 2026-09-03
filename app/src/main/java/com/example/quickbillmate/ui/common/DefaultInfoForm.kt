@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.Ds
@@ -13,8 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.util.InputLimits
+import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -83,8 +91,7 @@ fun DefaultInfoForm(
                 checked = values.showRemark,
                 onCheckedChange = { onChange(values.copy(showRemark = it)) },
             )
-            InlineFieldRow(
-                label = "广告文案",
+            AdTextEditor(
                 value = values.adText,
                 onValueChange = { if (it.length <= InputLimits.AD) onChange(values.copy(adText = it)) },
                 checked = values.showAd,
@@ -135,6 +142,71 @@ private fun InlineFieldRow(
         )
         Spacer(Modifier.width(Ds.sm))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/**
+ * 广告文案：标签与显示开关一行，下方为多行输入框与单据页脚实时预览。
+ * 预览按单据页脚样式（13sp、换行分段）呈现，输入即所见。
+ */
+@Composable
+private fun AdTextEditor(
+    value: String,
+    onValueChange: (String) -> Unit,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("广告文案", style = AppThemeTypography.bodyMedium)
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+        LabeledField(
+            label = "",
+            placeholder = "支持多行，换行后在单据上分段显示",
+            value = value,
+            onChange = onValueChange,
+            singleLine = false,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 96.dp),
+        )
+        Spacer(Modifier.height(Ds.sm))
+        Surface(
+            shape = RoundedCornerShape(Ds.md),
+            color = AppThemeColors.surfaceContainer,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(Ds.md),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "单据页脚预览",
+                    style = AppThemeTypography.labelMedium,
+                    color = AppThemeColors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(Ds.sm))
+                if (value.isBlank()) {
+                    Text(
+                        "未填写广告文案",
+                        style = AppThemeTypography.bodySmall,
+                        color = AppThemeColors.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        value,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
     }
 }
 

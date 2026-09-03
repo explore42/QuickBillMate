@@ -1,5 +1,6 @@
 package com.example.quickbillmate.ui.onboarding
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +37,6 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Report
@@ -113,13 +113,26 @@ private fun WelcomeStep(
             ) {
                 Text("去填写默认信息")
             }
-            Spacer(Modifier.height(Ds.sm))
-            TextButton(
-                text = "跳过",
-                onClick = onSkip,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SkipText(onSkip = onSkip)
         }
+    }
+}
+
+/** 弱化的跳过入口：居中小号次要文字，保证触控目标的同时不与主按钮争夺注意力。 */
+@Composable
+private fun SkipText(onSkip: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "跳过",
+            style = AppThemeTypography.bodyMedium,
+            color = AppThemeColors.onSurfaceVariant,
+            modifier = Modifier
+                .clickable(onClick = onSkip)
+                .padding(horizontal = Ds.lg, vertical = Ds.md),
+        )
     }
 }
 
@@ -189,12 +202,7 @@ private fun FormStep(
             ) {
                 Text("保存并开始使用")
             }
-            Spacer(Modifier.height(Ds.sm))
-            TextButton(
-                text = "跳过",
-                onClick = onSkip,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SkipText(onSkip = onSkip)
         }
     }
 }

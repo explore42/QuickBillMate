@@ -4,72 +4,88 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.ui.AppViewModelProvider
-import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.DialogButtons
+import com.example.quickbillmate.ui.common.DialogScrollColumn
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.Ds
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
-/** 升级更新说明页：累积展示 (上次已读, 当前] 版本的新功能与变动。 */
+/**
+ * 升级更新说明对话框：升级后首次打开时展示 (上次已读, 当前] 版本的新功能与变动。
+ * 已读策略保持"显示即标记"：ViewModel 创建时即写入 lastSeenVersionCode。
+ */
 @Composable
-fun ChangelogScreen(
+fun ChangelogDialog(
     onFinish: () -> Unit,
     viewModel: ChangelogViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
-    Scaffold(
-        topBar = {
-            AppTopBar(title = "更新说明")
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Ds.screen, vertical = Ds.sm),
-                verticalArrangement = Arrangement.spacedBy(Ds.md),
+    OverlayDialog(
+        title = "更新说明",
+        show = true,
+        onDismissRequest = onFinish,
+    ) {
+        DialogScrollColumn(verticalArrangement = Arrangement.spacedBy(Ds.md)) {
+            Text(
+                "本次升级带来了以下新功能与变动",
+                style = AppThemeTypography.bodySmall,
+                color = AppThemeColors.onSurfaceVariant,
+            )
+            viewModel.sections.forEach { section ->
+                VersionCard(section)
+            }
+            Button(
+                onClick = onFinish,
+                modifier = Modifier.fillMaxWidth(),
             ) {
+                Text("开始使用")
+            }
+        }
+    }
+}
+
+/**
+ * 历史升级说明对话框：设置-关于入口，按版本倒序列出全部已发布版本的说明。
+ */
+@Composable
+fun ChangelogHistoryDialog(onDismiss: () -> Unit) {
+    OverlayDialog(
+        title = "升级说明",
+        show = true,
+        onDismissRequest = onDismiss,
+    ) {
+        DialogScrollColumn(verticalArrangement = Arrangement.spacedBy(Ds.md)) {
+            val entries = VersionChangelog.entries.sortedByDescending { it.versionCode }
+            if (entries.isEmpty()) {
                 Text(
-                    "本次升级带来了以下新功能与优化",
-                    style = AppThemeTypography.bodySmall,
+                    "暂无版本说明",
+                    style = AppThemeTypography.bodyMedium,
                     color = AppThemeColors.onSurfaceVariant,
                 )
-                viewModel.sections.forEach { section ->
+            } else {
+                entries.forEach { section ->
                     VersionCard(section)
                 }
-                Spacer(Modifier.height(Ds.sm))
             }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Ds.screen, vertical = Ds.md),
-            ) {
-                Button(
-                    onClick = onFinish,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("开始使用")
-                }
-            }
+            DialogButtons(
+                confirmText = "关闭",
+                cancelText = null,
+                onConfirm = onDismiss,
+            )
         }
     }
 }

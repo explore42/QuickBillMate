@@ -33,7 +33,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
-import com.example.quickbillmate.ui.changelog.ChangelogScreen
+import com.example.quickbillmate.ui.changelog.ChangelogDialog
 import com.example.quickbillmate.ui.contacts.ContactsImportScreen
 import com.example.quickbillmate.ui.customers.CustomersScreen
 import com.example.quickbillmate.ui.data.DataManagerScreen
@@ -67,6 +67,8 @@ private const val SLIDE_DURATION_MS = 320
 fun QuickBillMateAppNavHost(
     navController: NavHostController,
     startDestination: String = Routes.TABS,
+    showChangelog: Boolean = false,
+    onChangelogDismiss: () -> Unit = {},
     onThemeModeChange: (String) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onThemeKeyColorChange: (Long) -> Unit,
@@ -140,7 +142,7 @@ fun QuickBillMateAppNavHost(
                 },
             ) {
                 composable(Routes.TABS) {
-                    // 外部应用打开 JSON：主界面就绪后再进入导入确认（引导/更新说明页不提前弹走）
+                    // 外部应用打开 JSON：主界面就绪后再进入导入确认（引导页不提前弹走；更新说明为覆盖对话框，不拦截导航）
                     LaunchedEffect(PendingImport.uri) {
                         if (PendingImport.uri != null) {
                             navController.navigate(Routes.DATA_MANAGER) { launchSingleTop = true }
@@ -178,16 +180,6 @@ fun QuickBillMateAppNavHost(
                         onFinish = {
                             navController.navigate(Routes.TABS) {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
-                        },
-                    )
-                }
-
-                composable(Routes.CHANGELOG) {
-                    ChangelogScreen(
-                        onFinish = {
-                            navController.navigate(Routes.TABS) {
-                                popUpTo(Routes.CHANGELOG) { inclusive = true }
                             }
                         },
                     )
@@ -272,6 +264,11 @@ fun QuickBillMateAppNavHost(
                 )
             }
         }
+
+            // 升级更新说明：根 Scaffold 内的覆盖对话框（OverlayDialog 依赖 Scaffold 内置的弹窗宿主）
+            if (showChangelog) {
+                ChangelogDialog(onFinish = onChangelogDismiss)
+            }
 
             // 底部导航栏覆盖层：内容从栏下滑过时透出模糊（半透明材质）
             // textureBlur 直接挂在 NavigationBar 上（不额外包 Box），与 layerBackdrop 共存验证

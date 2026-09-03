@@ -57,13 +57,17 @@ class MainActivity : ComponentActivity() {
                     ProvideHaptics(enabled = hapticsEnabled) {
                         val repo = (application as QuickBillMateApp).repository
                         val currentVersionCode = remember { AppVersion.code(applicationContext) }
-                        // 启动目的地：全新安装→引导页；升级/老用户首启本功能→更新说明；其余→主界面
+                        // 启动目的地：全新安装→引导页；升级/老用户首启本功能→主界面+更新说明对话框；其余→主界面
                         var startDestination by remember { mutableStateOf<String?>(null) }
+                        var showChangelog by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) {
                             val lastSeen = repo.settings.lastSeenVersionCode
                             startDestination = when {
                                 !repo.settings.onboardingCompleted && !repo.hasAnyDataOnce() -> Routes.ONBOARDING
-                                lastSeen == 0 || lastSeen < currentVersionCode -> Routes.CHANGELOG
+                                lastSeen == 0 || lastSeen < currentVersionCode -> {
+                                    showChangelog = true
+                                    Routes.TABS
+                                }
                                 else -> Routes.TABS
                             }
                         }
@@ -75,6 +79,8 @@ class MainActivity : ComponentActivity() {
                             QuickBillMateAppNavHost(
                                 navController = navController,
                                 startDestination = destination,
+                                showChangelog = showChangelog,
+                                onChangelogDismiss = { showChangelog = false },
                                 onThemeModeChange = { mode ->
                                     themeMode = mode
                                     settings.themeMode = mode
