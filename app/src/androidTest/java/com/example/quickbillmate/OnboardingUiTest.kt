@@ -62,7 +62,7 @@ class OnboardingUiTest {
         // 引导完成后重启：直接进入主界面，不显示更新说明
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor { composeRule.onAllNodesWithText("还没有单据，点击右下角新建").fetchSemanticsNodes().isNotEmpty() }
-            composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isEmpty()
+            composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isEmpty()
         }
     }
 
@@ -75,10 +75,10 @@ class OnboardingUiTest {
         }
         ActivityScenario.launch(MainActivity::class.java).use {
             // 升级用户：更新说明对话框出现，且不进入引导页
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isNotEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isNotEmpty() }
             composeRule.onAllNodesWithText("去填写默认信息").fetchSemanticsNodes().isEmpty()
             composeRule.onNodeWithText("开始使用").performClick()
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isEmpty() }
             waitFor { composeRule.onAllNodesWithText("还没有单据，点击右下角新建").fetchSemanticsNodes().isNotEmpty() }
         }
     }

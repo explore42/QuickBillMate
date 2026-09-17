@@ -23,9 +23,10 @@ import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Share
 
-/** 多选底部操作栏：复制 / 编辑 / 导出 / 删除（编辑仅单选可用）。 */
+/** 多选底部操作栏：复制 / 编辑 / 导出 / 删除（复制、编辑仅单选可用）。 */
 @Composable
 fun SelectionActionBar(
+    canCopy: Boolean,
     canEdit: Boolean,
     onCopy: () -> Unit,
     onEdit: () -> Unit,
@@ -39,7 +40,7 @@ fun SelectionActionBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SelectionAction(MiuixIcons.Add, "复制", true, onCopy)
+        SelectionAction(MiuixIcons.Add, "复制", canCopy, onCopy)
         SelectionAction(MiuixIcons.Edit, "编辑", canEdit, onEdit)
         if (onExport != null) {
             SelectionAction(MiuixIcons.Share, "导出", true, onExport)

@@ -172,6 +172,7 @@ fun QuickBillMateAppNavHost(
                         onManagePresets = { navController.navigate(Routes.PRESETS) },
                         onManageData = { navController.navigate(Routes.DATA_MANAGER) },
                         onOpenReport = { navController.navigate(Routes.REPORT) },
+                        onCopyBill = { sourceId -> navController.navigate(Routes.editor(0, sourceId)) },
                     )
                 }
 
@@ -204,11 +205,16 @@ fun QuickBillMateAppNavHost(
                     navArgument(Routes.EDITOR_ARG_BILL_ID) {
                         type = NavType.LongType
                         defaultValue = 0L
-                    }
+                    },
+                    navArgument(Routes.EDITOR_ARG_COPY_FROM) {
+                        type = NavType.LongType
+                        defaultValue = 0L
+                    },
                 ),
             ) { entry ->
                 EditorScreen(
                     billId = entry.arguments?.getLong(Routes.EDITOR_ARG_BILL_ID) ?: 0L,
+                    copyFrom = entry.arguments?.getLong(Routes.EDITOR_ARG_COPY_FROM) ?: 0L,
                     onBack = { navController.popBackStack() },
                     onManagePresets = { navController.navigate(Routes.PRESETS) },
                 )
@@ -324,6 +330,7 @@ private fun TabPagerHost(
     onManagePresets: () -> Unit,
     onManageData: () -> Unit,
     onOpenReport: () -> Unit,
+    onCopyBill: (Long) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -335,6 +342,7 @@ private fun TabPagerHost(
                 onNewBill = onNewBill,
                 onOpenBill = onOpenBill,
                 onOpenReport = onOpenReport,
+                onCopyBill = onCopyBill,
                 onSelectionModeChange = { onSelectionModeChange(0, it) },
                 scrollToTopTick = homeScrollTicks,
             )

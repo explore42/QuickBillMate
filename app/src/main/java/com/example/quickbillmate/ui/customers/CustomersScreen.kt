@@ -152,6 +152,7 @@ fun CustomersScreen(
         }
     }
     var editing by remember { mutableStateOf<Customer?>(null) }
+    var copying by remember { mutableStateOf<Customer?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<Customer?>(null) }
@@ -161,13 +162,6 @@ fun CustomersScreen(
     }
 
     val context = LocalContext.current
-    val copyMessage = viewModel.copyMessage
-    LaunchedEffect(copyMessage) {
-        copyMessage?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeCopyMessage()
-        }
-    }
     BackHandler(enabled = viewModel.selectionMode) {
         viewModel.exitSelection()
     }
@@ -229,8 +223,13 @@ fun CustomersScreen(
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
                 SelectionActionBar(
+                    canCopy = viewModel.selectedIds.size == 1,
                     canEdit = viewModel.selectedIds.size == 1,
-                    onCopy = { viewModel.copySelected() },
+                    onCopy = {
+                        val id = viewModel.selectedIds.firstOrNull() ?: return@SelectionActionBar
+                        customers.firstOrNull { it.id == id }?.let { copying = it }
+                        viewModel.exitSelection()
+                    },
                     onEdit = { viewModel.editSelected { editing = it } },
                     onExport = null,
                     onDelete = {
@@ -325,6 +324,18 @@ fun CustomersScreen(
                 context.startActivity(Intent(Intent.ACTION_DIAL, "tel:$phone".toUri()))
             },
             onDismiss = { detail = null },
+        )
+    }
+
+    // 复制：以选中客户为模板预填“新增客户”弹窗，用户修改后再保存
+    copying?.let { source ->
+        CustomerEditDialog(
+            initial = source.copy(id = 0, name = source.name + "（副本）"),
+            onSave = { updated ->
+                viewModel.saveCustomer(updated)
+                copying = null
+            },
+            onDismiss = { copying = null },
         )
     }
 

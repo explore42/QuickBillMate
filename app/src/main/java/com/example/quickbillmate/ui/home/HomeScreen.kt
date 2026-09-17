@@ -104,6 +104,7 @@ fun HomeScreen(
     onNewBill: () -> Unit,
     onOpenBill: (Long) -> Unit,
     onOpenReport: () -> Unit = {},
+    onCopyBill: (Long) -> Unit = {},
     onSelectionModeChange: (Boolean) -> Unit,
     scrollToTopTick: Int = 0,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory),
@@ -114,14 +115,6 @@ fun HomeScreen(
 
     LaunchedEffect(viewModel.selectionMode) {
         onSelectionModeChange(viewModel.selectionMode)
-    }
-
-    val copyMessage = viewModel.copyMessage
-    LaunchedEffect(copyMessage) {
-        copyMessage?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeCopyMessage()
-        }
     }
 
     val exportMessage = viewModel.exportMessage
@@ -147,7 +140,12 @@ fun HomeScreen(
         onToggleSelection = viewModel::toggleSelection,
         onExitSelection = viewModel::exitSelection,
         onToggleSelectAll = viewModel::toggleSelectAll,
-        onCopy = viewModel::copySelected,
+        onCopy = {
+            viewModel.selectedIds.firstOrNull()?.let { id ->
+                viewModel.exitSelection()
+                onCopyBill(id)
+            }
+        },
         onEdit = { viewModel.editSelected(onOpenBill) },
         onExport = viewModel::exportSelected,
         onDeleteRequest = {
@@ -300,6 +298,7 @@ fun HomeContent(
                     }
                 } else {
                     SelectionActionBar(
+                        canCopy = selectedIds.size == 1,
                         canEdit = selectedIds.size == 1,
                         onCopy = onCopy,
                         onEdit = { onEdit(selectedIds.firstOrNull() ?: 0L) },

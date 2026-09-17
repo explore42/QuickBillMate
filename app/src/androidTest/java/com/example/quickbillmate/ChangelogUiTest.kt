@@ -57,20 +57,20 @@ class ChangelogUiTest {
 
     @Test
     fun upgradeShowsChangelogOnceThenMain() {
-        seedExistingUser(lastSeen = 4)
+        seedExistingUser(lastSeen = 5)
 
         ActivityScenario.launch(MainActivity::class.java).use {
             // 更新说明以对话框形式覆盖在主界面之上
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isNotEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isNotEmpty() }
             composeRule.onNodeWithText("开始使用").performClick()
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isEmpty() }
             waitFor { composeRule.onAllNodesWithText("还没有单据，点击右下角新建").fetchSemanticsNodes().isNotEmpty() }
         }
 
         // 重启后不再显示更新说明
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor { composeRule.onAllNodesWithText("还没有单据，点击右下角新建").fetchSemanticsNodes().isNotEmpty() }
-            composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isEmpty()
+            composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isEmpty()
         }
     }
 
@@ -79,9 +79,9 @@ class ChangelogUiTest {
         seedExistingUser(lastSeen = 0)
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isNotEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isNotEmpty() }
             composeRule.onNodeWithText("开始使用").performClick()
-            waitFor { composeRule.onAllNodesWithText("v1.2.0 主要更新").fetchSemanticsNodes().isEmpty() }
+            waitFor { composeRule.onAllNodesWithText("v1.2.1 主要更新").fetchSemanticsNodes().isEmpty() }
             waitFor { composeRule.onAllNodesWithText("还没有单据，点击右下角新建").fetchSemanticsNodes().isNotEmpty() }
         }
     }

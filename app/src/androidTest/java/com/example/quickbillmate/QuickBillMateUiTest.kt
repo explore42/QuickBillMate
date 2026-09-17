@@ -354,4 +354,54 @@ class QuickBillMateUiTest {
         composeRule.onAllNodesWithTag("select_group")[0].performClick()
         waitFor { composeRule.onAllNodesWithText("已选中 2 项").fetchSemanticsNodes().isNotEmpty() }
     }
+
+    @Test
+    fun copyBillOpensNewEditorPrefilled() {
+        val name = "复制源客户${System.currentTimeMillis() % 100000}"
+        createBillWithCustomer(name)
+
+        // 长按进入多选（仅 1 条，复制可用）
+        composeRule.waitForIdle()
+        Thread.sleep(300)
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+
+        // 复制 → 进入“新建单据”编辑页，客户名称已预填源单据内容
+        composeRule.onNodeWithText("复制").performClick()
+        waitFor { composeRule.onAllNodesWithText("新建单据").fetchSemanticsNodes().isNotEmpty() }
+        waitFor {
+            composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun copyProductOpensNewDialogWithCopySuffix() {
+        val name = "复制商品${System.currentTimeMillis() % 100000}"
+        composeRule.onNodeWithContentDescription("商品").performClick()
+        waitFor { composeRule.onAllNodesWithContentDescription("新增商品").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithContentDescription("新增商品").performClick()
+        waitFor { composeRule.onAllNodesWithText("新增商品").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("product_name").performClick()
+        composeRule.onNodeWithTag("product_name").performTextInput(name)
+        composeRule.onNodeWithTag("product_price").performClick()
+        composeRule.onNodeWithTag("product_price").performTextInput("35")
+        composeRule.onNodeWithText("保存").performClick()
+        waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
+
+        // 长按进入多选，复制 → 预填“新增商品”弹窗，名称带“（副本）”；保存生成新商品
+        composeRule.waitForIdle()
+        Thread.sleep(300)
+        composeRule.onAllNodes(hasText(name, substring = true))[0].performTouchInput { longClick() }
+        waitFor { composeRule.onAllNodesWithText("已选中 1 项").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("复制").performClick()
+        waitFor { composeRule.onAllNodesWithText("新增商品").fetchSemanticsNodes().isNotEmpty() }
+        waitFor {
+            composeRule.onAllNodes(hasText("$name（副本）", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("保存").performClick()
+        waitFor {
+            composeRule.onAllNodes(hasText("（副本）", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 }

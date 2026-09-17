@@ -74,6 +74,7 @@ import com.example.quickbillmate.ui.common.SectionCard
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.Ds
+import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
 import java.time.LocalDate
@@ -94,6 +95,7 @@ import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Months
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Remove
 import top.yukonga.miuix.kmp.icon.extended.Settings
@@ -103,12 +105,17 @@ import top.yukonga.miuix.kmp.overlay.OverlayDialog
 @Composable
 fun EditorScreen(
     billId: Long,
+    copyFrom: Long = 0L,
     onBack: () -> Unit,
     onManagePresets: () -> Unit,
     viewModel: EditorViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     LaunchedEffect(Unit) {
-        if (billId == 0L) viewModel.createNew() else viewModel.load(billId)
+        when {
+            billId == 0L && copyFrom > 0L -> viewModel.createCopy(copyFrom)
+            billId == 0L -> viewModel.createNew()
+            else -> viewModel.load(billId)
+        }
     }
 
     val s = viewModel.state
@@ -243,21 +250,29 @@ fun EditorScreen(
                         }
                     }
                     Spacer(Modifier.height(Ds.md))
-                    // 整行可点开日期选择（只读字段，点击即弹窗）
-                    TextField(
-                        value = s.docDate,
-                        onValueChange = {},
-                        label = "单据日期",
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { showDatePicker = true }) {
-                                Icon(MiuixIcons.ExpandMore, contentDescription = "选择日期")
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDatePicker = true },
-                    )
+                    // 整行可点开日期选择（只读字段，点击即弹窗）；右侧按钮一键设为今天
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Ds.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextField(
+                            value = s.docDate,
+                            onValueChange = {},
+                            label = "单据日期",
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showDatePicker = true }) {
+                                    Icon(MiuixIcons.ExpandMore, contentDescription = "选择日期")
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { showDatePicker = true },
+                        )
+                        IconButton(onClick = { viewModel.onDateChange(DateUtils.today()) }) {
+                            Icon(MiuixIcons.Months, contentDescription = "设为今天")
+                        }
+                    }
                     Spacer(Modifier.height(Ds.md))
                     LabeledSwitch("收藏", s.favorite, viewModel::onFavoriteChange)
                 }

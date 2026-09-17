@@ -147,8 +147,8 @@ fun ProductsScreen(
             }
         }
     }
-    val context = LocalContext.current
     var editing by remember { mutableStateOf<Product?>(null) }
+    var copying by remember { mutableStateOf<Product?>(null) }
     var showNewDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<Product?>(null) }
@@ -157,13 +157,6 @@ fun ProductsScreen(
         onSelectionModeChange(viewModel.selectionMode)
     }
 
-    val copyMessage = viewModel.copyMessage
-    LaunchedEffect(copyMessage) {
-        copyMessage?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
-            viewModel.consumeCopyMessage()
-        }
-    }
     BackHandler(enabled = viewModel.selectionMode) {
         viewModel.exitSelection()
     }
@@ -217,8 +210,13 @@ fun ProductsScreen(
                 exit = slideOutVertically { it } + fadeOut(),
             ) {
                 SelectionActionBar(
+                    canCopy = viewModel.selectedIds.size == 1,
                     canEdit = viewModel.selectedIds.size == 1,
-                    onCopy = { viewModel.copySelected() },
+                    onCopy = {
+                        val id = viewModel.selectedIds.firstOrNull() ?: return@SelectionActionBar
+                        products.firstOrNull { it.id == id }?.let { copying = it }
+                        viewModel.exitSelection()
+                    },
                     onEdit = { viewModel.editSelected { editing = it } },
                     onExport = null,
                     onDelete = {
@@ -361,6 +359,19 @@ fun ProductsScreen(
                 editing = product
             },
             onDismiss = { detail = null },
+        )
+    }
+
+    // 复制：以选中商品为模板预填“新增商品”弹窗，用户修改后再保存
+    copying?.let { source ->
+        ProductEditDialog(
+            initial = source.copy(id = 0, name = source.name + "（副本）"),
+            unitOptions = viewModel.presetUnits,
+            onSave = { updated ->
+                viewModel.saveProduct(updated)
+                copying = null
+            },
+            onDismiss = { copying = null },
         )
     }
 

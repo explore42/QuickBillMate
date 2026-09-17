@@ -69,8 +69,6 @@ class HomeViewModel(
         private set
     var selectedIds by mutableStateOf<Set<Long>>(emptySet())
         private set
-    var copyMessage by mutableStateOf<String?>(null)
-        private set
     var exportMessage by mutableStateOf<String?>(null)
         private set
 
@@ -179,18 +177,6 @@ class HomeViewModel(
         }
     }
 
-    fun copySelected() {
-        val ids = selectedIds
-        viewModelScope.launch {
-            var count = 0
-            ids.forEach { id ->
-                if (repo.copyBill(id) != null) count++
-            }
-            copyMessage = "已复制 $count 条单据"
-            exitSelection()
-        }
-    }
-
     fun editSelected(onEdit: (Long) -> Unit) {
         if (selectedIds.size == 1) {
             val id = selectedIds.first()
@@ -240,10 +226,6 @@ class HomeViewModel(
                 exitSelection()
             }
         }
-    }
-
-    fun consumeCopyMessage() {
-        copyMessage = null
     }
 
     fun consumeExportMessage() {

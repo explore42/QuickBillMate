@@ -17,6 +17,15 @@ object VersionChangelog {
     /** 全部已发布版本说明，按 versionCode 升序维护。 */
     val entries: List<VersionChange> = listOf(
         VersionChange(
+            versionCode = 6,
+            versionName = "1.2.1",
+            title = "v1.2.1 主要更新",
+            important = listOf(
+                "优化：复制单据/商品/客户改为进入新建界面并预填内容，修改后再保存",
+                "新增：新建单据的单据日期支持一键设为今天",
+            ),
+        ),
+        VersionChange(
             versionCode = 5,
             versionName = "1.2.0",
             title = "v1.2.0 主要更新",

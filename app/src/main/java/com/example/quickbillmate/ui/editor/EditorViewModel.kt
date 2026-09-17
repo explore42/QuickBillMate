@@ -185,6 +185,58 @@ class EditorViewModel(
     }
 
     /**
+     * 复制：以已有单据为模板创建草稿并预填内容，用户修改后再保存为新单据。
+     * 保留源单据日期；流水号按该日期重新生成以保证唯一。
+     */
+    fun createCopy(sourceId: Long) {
+        viewModelScope.launch {
+            discarding = false
+            val source = repo.getBill(sourceId)
+            if (source == null) {
+                createNew()
+                return@launch
+            }
+            val sourceItems = repo.getItems(sourceId)
+            val settings = repo.settings
+            val draft = repo.createDraft(
+                docCode = settings.defaultDocCode,
+                docDate = DateUtils.today(),
+                companyName = settings.defaultCompany,
+                contactPhone = settings.defaultPhone,
+                salesManager = settings.defaultManager,
+                titleSuffix = settings.defaultTitleSuffix,
+                remark = settings.defaultRemark,
+                adText = settings.defaultAdText,
+                showManager = settings.defaultShowManager,
+                showRemark = settings.defaultShowRemark,
+                showAd = settings.defaultShowAd,
+                showWatermark = settings.defaultShowWatermark,
+                watermarkText = settings.defaultWatermarkText,
+                showContactPhone = settings.defaultShowContactPhone,
+                showMultiPhones = settings.defaultShowMultiPhones,
+                showCustomerPhone = settings.defaultShowCustomerPhone,
+            )
+            isNewDraft = true
+            originalBill = draft
+            originalItems = emptyList()
+            val now = System.currentTimeMillis()
+            val serial = repo.generateUniqueSerial(source.docCode, source.docDate)
+            applyBill(
+                source.copy(
+                    id = draft.id,
+                    docSerial = serial,
+                    createdAt = now,
+                    updatedAt = now,
+                ),
+                sourceItems.map { it.copy(id = 0, billId = draft.id) },
+            )
+            refreshSuggestions(state.customerName)
+            scheduleSave()
+            schedulePreview()
+        }
+    }
+
+    /**
      * “不保存”：新建单据时删除草稿；编辑已有单据时恢复进入页面时的原始内容。
      * 完成后回调（通常返回上一页）。
      */

@@ -9,18 +9,20 @@ object Routes {
     const val PRODUCTS = "products"
     const val CUSTOMERS = "customers"
     const val SETTINGS = "settings"
-    const val EDITOR = "editor/{billId}"
+    const val EDITOR = "editor/{billId}?copyFrom={copyFrom}"
     const val VIEW = "bill_view/{billId}"
     const val PRESETS = "presets"
     const val PRESET_EDITOR = "preset_editor?presetId={presetId}&base={base}"
     const val CONTACTS_IMPORT = "contacts_import"
 
     const val EDITOR_ARG_BILL_ID = "billId"
+    const val EDITOR_ARG_COPY_FROM = "copyFrom"
     const val VIEW_ARG_BILL_ID = "billId"
     const val PRESET_EDITOR_ARG_ID = "presetId"
     const val PRESET_EDITOR_ARG_BASE = "base"
 
-    fun editor(billId: Long) = "editor/$billId"
+    fun editor(billId: Long, copyFrom: Long = 0L) =
+        if (copyFrom > 0L) "editor/$billId?copyFrom=$copyFrom" else "editor/$billId"
 
     fun view(billId: Long) = "bill_view/$billId"
 

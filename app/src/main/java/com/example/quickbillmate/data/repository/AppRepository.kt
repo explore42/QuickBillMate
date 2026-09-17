@@ -158,25 +158,6 @@ class AppRepository(
         }
     }
 
-    /** 复制单据（含商品行），新流水号；返回新单据 id。 */
-    suspend fun copyBill(billId: Long): Long? {
-        val bill = billDao.getBill(billId) ?: return null
-        val items = itemDao.getItems(billId)
-        val now = System.currentTimeMillis()
-        val serial = generateUniqueSerial(bill.docCode, bill.docDate)
-        val copy = bill.copy(
-            id = 0,
-            docSerial = serial,
-            createdAt = now,
-            updatedAt = now,
-        )
-        return database.withTransaction {
-            val newId = billDao.insert(copy)
-            itemDao.insertAll(items.map { it.copy(id = 0, billId = newId) })
-            newId
-        }
-    }
-
     suspend fun deleteBill(bill: Bill) = billDao.delete(bill)
 
     // ---------- 商品 ----------
@@ -187,11 +168,6 @@ class AppRepository(
         if (query.isBlank()) productDao.observeAll() else productDao.observeSearch(query.trim())
 
     suspend fun getProducts(): List<Product> = productDao.getAll()
-
-    suspend fun copyProducts(products: List<Product>) {
-        val copies = products.map { it.copy(id = 0, name = it.name + "（副本）").withPinyin() }
-        productDao.insertAll(copies)
-    }
 
     suspend fun deleteProducts(products: List<Product>) {
         products.forEach { productDao.delete(it) }
@@ -222,11 +198,6 @@ class AppRepository(
         if (query.isBlank()) customerDao.observeAll() else customerDao.observeSearch(query.trim())
 
     suspend fun getCustomers(): List<Customer> = customerDao.getAll()
-
-    suspend fun copyCustomers(customers: List<Customer>) {
-        val copies = customers.map { it.copy(id = 0, name = it.name + "（副本）").withPinyin() }
-        customerDao.insertAll(copies)
-    }
 
     suspend fun deleteCustomers(customers: List<Customer>) {
         customers.forEach { customerDao.delete(it) }

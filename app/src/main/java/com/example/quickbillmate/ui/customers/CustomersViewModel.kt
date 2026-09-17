@@ -38,8 +38,6 @@ class CustomersViewModel(
         private set
     var pendingDeleteIds by mutableStateOf<Set<Long>>(emptySet())
         private set
-    var copyMessage by mutableStateOf<String?>(null)
-        private set
 
     val customers: StateFlow<List<Customer>> = query
         .debounce(300)
@@ -96,14 +94,6 @@ class CustomersViewModel(
         selectedIds = emptySet()
     }
 
-    fun copySelected() {
-        val ids = selectedIds
-        viewModelScope.launch {
-            repo.copyCustomers(customers.value.filter { it.id in ids })
-            copyMessage = "已复制 ${ids.size} 条"
-            exitSelection()
-        }
-    }
 
     fun editSelected(onEdit: (Customer) -> Unit) {
         if (selectedIds.size == 1) {
@@ -132,7 +122,4 @@ class CustomersViewModel(
         pendingDeleteIds = emptySet()
     }
 
-    fun consumeCopyMessage() {
-        copyMessage = null
-    }
 }

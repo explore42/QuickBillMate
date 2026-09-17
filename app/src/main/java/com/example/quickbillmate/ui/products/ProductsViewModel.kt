@@ -52,8 +52,6 @@ class ProductsViewModel(
         private set
     var pendingDeleteIds by mutableStateOf<Set<Long>>(emptySet())
         private set
-    var copyMessage by mutableStateOf<String?>(null)
-        private set
 
     fun setQuery(value: String) {
         queryText = value
@@ -103,14 +101,6 @@ class ProductsViewModel(
         selectedIds = emptySet()
     }
 
-    fun copySelected() {
-        val ids = selectedIds
-        viewModelScope.launch {
-            repo.copyProducts(products.value.filter { it.id in ids })
-            copyMessage = "已复制 ${ids.size} 条"
-            exitSelection()
-        }
-    }
 
     fun editSelected(onEdit: (Product) -> Unit) {
         if (selectedIds.size == 1) {
@@ -139,7 +129,4 @@ class ProductsViewModel(
         pendingDeleteIds = emptySet()
     }
 
-    fun consumeCopyMessage() {
-        copyMessage = null
-    }
 }

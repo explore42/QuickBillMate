@@ -8,23 +8,22 @@ class VersionChangelogTest {
 
     @Test
     fun `区间边界等于上次已读不显示且包含当前`() {
-        val result = VersionChangelog.entriesFor(lastSeen = 4, current = 5)
+        val result = VersionChangelog.entriesFor(lastSeen = 5, current = 6)
         assertEquals(1, result.size)
-        assertEquals(5, result[0].versionCode)
+        assertEquals(6, result[0].versionCode)
         assertTrue(result[0].important.isNotEmpty())
-        assertTrue(result[0].others.isNotEmpty())
     }
 
     @Test
     fun `上次已读等于当前版本时为空`() {
-        assertTrue(VersionChangelog.entriesFor(lastSeen = 5, current = 5).isEmpty())
+        assertTrue(VersionChangelog.entriesFor(lastSeen = 6, current = 6).isEmpty())
     }
 
     @Test
     fun `老用户首启展示全部条目`() {
-        val result = VersionChangelog.entriesFor(lastSeen = 0, current = 5)
-        assertEquals(1, result.size)
-        assertEquals(5, result[0].versionCode)
+        val result = VersionChangelog.entriesFor(lastSeen = 0, current = 6)
+        assertEquals(2, result.size)
+        assertEquals(6, result[0].versionCode)
     }
 
     @Test
@@ -55,7 +54,7 @@ class VersionChangelogTest {
     @Test
     fun `未升级时无任何分段`() {
         assertTrue(
-            VersionChangelog.sectionsFor(lastSeen = 5, current = 5, currentVersionName = "1.2.0").isEmpty()
+            VersionChangelog.sectionsFor(lastSeen = 6, current = 6, currentVersionName = "1.2.1").isEmpty()
         )
     }
 }
