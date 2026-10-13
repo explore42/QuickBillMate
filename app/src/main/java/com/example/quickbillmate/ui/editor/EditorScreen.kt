@@ -71,6 +71,7 @@ import com.example.quickbillmate.data.repository.DefaultInfoValues
 import com.example.quickbillmate.render.StylePresets
 import com.example.quickbillmate.ui.AppViewModelProvider
 import com.example.quickbillmate.ui.common.AppTopBar
+import com.example.quickbillmate.ui.common.ConfirmDialog
 import com.example.quickbillmate.ui.common.DatePickerDialog
 import com.example.quickbillmate.ui.common.DefaultInfoForm
 import com.example.quickbillmate.ui.common.DialogButtons
@@ -142,6 +143,7 @@ fun EditorScreen(
     var showExitConfirm by remember { mutableStateOf(false) }
     var showProductPicker by remember { mutableStateOf(false) }
     var orderDialogIndex by remember { mutableStateOf<Int?>(null) }
+    var pendingRemoveIndex by remember { mutableStateOf<Int?>(null) }
     val scrollState = rememberScrollState()
     // 拖拽排序状态：把手驱动，排序结果直接写回 ViewModel（沿用原有自动保存）
     val reorder = remember { ItemReorderState(onMove = { from, to -> viewModel.moveItemTo(from, to) }) }
@@ -321,7 +323,7 @@ fun EditorScreen(
                                 dragging = reorder.isDragging(index),
                                 dragTranslation = if (reorder.isDragging(index)) reorder.translation else 0f,
                                 onUpdate = { updated -> viewModel.updateItem(index) { updated } },
-                                onRemove = { viewModel.removeItem(index) },
+                                onRemove = { pendingRemoveIndex = index },
                                 onSlotChange = { top, height -> reorder.onSlot(index, top, height) },
                                 onDragStart = {
                                     haptics.tick()
@@ -452,6 +454,28 @@ fun EditorScreen(
                 onDismiss = { orderDialogIndex = null },
             )
         }
+    }
+
+    // 删除商品行需二次确认，避免误触（行已被删除时不再弹窗）
+    val pendingRemove = pendingRemoveIndex?.let { index -> s.items.getOrNull(index)?.let { index to it } }
+    if (pendingRemove != null) {
+        val (index, row) = pendingRemove
+        ConfirmDialog(
+            title = "删除商品行",
+            destructive = true,
+            text = if (s.items.size <= 1) {
+                "仅剩 1 行商品，删除后将变为空白行。"
+            } else if (row.name.isBlank()) {
+                "确定删除第 ${index + 1} 行商品吗？"
+            } else {
+                "确定删除第 ${index + 1} 行“${row.name}”吗？"
+            },
+            onConfirm = {
+                viewModel.removeItem(index)
+                pendingRemoveIndex = null
+            },
+            onDismiss = { pendingRemoveIndex = null },
+        )
     }
 }
 

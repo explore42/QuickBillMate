@@ -506,4 +506,26 @@ class QuickBillMateUiTest {
         waitHomeReady()
         waitFor { composeRule.onAllNodesWithText("-¥35.00").fetchSemanticsNodes().isNotEmpty() }
     }
+
+    @Test
+    fun deletingItemRowAsksForConfirmation() {
+        val suffix = System.currentTimeMillis() % 100000
+        val removed = "待删行$suffix"
+        val kept = "保留行$suffix"
+        newBillWithItems(listOf(removed, kept))
+
+        // 取消：行保留
+        composeRule.onAllNodesWithContentDescription("删除行")[0].performScrollTo().performClick()
+        waitFor { composeRule.onAllNodesWithText("删除商品行").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("取消").performClick()
+        waitFor { composeRule.onAllNodesWithText("删除商品行").fetchSemanticsNodes().isEmpty() }
+        waitFor { itemNameFields().fetchSemanticsNodes().size == 2 }
+
+        // 确认：该行被删除，另一行保留
+        composeRule.onAllNodesWithContentDescription("删除行")[0].performScrollTo().performClick()
+        waitFor { composeRule.onAllNodesWithText("删除商品行").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("删除").performClick()
+        waitFor { itemNameFields().fetchSemanticsNodes().size == 1 }
+        waitFor { composeRule.onAllNodes(hasText(removed)).fetchSemanticsNodes().isEmpty() }
+    }
 }
