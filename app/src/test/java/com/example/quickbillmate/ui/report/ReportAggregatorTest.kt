@@ -87,4 +87,29 @@ class ReportAggregatorTest {
         assertEquals("其他", top[2].name)
         assertEquals(30.0, top[2].amount, 0.0001)
     }
+
+    @Test
+    fun `退货行按净额抵扣金额与销量`() {
+        val bill = bill(9, "王老板", "2026-08-02")
+        val items = listOf(
+            item(9, "腻子粉", 10.0, 35.0),
+            item(9, "腻子粉", -3.0, 35.0),
+            item(9, "墙锢", -1.0, 65.0),
+        )
+        assertEquals(180.0, ReportAggregator.amount(bill, items), 0.0001)
+
+        val stats = ReportAggregator.productStats(listOf(bill), mapOf(9L to items))
+        val niFen = stats.first { it.name == "腻子粉" }
+        assertEquals(7.0, niFen.qty, 0.0001)
+        assertEquals(245.0, niFen.amount, 0.0001)
+        val wangGu = stats.first { it.name == "墙锢" }
+        assertEquals(-1.0, wangGu.qty, 0.0001)
+        assertEquals(-65.0, wangGu.amount, 0.0001)
+
+        // 客户维度按净额统计：整单退货时金额为负
+        val refund = bill(10, "王老板", "2026-08-03")
+        val refundItems = listOf(item(10, "腻子粉", -2.0, 35.0))
+        val customer = ReportAggregator.customerStats(listOf(refund), mapOf(10L to refundItems))
+        assertEquals(-70.0, customer.single().amount, 0.0001)
+    }
 }

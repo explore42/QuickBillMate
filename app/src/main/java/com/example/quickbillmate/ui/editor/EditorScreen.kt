@@ -11,7 +11,9 @@ import androidx.compose.animation.togetherWith
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,12 +41,19 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -54,6 +63,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quickbillmate.data.db.Product
 import com.example.quickbillmate.data.db.StylePreset
@@ -71,12 +81,14 @@ import com.example.quickbillmate.ui.common.LabeledSwitch
 import com.example.quickbillmate.ui.common.PhoneListEditor
 import com.example.quickbillmate.ui.common.PhoneSectionHeader
 import com.example.quickbillmate.ui.common.SectionCard
+import com.example.quickbillmate.ui.common.SmallTextButton
 import com.example.quickbillmate.ui.theme.AppThemeColors
 import com.example.quickbillmate.ui.theme.AppThemeTypography
 import com.example.quickbillmate.ui.theme.Ds
 import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
+import com.example.quickbillmate.util.QtyInput
 import java.time.LocalDate
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -99,8 +111,13 @@ import top.yukonga.miuix.kmp.icon.extended.Months
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Remove
 import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+
+/** 拖拽排序自动滚动：被拖卡片进入可视区上下 [AUTO_SCROLL_EDGE] 内开始滚动，每帧最多 [AUTO_SCROLL_MAX_STEP]。 */
+private val AUTO_SCROLL_EDGE = 72.dp
+private val AUTO_SCROLL_MAX_STEP = 4.dp
 
 @Composable
 fun EditorScreen(
@@ -124,6 +141,12 @@ fun EditorScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showExitConfirm by remember { mutableStateOf(false) }
     var showProductPicker by remember { mutableStateOf(false) }
+    var orderDialogIndex by remember { mutableStateOf<Int?>(null) }
+    val scrollState = rememberScrollState()
+    // 拖拽排序状态：把手驱动，排序结果直接写回 ViewModel（沿用原有自动保存）
+    val reorder = remember { ItemReorderState(onMove = { from, to -> viewModel.moveItemTo(from, to) }) }
+    // 行数变化后旧槽位失效，重新测量前先清空（拖拽中不会增删行）
+    LaunchedEffect(s.items.size) { reorder.clearSlots() }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -178,7 +201,12 @@ fun EditorScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
+                    .onGloballyPositioned { coords ->
+                        val viewport = coords.boundsInWindow()
+                        reorder.viewportTop = viewport.top
+                        reorder.viewportBottom = viewport.bottom
+                    }
+                    .verticalScroll(scrollState)
                     .padding(horizontal = Ds.screen, vertical = Ds.sm)
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(Ds.md),
@@ -282,14 +310,26 @@ fun EditorScreen(
                     val (roundDownLabel, roundDownTarget) = viewModel.roundDownAction()
                     Column(
                         verticalArrangement = Arrangement.spacedBy(Ds.md),
-                        modifier = Modifier.animateContentSize(),
+                        modifier = Modifier
+                            .animateContentSize()
+                            .onGloballyPositioned { reorder.containerTop = it.positionInWindow().y },
                     ) {
                         s.items.forEachIndexed { index, row ->
                             ItemCardEditor(
                                 row = row,
                                 index = index,
+                                dragging = reorder.isDragging(index),
+                                dragTranslation = if (reorder.isDragging(index)) reorder.translation else 0f,
                                 onUpdate = { updated -> viewModel.updateItem(index) { updated } },
                                 onRemove = { viewModel.removeItem(index) },
+                                onSlotChange = { top, height -> reorder.onSlot(index, top, height) },
+                                onDragStart = {
+                                    haptics.tick()
+                                    reorder.start(index)
+                                },
+                                onDrag = reorder::drag,
+                                onDragEnd = reorder::end,
+                                onEditIndex = { orderDialogIndex = index },
                             )
                         }
                         // 重要操作在右手侧：空行在左，从商品库添加在右
@@ -340,6 +380,7 @@ fun EditorScreen(
                 }
                 Spacer(Modifier.height(Ds.sm))
             }
+            ItemReorderAutoScroll(reorder, scrollState)
         }
     }
 
@@ -396,6 +437,103 @@ fun EditorScreen(
             },
             onDismiss = { showProductPicker = false },
         )
+    }
+
+    // 点击序号徽章：输入目标序号跳转，或一键置顶/置底
+    orderDialogIndex?.let { index ->
+        if (index in s.items.indices) {
+            OrderJumpDialog(
+                current = index,
+                total = s.items.size,
+                onJump = { target ->
+                    viewModel.moveItemTo(index, target)
+                    orderDialogIndex = null
+                },
+                onDismiss = { orderDialogIndex = null },
+            )
+        }
+    }
+}
+
+/**
+ * 调整顺序：输入新序号（1–总数）跳转，或一键置顶/置底；越界时确定按钮不可用。
+ */
+@Composable
+private fun OrderJumpDialog(
+    current: Int,
+    total: Int,
+    onJump: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf((current + 1).toString()) }
+    val target = text.toIntOrNull()
+    val valid = target != null && target in 1..total
+    OverlayDialog(
+        title = "调整顺序",
+        show = true,
+        onDismissRequest = onDismiss,
+    ) {
+        Column {
+            TextField(
+                value = text,
+                onValueChange = { value -> text = value.filter(Char::isDigit).take(QtyInput.MAX_DIGITS) },
+                label = "新序号",
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth().testTag("order_jump_input"),
+            )
+            Spacer(Modifier.height(Ds.xs))
+            Text(
+                text = "共 $total 个商品，输入 1–$total 后可跳转",
+                style = AppThemeTypography.bodySmall,
+                color = AppThemeColors.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(Ds.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(Ds.md)) {
+                SmallTextButton(
+                    text = "置顶",
+                    onClick = { onJump(0) },
+                    modifier = Modifier.weight(1f).testTag("order_jump_top"),
+                    enabled = current != 0,
+                )
+                SmallTextButton(
+                    text = "置底",
+                    onClick = { onJump(total - 1) },
+                    modifier = Modifier.weight(1f).testTag("order_jump_bottom"),
+                    enabled = current != total - 1,
+                )
+            }
+            Spacer(Modifier.height(Ds.md))
+            DialogButtons(
+                onConfirm = { target?.let { onJump(it - 1) } },
+                confirmEnabled = valid,
+                onCancel = onDismiss,
+            )
+        }
+    }
+}
+
+/**
+ * 拖拽到可视区上下边缘时按帧自动滚动外层列表，并把滚动量折算成拖拽位移，
+ * 让被拖卡片始终跟手（商品行较多时也能拖到屏幕外）。
+ */
+@Composable
+private fun ItemReorderAutoScroll(
+    state: ItemReorderState,
+    scrollState: ScrollState,
+) {
+    val density = LocalDensity.current
+    val edge = with(density) { AUTO_SCROLL_EDGE.toPx() }
+    val maxStep = with(density) { AUTO_SCROLL_MAX_STEP.toPx() }
+    LaunchedEffect(state.draggingIndex) {
+        if (state.draggingIndex < 0) return@LaunchedEffect
+        while (true) {
+            withFrameNanos { }
+            val delta = state.autoScrollDelta(edge, maxStep)
+            if (delta == 0f) continue
+            val moved = scrollState.dispatchRawDelta(delta)
+            if (moved != 0f) state.onViewportScroll(moved)
+        }
     }
 }
 
@@ -701,28 +839,50 @@ private fun PresetRow(
 }
 
 /**
- * 单个商品编辑卡片：名称独立一行（序号 + 删除），数量带 ± 步进，
+ * 单个商品编辑卡片：名称独立一行（可点序号 + 拖拽把手 + 删除），数量带 ± 步进与反号，
  * 其余字段按权重网格排布，小屏自动收缩而不是横向滚动。
+ *
+ * 拖拽时位移只作用在卡片内部（外层 Box 保持原槽位），保证槽位测量稳定、坐标不被平移污染。
  */
 @Composable
 private fun ItemCardEditor(
     row: ItemRow,
     index: Int,
+    dragging: Boolean,
+    dragTranslation: Float,
     onUpdate: (ItemRow) -> Unit,
     onRemove: () -> Unit,
+    onSlotChange: (top: Float, height: Float) -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onEditIndex: () -> Unit,
 ) {
     val haptics = LocalHaptics.current
     val qtyValue = row.qtyText.toIntOrNull() ?: 0
-    Surface(
-        shape = RoundedCornerShape(Ds.md + 4.dp),
-        color = AppThemeColors.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth().testTag("editor_item_card"),
+    val amountValue = row.amount()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                onSlotChange(coords.positionInParent().y, coords.size.height.toFloat())
+            }
+            .zIndex(if (dragging) 1f else 0f),
     ) {
+        Surface(
+            shape = RoundedCornerShape(Ds.md + 4.dp),
+            color = AppThemeColors.surfaceContainerHigh,
+            shadowElevation = if (dragging) 6.dp else 0.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationY = if (dragging) dragTranslation else 0f }
+                .testTag("editor_item_card"),
+        ) {
         Column(
             modifier = Modifier.padding(Ds.md),
             verticalArrangement = Arrangement.spacedBy(Ds.sm),
         ) {
-            // 第一行：序号 + 名称 + 删除
+            // 第一行：序号（可点，改排序）+ 拖拽把手 + 名称 + 删除
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Ds.sm),
@@ -730,7 +890,10 @@ private fun ItemCardEditor(
                 Surface(
                     shape = RoundedCornerShape(percent = 50),
                     color = AppThemeColors.primaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .testTag("editor_item_index")
+                        .clickable(onClickLabel = "调整顺序", onClick = onEditIndex),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
@@ -740,6 +903,25 @@ private fun ItemCardEditor(
                         )
                     }
                 }
+                Icon(
+                    imageVector = MiuixIcons.Sort,
+                    contentDescription = "拖拽排序",
+                    tint = if (dragging) AppThemeColors.primary else AppThemeColors.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .testTag("editor_item_drag_handle")
+                        .pointerInput(index) {
+                            detectDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragEnd() },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount.y)
+                                },
+                            )
+                        },
+                )
                 TextField(
                     value = row.name,
                     onValueChange = { if (it.length <= InputLimits.NAME) onUpdate(row.copy(name = it)) },
@@ -760,40 +942,59 @@ private fun ItemCardEditor(
                 StepperButton(
                     symbol = "−",
                     contentDescription = "数量减一",
-                    enabled = qtyValue > 1,
+                    enabled = qtyValue > QtyInput.MIN,
                     onClick = {
                         haptics.tick()
-                        onUpdate(row.copy(qtyText = ((qtyValue - 1).coerceAtLeast(1)).toString()))
+                        onUpdate(row.copy(qtyText = (qtyValue - 1).toString()))
                     },
                 )
                 TextField(
                     value = row.qtyText,
-                    onValueChange = { value -> onUpdate(row.copy(qtyText = value.filter(Char::isDigit))) },
+                    onValueChange = { value -> onUpdate(row.copy(qtyText = QtyInput.sanitize(value))) },
                     label = "数量",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        // 紧凑反号按钮：放进输入框内部，不额外占用整行宽度
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .testTag("editor_qty_sign")
+                                .clickable(onClickLabel = "切换正负号") {
+                                    haptics.tick()
+                                    onUpdate(row.copy(qtyText = flipQtySign(row.qtyText)))
+                                },
+                        ) {
+                            Text(
+                                text = "±",
+                                style = AppThemeTypography.titleMedium,
+                                // 次要色：与两侧步进按钮区分，读作输入框的“反号”附属操作
+                                color = AppThemeColors.onSurfaceVariant,
+                            )
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                 )
                 StepperButton(
                     symbol = null,
                     icon = MiuixIcons.Add,
                     contentDescription = "数量加一",
-                    enabled = true,
+                    enabled = qtyValue < QtyInput.MAX,
                     onClick = {
                         haptics.tick()
                         onUpdate(row.copy(qtyText = (qtyValue + 1).toString()))
                     },
                 )
-                Spacer(Modifier.width(Ds.xs))
                 TextField(
                     value = row.priceText,
                     onValueChange = { onUpdate(row.copy(priceText = Money.sanitizeAmountInput(it))) },
                     label = "单价",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1.3f),
+                    modifier = Modifier.weight(1.15f),
                 )
-                Column(modifier = Modifier.width(84.dp)) {
+                Column(modifier = Modifier.width(76.dp)) {
                     Text(
                         text = "金额",
                         style = AppThemeTypography.labelSmall,
@@ -801,7 +1002,7 @@ private fun ItemCardEditor(
                     )
                     // 数量/单价变化时金额上下滑动过渡
                     AnimatedContent(
-                        targetState = Money.format(row.amount()),
+                        targetState = Money.format(amountValue),
                         transitionSpec = {
                             if (targetState > initialState) {
                                 (slideInVertically { it } + fadeIn()) togetherWith
@@ -816,7 +1017,8 @@ private fun ItemCardEditor(
                         Text(
                             text = amount,
                             style = AppThemeTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = AppThemeColors.primary,
+                            // 负数金额（退货行）用警示色，与正常销售行区分
+                            color = if (amountValue < 0) AppThemeColors.error else AppThemeColors.primary,
                         )
                     }
                 }
@@ -849,6 +1051,17 @@ private fun ItemCardEditor(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        }
+    }
+}
+
+/** 数量反号：正→负、负→正、0 或空→-1（退货行快捷入口）。 */
+private fun flipQtySign(text: String): String {
+    val value = text.toDoubleOrNull() ?: 0.0
+    return when {
+        value > 0 -> "-$text"
+        value < 0 -> text.removePrefix("-")
+        else -> "-1"
     }
 }
 

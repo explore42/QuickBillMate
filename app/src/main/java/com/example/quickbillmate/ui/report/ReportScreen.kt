@@ -260,10 +260,10 @@ private fun SummaryCards(summary: ReportSummary) {
     Column(verticalArrangement = Arrangement.spacedBy(Ds.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Ds.sm)) {
             SummaryCard("单据数", "${summary.billCount}", Modifier.weight(1f))
-            SummaryCard("总金额", "¥${Money.format(summary.totalAmount)}", Modifier.weight(1f))
+            SummaryCard("总金额", Money.formatWithSymbol(summary.totalAmount), Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Ds.sm)) {
-            SummaryCard("客单价", "¥${Money.format(summary.avgPerBill)}", Modifier.weight(1f))
+            SummaryCard("客单价", Money.formatWithSymbol(summary.avgPerBill), Modifier.weight(1f))
             SummaryCard("客户数", "${summary.customerCount}", Modifier.weight(1f))
         }
     }

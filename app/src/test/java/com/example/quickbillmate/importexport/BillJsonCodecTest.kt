@@ -44,15 +44,35 @@ class BillJsonCodecTest {
     }
 
     @Test
-    fun `非法商品行导致该单据失败`() {
+    fun `价格非法的商品行导致该单据失败`() {
         val text = """
             {"version":1,"type":"bills","bills":[
-              {"docCode":"PH","items":[{"name":"甲","qty":-1,"price":10}]}
+              {"docCode":"PH","items":[{"name":"甲","qty":1,"price":-10}]}
             ]}
         """.trimIndent()
         val result = BillJsonCodec.parse(text)
         assertEquals(0, result.success)
         assertEquals(1, result.failures.size)
+    }
+
+    @Test
+    fun `负数量退货行可导入并往返一致`() {
+        val text = """
+            {"version":1,"type":"bills","bills":[
+              {"docCode":"PH","customerName":"张老板","items":[
+                {"name":"甲","qty":-2,"price":35},
+                {"name":"乙","qty":5,"price":10}
+              ]}
+            ]}
+        """.trimIndent()
+        val parsed = BillJsonCodec.parse(text)
+        assertEquals(1, parsed.success)
+        val bill = parsed.imported.single()
+        assertEquals(-2.0, bill.items[0].qty, 0.0001)
+        assertEquals(-70.0, bill.items[0].qty * bill.items[0].price, 0.0001)
+        // 导出后再解析仍保留负数行
+        val roundTrip = BillJsonCodec.parse(BillJsonCodec.export(listOf(bill)))
+        assertEquals(-2.0, roundTrip.imported.single().items[0].qty, 0.0001)
     }
 
     @Test

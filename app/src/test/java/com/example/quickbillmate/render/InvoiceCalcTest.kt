@@ -12,9 +12,23 @@ class InvoiceCalcTest {
     }
 
     @Test
-    fun `数量为零或负数时金额按零计`() {
+    fun `数量为零时金额为零负数时金额为负`() {
         assertEquals(0.0, RenderItem(qty = 0.0, price = 35.0).amount(), 1e-9)
-        assertEquals(0.0, RenderItem(qty = -2.0, price = 35.0).amount(), 1e-9)
+        assertEquals(-70.0, RenderItem(qty = -2.0, price = 35.0).amount(), 1e-9)
+    }
+
+    @Test
+    fun `退货单合计与应收为负数`() {
+        val invoice = RenderInvoice(
+            items = listOf(
+                RenderItem(qty = 10.0, price = 35.0),
+                RenderItem(qty = -3.0, price = 35.0),
+            )
+        )
+        assertEquals(245.0, invoice.total(), 1e-9)
+        val refund = RenderInvoice(items = listOf(RenderItem(qty = -3.0, price = 35.0)))
+        assertEquals(-105.0, refund.total(), 1e-9)
+        assertEquals(-105.0, refund.receivable(), 1e-9)
     }
 
     @Test
@@ -36,9 +50,9 @@ class InvoiceCalcTest {
     }
 
     @Test
-    fun `优惠大于合计时应收按零显示`() {
+    fun `优惠大于合计时应收为负数不再兜底为零`() {
         val invoice = RenderInvoice(discount = 999.0, items = listOf(RenderItem(qty = 1.0, price = 10.0)))
-        assertEquals(0.0, invoice.receivable(), 1e-9)
+        assertEquals(-989.0, invoice.receivable(), 1e-9)
     }
 
     @Test

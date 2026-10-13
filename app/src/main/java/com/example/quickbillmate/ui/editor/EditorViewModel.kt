@@ -26,6 +26,7 @@ import com.example.quickbillmate.util.DateUtils
 import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.PhoneUtil
 import com.example.quickbillmate.util.Pinyin
+import com.example.quickbillmate.util.QtyInput
 import com.example.quickbillmate.util.shrinkForPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,11 +43,13 @@ data class ItemRow(
     val pack: String = "",
     val note: String = "",
 ) {
-    fun qty(): Double = qtyText.toDoubleOrNull() ?: 0.0
+    /** 数量：整数，允许负数（退货）；超出 -999～9999 时收敛到边界。 */
+    fun qty(): Double = QtyInput.clamp(qtyText.toDoubleOrNull() ?: 0.0)
 
     fun price(): Double = priceText.toDoubleOrNull() ?: 0.0
 
-    fun amount(): Double = if (qty() <= 0) 0.0 else Money.round2(qty() * price())
+    /** 行金额 = 数量 × 单价：负数量直接得到负金额（退货行）。 */
+    fun amount(): Double = Money.round2(qty() * price())
 }
 
 data class CustomerSuggestion(
@@ -376,9 +379,13 @@ class EditorViewModel(
         val totalCents = state.items.sumOf { Math.round(it.amount() * 100.0) }
         val discountCents = Math.round((state.discountText.toDoubleOrNull() ?: 0.0) * 100.0)
         val receivableCents = totalCents - discountCents
+        val currentDiscount = state.discountText.toDoubleOrNull() ?: 0.0
+        // 退货单（应收 ≤ 0）不参与抹零：负数取模会得到反向优惠，只保留“清除抹零”
+        if (receivableCents <= 0L) {
+            return if (currentDiscount != 0.0) "清除抹零" to 0.0 else "抹零" to null
+        }
         val jiaoFenCents = receivableCents % 100
         val yuanOnesCents = receivableCents % 1000
-        val currentDiscount = state.discountText.toDoubleOrNull() ?: 0.0
         return when {
             jiaoFenCents != 0L -> "抹分角" to (discountCents + jiaoFenCents) / 100.0
             yuanOnesCents != 0L -> "抹元" to (discountCents + yuanOnesCents) / 100.0
@@ -521,13 +528,12 @@ class EditorViewModel(
         }
     }
 
-    fun moveItem(index: Int, delta: Int) {
-        val target = index + delta
-        if (target !in state.items.indices) return
+    /** 把第 [from] 行移动到第 [to] 行（均为下标）：拖拽排序与序号跳转共用。 */
+    fun moveItemTo(from: Int, to: Int) {
+        if (from !in state.items.indices || to !in state.items.indices || from == to) return
         val list = state.items.toMutableList()
-        val tmp = list[index]
-        list[index] = list[target]
-        list[target] = tmp
+        val moved = list.removeAt(from)
+        list.add(to, moved)
         update { copy(items = list) }
     }
 

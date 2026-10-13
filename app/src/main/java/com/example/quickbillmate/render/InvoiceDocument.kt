@@ -59,7 +59,8 @@ data class RenderItem(
     val pack: String = "",
     val note: String = "",
 ) {
-    fun amount(): Double = if (qty <= 0) 0.0 else Money.round2(qty * price)
+    /** 行金额：数量可为负（退货行），金额随之变负。 */
+    fun amount(): Double = Money.round2(qty * price)
 }
 
 data class RenderInvoice(
@@ -88,7 +89,8 @@ data class RenderInvoice(
 ) {
     fun total(): Double = items.sumOf { it.amount() }
 
-    fun receivable(): Double = Math.max(0.0, Money.round2(total() - discount))
+    /** 应收 = 合计 − 优惠：退货单可为负（应退金额），不做 0 兜底。 */
+    fun receivable(): Double = Money.round2(total() - discount)
 }
 
 /** 表格列定义：id 稳定，order/weights 可由样式预设覆盖。 */
@@ -176,6 +178,8 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
     val borderColor = parseColor(params.tableBorderColor)
     val borderWidth = params.tableBorderWidthPx.dp
     val columns = remember(params) { effectiveColumns(params) }
+    // 退货单（应收为负）改用“应退金额”，避免负号被读成折扣
+    val receivableLabel = if (invoice.receivable() < 0) "应退金额" else "应收金额"
 
     Column(
         modifier = Modifier
@@ -361,7 +365,7 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
 
         // ---------- 页脚：应收金额 ----------
         Text(
-            text = "应收金额：${Money.format(invoice.receivable())}（${Money.toChineseAmount(invoice.receivable())}）",
+            text = "${receivableLabel}：${Money.format(invoice.receivable())}（${Money.toChineseAmount(invoice.receivable())}）",
             fontSize = params.footerTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,

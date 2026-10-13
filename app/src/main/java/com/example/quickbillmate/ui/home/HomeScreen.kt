@@ -57,6 +57,7 @@ import com.example.quickbillmate.ui.common.SearchableTopBar
 import com.example.quickbillmate.ui.common.SelectionActionBar
 import com.example.quickbillmate.ui.common.TimeIndexBar
 import com.example.quickbillmate.ui.common.TopBarActionTextButton
+import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.ui.common.LocalHaptics
 import com.example.quickbillmate.ui.common.monthBubble
 import com.example.quickbillmate.ui.common.monthKey
@@ -410,9 +411,9 @@ fun HomeContent(
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    text = "¥${homeBill.receivableText}",
+                                    text = Money.formatWithSymbol(homeBill.receivable),
                                     style = AppThemeTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = AppThemeColors.primary,
+                                    color = if (homeBill.receivable < 0) AppThemeColors.error else AppThemeColors.primary,
                                 )
                             }
                         }

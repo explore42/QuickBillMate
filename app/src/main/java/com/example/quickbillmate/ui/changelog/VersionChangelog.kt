@@ -17,6 +17,19 @@ object VersionChangelog {
     /** 全部已发布版本说明，按 versionCode 升序维护。 */
     val entries: List<VersionChange> = listOf(
         VersionChange(
+            versionCode = 7,
+            versionName = "1.2.2",
+            title = "v1.2.2 主要更新",
+            important = listOf(
+                "新增：单据商品行可排序——按住卡片里的排序图标上下拖拽，或点序号直接改顺序",
+                "新增：商品数量支持负数（如 -2），用于开退货单；金额与应收自动按负数计算",
+            ),
+            others = listOf(
+                "优化：数量输入框增加“±”一键切换正负，步进按钮可直接减到负数",
+                "优化：退货单的金额与“应退金额”用醒目颜色显示，中文大写金额支持负数",
+            ),
+        ),
+        VersionChange(
             versionCode = 6,
             versionName = "1.2.1",
             title = "v1.2.1 主要更新",

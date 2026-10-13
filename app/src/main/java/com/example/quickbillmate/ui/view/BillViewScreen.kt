@@ -303,8 +303,9 @@ fun BillViewScreen(
                                         color = AppThemeColors.onSurfaceVariant,
                                     )
                                     Text(
-                                        Money.format(if (item.qty <= 0) 0.0 else Money.round2(item.qty * item.price)),
+                                        Money.format(Money.round2(item.qty * item.price)),
                                         style = AppThemeTypography.bodyMedium,
+                                        color = if (item.qty < 0) AppThemeColors.error else AppThemeColors.onSurface,
                                     )
                                 }
                             }
@@ -314,9 +315,10 @@ fun BillViewScreen(
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         val total = s.items.sumOf {
-                            if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
+                            Money.round2(it.qty * it.price)
                         }
-                        val receivable = Math.max(0.0, Money.round2(total - bill.discount))
+                        // 退货单应收为负：不设 0 兜底，负数即“应退金额”
+                        val receivable = Money.round2(total - bill.discount)
                         Text(
                             "合计：${Money.format(total)}",
                             style = AppThemeTypography.bodyMedium,
@@ -329,9 +331,9 @@ fun BillViewScreen(
                             )
                         }
                         Text(
-                            "应收：${Money.format(receivable)}（${Money.toChineseAmount(receivable)}）",
+                            "${if (receivable < 0) "应退" else "应收"}：${Money.format(receivable)}（${Money.toChineseAmount(receivable)}）",
                             style = AppThemeTypography.titleSmall,
-                            color = AppThemeColors.primary,
+                            color = if (receivable < 0) AppThemeColors.error else AppThemeColors.primary,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }

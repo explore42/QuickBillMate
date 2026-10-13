@@ -129,7 +129,8 @@ object BillJsonCodec {
                         }
                         val qty = o.double("qty") ?: 1.0
                         val price = o.double("price") ?: 0.0
-                        if (qty < 0 || price < 0) {
+                        // 数量允许为负（退货行）；价格仍必须非负
+                        if (price < 0) {
                             valid = false
                             return@forEachIndexed
                         }

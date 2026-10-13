@@ -16,6 +16,12 @@ object Money {
     /** 统一两位小数输出。 */
     fun format(value: Double): String = String.format(Locale.US, "%.2f", round2(value))
 
+    /** 带人民币符号的输出：负数把负号前置（-¥120.00），其余为 ¥120.00。 */
+    fun formatWithSymbol(value: Double): String {
+        val text = format(value)
+        return if (text.startsWith("-")) "-¥${text.drop(1)}" else "¥$text"
+    }
+
     /** 金额输入过滤：仅保留数字与一个小数点，小数位最多 maxDecimals 位（默认两位）。 */
     fun sanitizeAmountInput(raw: String, maxDecimals: Int = 2): String {
         val digits = raw.filter { it.isDigit() || it == '.' }
@@ -26,8 +32,12 @@ object Money {
         return "$intPart.$decimals"
     }
 
-    /** 中文大写金额，与 DEMO toChineseAmount() 逻辑一致。 */
+    /**
+     * 中文大写金额，与 DEMO toChineseAmount() 逻辑一致；退货单等负数金额前缀「负」，
+     * 按绝对值取数，保证负数不会走进位数表越界。
+     */
     fun toChineseAmount(amount: Double): String {
+        if (amount < 0) return "负" + toChineseAmount(-amount)
         val rounded = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP)
         val intPart = rounded.toBigInteger().toString()
         val cents = rounded.movePointRight(2).remainder(BigDecimal(100)).abs().toInt()

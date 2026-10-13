@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -25,7 +26,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-
+import org.junit.Assert.assertTrue
+import androidx.compose.ui.geometry.Offset
 @RunWith(AndroidJUnit4::class)
 class QuickBillMateUiTest {
 
@@ -52,6 +54,30 @@ class QuickBillMateUiTest {
         waitHomeReady()
         waitFor { composeRule.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty() }
     }
+
+    /** 编辑页商品行名称输入框（按行序返回）。 */
+    private fun itemNameFields() =
+        composeRule.onAllNodes(hasSetTextAction() and hasText("名称"))
+
+    /** 新建单据并补足 [count] 行商品行，依次填入 [names]。 */
+    private fun newBillWithItems(names: List<String>) {
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithTag("editor_add_from_library").fetchSemanticsNodes().isNotEmpty() }
+        repeat(names.size - 1) {
+            composeRule.onNodeWithText("添加空行").performScrollTo().performClick()
+        }
+        waitFor { itemNameFields().fetchSemanticsNodes().size == names.size }
+        names.forEachIndexed { index, text ->
+            val field = itemNameFields()[index]
+            field.performScrollTo().performClick()
+            field.performTextInput(text)
+        }
+        Espresso.closeSoftKeyboard()
+    }
+
+    /** 名称输入框在屏幕上的纵坐标，用于校验商品行顺序。 */
+    private fun itemTop(name: String): Float =
+        composeRule.onNode(hasSetTextAction() and hasText(name)).fetchSemanticsNode().boundsInRoot.top
 
     @Test
     fun homeShowsTitleNewButtonAndTabs() {
@@ -403,5 +429,81 @@ class QuickBillMateUiTest {
         waitFor {
             composeRule.onAllNodes(hasText("（副本）", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    @Test
+    fun indexDialogMovesItemToTopAndToTargetPosition() {
+        val suffix = System.currentTimeMillis() % 100000
+        val first = "甲行$suffix"
+        val second = "乙行$suffix"
+        val third = "丙行$suffix"
+        newBillWithItems(listOf(first, second, third))
+
+        // 点第 3 行序号徽章 → 置顶
+        composeRule.onAllNodesWithTag("editor_item_index")[2].performScrollTo().performClick()
+        waitFor { composeRule.onAllNodesWithTag("order_jump_top").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("order_jump_top").performClick()
+        waitFor { composeRule.onAllNodesWithTag("order_jump_top").fetchSemanticsNodes().isEmpty() }
+        assertTrue("置顶后 丙行 应排在 甲行 之上", itemTop(third) < itemTop(first))
+
+        // 再把第 1 行（丙行）输入序号 2 跳转
+        composeRule.onAllNodesWithTag("editor_item_index")[0].performScrollTo().performClick()
+        waitFor { composeRule.onAllNodesWithTag("order_jump_input").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("order_jump_input").performTextReplacement("2")
+        composeRule.onNodeWithText("确定").performClick()
+        waitFor { composeRule.onAllNodesWithTag("order_jump_input").fetchSemanticsNodes().isEmpty() }
+        assertTrue("跳转到第 2 位后 丙行 应排在 乙行 之上", itemTop(third) < itemTop(second))
+        assertTrue("此时 甲行 应在最上", itemTop(first) < itemTop(third))
+
+        // 排序结果随自动保存写库：保存后回到列表，重新打开仍是新顺序
+        composeRule.onNodeWithText("保存").performClick()
+        waitHomeReady()
+    }
+
+    @Test
+    fun dragHandleReordersItems() {
+        val suffix = System.currentTimeMillis() % 100000
+        val first = "拖拽甲$suffix"
+        val second = "拖拽乙$suffix"
+        val third = "拖拽丙$suffix"
+        newBillWithItems(listOf(first, second, third))
+
+        // 按住第 1 行排序把手，向下拖过一整行卡片
+        val cardHeight = composeRule.onAllNodesWithTag("editor_item_card")[0]
+            .fetchSemanticsNode().boundsInRoot.height
+        composeRule.onAllNodesWithTag("editor_item_drag_handle")[0].performTouchInput {
+            down(center)
+            moveBy(Offset(0f, cardHeight * 0.6f))
+            moveBy(Offset(0f, cardHeight * 0.8f))
+            up()
+        }
+
+        waitFor { itemTop(first) > itemTop(second) }
+        assertTrue("拖拽后 甲行 应下移到 乙行 之后", itemTop(first) > itemTop(second))
+    }
+
+    @Test
+    fun negativeQuantityMakesAmountAndReceivableNegative() {
+        val name = "退货客户${System.currentTimeMillis() % 100000}"
+        composeRule.onNodeWithTag("home_new_bill").performClick()
+        waitFor { composeRule.onAllNodesWithText("客户名称").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("客户名称").performClick()
+        composeRule.onNodeWithText("客户名称").performTextInput(name)
+        Espresso.closeSoftKeyboard()
+
+        // 单价 35，再用“±”把数量变成 -1
+        val price = composeRule.onNodeWithText("单价")
+        price.performScrollTo().performClick()
+        price.performTextInput("35")
+        Espresso.closeSoftKeyboard()
+        composeRule.onNodeWithTag("editor_qty_sign").performScrollTo().performClick()
+
+        // 行金额为负
+        waitFor { composeRule.onAllNodesWithText("-35.00").fetchSemanticsNodes().isNotEmpty() }
+
+        // 保存后列表金额为负数（负号前置）
+        composeRule.onNodeWithText("保存").performClick()
+        waitHomeReady()
+        waitFor { composeRule.onAllNodesWithText("-¥35.00").fetchSemanticsNodes().isNotEmpty() }
     }
 }

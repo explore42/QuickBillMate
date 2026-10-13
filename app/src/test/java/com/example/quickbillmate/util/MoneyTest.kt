@@ -61,4 +61,20 @@ class MoneyTest {
         assertEquals("零元整", Money.toChineseAmount(0.0))
         assertTrue(Money.toChineseAmount(100.05).contains("零伍分"))
     }
+
+    @Test
+    fun `负数大写金额前缀负且不越界`() {
+        assertEquals("负壹佰贰拾元整", Money.toChineseAmount(-120.0))
+        assertEquals("负伍角", Money.toChineseAmount(-0.5))
+        assertEquals("负壹仟贰佰叁拾肆元伍角陆分", Money.toChineseAmount(-1234.56))
+        assertEquals("零元整", Money.toChineseAmount(-0.0))
+    }
+
+    @Test
+    fun `带符号金额输出`() {
+        assertEquals("¥120.00", Money.formatWithSymbol(120.0))
+        assertEquals("¥0.00", Money.formatWithSymbol(0.0))
+        assertEquals("-¥120.00", Money.formatWithSymbol(-120.0))
+        assertEquals("-¥0.50", Money.formatWithSymbol(-0.5))
+    }
 }

@@ -21,12 +21,12 @@ data class RankEntry(
 )
 
 /**
- * 报表聚合纯函数（金额口径与单据详情一致：max(0, Σqty×price − discount)）。
+ * 报表聚合纯函数（金额口径与单据详情一致：Σqty×price − discount，退货单为负，按净额统计）。
  */
 object ReportAggregator {
     fun amount(bill: Bill, items: List<BillItem>): Double {
-        val total = items.sumOf { if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price) }
-        return Math.max(0.0, Money.round2(total - bill.discount))
+        val total = items.sumOf { Money.round2(it.qty * it.price) }
+        return Money.round2(total - bill.discount)
     }
 
     fun filterByDate(bills: List<Bill>, start: String?, end: String?): List<Bill> {
@@ -85,11 +85,9 @@ object ReportAggregator {
             RankEntry(
                 name = name,
                 billCount = pairs.map { it.first.id }.distinct().size,
-                qty = Money.round2(pairs.sumOf { if (it.second.qty <= 0) 0.0 else it.second.qty }),
+                qty = Money.round2(pairs.sumOf { it.second.qty }),
                 amount = Money.round2(
-                    pairs.sumOf {
-                        if (it.second.qty <= 0) 0.0 else Money.round2(it.second.qty * it.second.price)
-                    }
+                    pairs.sumOf { Money.round2(it.second.qty * it.second.price) }
                 ),
             )
         }.sortedWith(compareByDescending<RankEntry> { it.amount }.thenBy { it.name })

@@ -44,7 +44,7 @@ class HomeBillsTest {
     }
 
     @Test
-    fun `non-positive quantity contributes zero amount`() {
+    fun `negative quantity reduces receivable as a return line`() {
         val bills = listOf(bill(1))
         val items = listOf(
             item(1, "A", qty = 0.0, price = 100.0),
@@ -53,11 +53,11 @@ class HomeBillsTest {
 
         val result = buildHomeBills(bills, items)
 
-        assertEquals(0.0, result.single().receivable, 0.001)
+        assertEquals(-50.0, result.single().receivable, 0.001)
     }
 
     @Test
-    fun `discount is subtracted and receivable never negative`() {
+    fun `discount is subtracted and receivable may go negative`() {
         val bills = listOf(bill(1, discount = 20.0), bill(2, discount = 999.0))
         val items = listOf(
             item(1, "A", qty = 2.0, price = 35.0),
@@ -67,6 +67,6 @@ class HomeBillsTest {
         val result = buildHomeBills(bills, items)
 
         assertEquals(50.0, result.first { it.bill.id == 1L }.receivable, 0.001)
-        assertEquals(0.0, result.first { it.bill.id == 2L }.receivable, 0.001)
+        assertEquals(-989.0, result.first { it.bill.id == 2L }.receivable, 0.001)
     }
 }

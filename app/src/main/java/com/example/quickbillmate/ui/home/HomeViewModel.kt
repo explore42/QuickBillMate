@@ -42,12 +42,13 @@ fun buildHomeBills(bills: List<Bill>, items: List<BillItem>): List<HomeBill> {
     return bills.map { bill ->
         val billItems = itemsByBill[bill.id].orEmpty()
         val total = billItems.sumOf {
-            if (it.qty <= 0) 0.0 else Money.round2(it.qty * it.price)
+            Money.round2(it.qty * it.price)
         }
         HomeBill(
             bill = bill,
             itemCount = billItems.size,
-            receivable = Math.max(0.0, Money.round2(total - bill.discount)),
+            // 退货单应收为负，不做 0 兜底，列表直接显示负数金额
+            receivable = Money.round2(total - bill.discount),
             itemNames = billItems.map { it.name },
         )
     }
