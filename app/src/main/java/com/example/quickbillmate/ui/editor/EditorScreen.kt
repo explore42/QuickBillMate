@@ -12,7 +12,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -47,9 +46,14 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -128,7 +132,7 @@ private val AUTO_SCROLL_MAX_STEP = 4.dp
 /** 拖拽把手需按住约这么久才进入拖拽（长按语义），避免“一碰就换序”的误触。 */
 private const val DRAG_ACTIVATE_DELAY_MS = 250L
 
-/** 被拖卡片的视觉反馈：主色描边宽度、轻微放大比例、阴影高度。 */
+/** 被拖卡片的视觉反馈：主色内描边宽度、纵向轻微放大比例、阴影高度。 */
 private val DRAG_HIGHLIGHT_BORDER = 2.dp
 private const val DRAG_HIGHLIGHT_SCALE = 1.02f
 private val DRAG_HIGHLIGHT_SHADOW = 8.dp
@@ -899,8 +903,12 @@ private fun ItemCardEditor(
     val haptics = LocalHaptics.current
     val qtyValue = row.qtyText.toIntOrNull() ?: 0
     val amountValue = row.amount()
-    // 被拖卡片：主色描边 + 轻微放大 + 更高阴影，明确“这张卡正被拖动”
+    // 被拖卡片：主色内描边 + 纵向轻微放大 + 更高阴影，明确“这张卡正被拖动”
     val cardShape = RoundedCornerShape(Ds.md + 4.dp)
+    val density = LocalDensity.current
+    val dragCornerPx = with(density) { (Ds.md + 4.dp).toPx() }
+    val dragBorderPx = with(density) { DRAG_HIGHLIGHT_BORDER.toPx() }
+    val dragBorderColor = AppThemeColors.primary
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -917,17 +925,22 @@ private fun ItemCardEditor(
                 .fillMaxWidth()
                 .graphicsLayer {
                     translationY = if (dragging) dragTranslation else 0f
-                    val scale = if (dragging) DRAG_HIGHLIGHT_SCALE else 1f
-                    scaleX = scale
-                    scaleY = scale
+                    // 只做纵向放大：横向放大会把左右两条高亮边推到容器裁剪线外，看起来被切掉
+                    scaleY = if (dragging) DRAG_HIGHLIGHT_SCALE else 1f
                 }
-                .then(
-                    if (dragging) {
-                        Modifier.border(DRAG_HIGHLIGHT_BORDER, AppThemeColors.primary, cardShape)
-                    } else {
-                        Modifier
-                    }
-                )
+                // 描边沿卡片内缘绘制（内缩半个线宽），不受任何祖先裁剪影响，左右两边都能看全
+                .drawWithContent {
+                    drawContent()
+                    if (!dragging) return@drawWithContent
+                    val stroke = dragBorderPx
+                    drawRoundRect(
+                        color = dragBorderColor,
+                        topLeft = Offset(stroke / 2f, stroke / 2f),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        cornerRadius = CornerRadius(dragCornerPx - stroke / 2f),
+                        style = Stroke(width = stroke),
+                    )
+                }
                 .testTag("editor_item_card"),
         ) {
         Column(
