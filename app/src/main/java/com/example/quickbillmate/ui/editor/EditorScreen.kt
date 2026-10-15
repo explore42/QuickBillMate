@@ -12,8 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +59,8 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
@@ -91,6 +95,7 @@ import com.example.quickbillmate.util.Money
 import com.example.quickbillmate.util.InputLimits
 import com.example.quickbillmate.util.QtyInput
 import java.time.LocalDate
+import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
@@ -119,6 +124,14 @@ import top.yukonga.miuix.kmp.overlay.OverlayDialog
 /** 拖拽排序自动滚动：被拖卡片进入可视区上下 [AUTO_SCROLL_EDGE] 内开始滚动，每帧最多 [AUTO_SCROLL_MAX_STEP]。 */
 private val AUTO_SCROLL_EDGE = 72.dp
 private val AUTO_SCROLL_MAX_STEP = 4.dp
+
+/** 拖拽把手需按住约这么久才进入拖拽（长按语义），避免“一碰就换序”的误触。 */
+private const val DRAG_ACTIVATE_DELAY_MS = 250L
+
+/** 被拖卡片的视觉反馈：主色描边宽度、轻微放大比例、阴影高度。 */
+private val DRAG_HIGHLIGHT_BORDER = 2.dp
+private const val DRAG_HIGHLIGHT_SCALE = 1.02f
+private val DRAG_HIGHLIGHT_SHADOW = 8.dp
 
 @Composable
 fun EditorScreen(
@@ -326,7 +339,8 @@ fun EditorScreen(
                                 onRemove = { pendingRemoveIndex = index },
                                 onSlotChange = { top, height -> reorder.onSlot(index, top, height) },
                                 onDragStart = {
-                                    haptics.tick()
+                                    // 长按激活：震动一次提示“已抓起”，此时才开始拖拽
+                                    haptics.longPress()
                                     reorder.start(index)
                                 },
                                 onDrag = reorder::drag,
@@ -885,6 +899,8 @@ private fun ItemCardEditor(
     val haptics = LocalHaptics.current
     val qtyValue = row.qtyText.toIntOrNull() ?: 0
     val amountValue = row.amount()
+    // 被拖卡片：主色描边 + 轻微放大 + 更高阴影，明确“这张卡正被拖动”
+    val cardShape = RoundedCornerShape(Ds.md + 4.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -894,12 +910,24 @@ private fun ItemCardEditor(
             .zIndex(if (dragging) 1f else 0f),
     ) {
         Surface(
-            shape = RoundedCornerShape(Ds.md + 4.dp),
+            shape = cardShape,
             color = AppThemeColors.surfaceContainerHigh,
-            shadowElevation = if (dragging) 6.dp else 0.dp,
+            shadowElevation = if (dragging) DRAG_HIGHLIGHT_SHADOW else 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationY = if (dragging) dragTranslation else 0f }
+                .graphicsLayer {
+                    translationY = if (dragging) dragTranslation else 0f
+                    val scale = if (dragging) DRAG_HIGHLIGHT_SCALE else 1f
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .then(
+                    if (dragging) {
+                        Modifier.border(DRAG_HIGHLIGHT_BORDER, AppThemeColors.primary, cardShape)
+                    } else {
+                        Modifier
+                    }
+                )
                 .testTag("editor_item_card"),
         ) {
         Column(
@@ -935,15 +963,43 @@ private fun ItemCardEditor(
                         .size(28.dp)
                         .testTag("editor_item_drag_handle")
                         .pointerInput(index) {
-                            detectDragGestures(
-                                onDragStart = { onDragStart() },
-                                onDragEnd = { onDragEnd() },
-                                onDragCancel = { onDragEnd() },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    onDrag(dragAmount.y)
-                                },
-                            )
+                            // 延迟激活：按住 DRAG_ACTIVATE_DELAY_MS 才进入拖拽；等待期间指针抬起
+                            // 或位移超过 touchSlop 即视为点击/滚动（不消费事件，列表仍可滑动）。
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                var canceled = false
+                                // 超时返回 null 即为“已按满时长”，此时 canceled 仍为 false
+                                withTimeoutOrNull(DRAG_ACTIVATE_DELAY_MS) {
+                                    while (!canceled) {
+                                        val event = awaitPointerEvent()
+                                        val change = event.changes.firstOrNull { it.id == down.id }
+                                        if (change == null || !change.pressed) {
+                                            canceled = true
+                                        } else if ((change.position - down.position).getDistance() >
+                                            viewConfiguration.touchSlop
+                                        ) {
+                                            canceled = true
+                                        }
+                                    }
+                                }
+                                if (canceled) return@awaitEachGesture
+                                onDragStart()
+                                try {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val change =
+                                            event.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!change.pressed) break
+                                        val deltaY = change.position.y - change.previousPosition.y
+                                        if (deltaY != 0f) {
+                                            change.consume()
+                                            onDrag(deltaY)
+                                        }
+                                    }
+                                } finally {
+                                    onDragEnd()
+                                }
+                            }
                         },
                 )
                 TextField(
@@ -978,26 +1034,6 @@ private fun ItemCardEditor(
                     label = "数量",
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    trailingIcon = {
-                        // 紧凑反号按钮：放进输入框内部，不额外占用整行宽度
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .testTag("editor_qty_sign")
-                                .clickable(onClickLabel = "切换正负号") {
-                                    haptics.tick()
-                                    onUpdate(row.copy(qtyText = flipQtySign(row.qtyText)))
-                                },
-                        ) {
-                            Text(
-                                text = "±",
-                                style = AppThemeTypography.titleMedium,
-                                // 次要色：与两侧步进按钮区分，读作输入框的“反号”附属操作
-                                color = AppThemeColors.onSurfaceVariant,
-                            )
-                        }
-                    },
                     modifier = Modifier.weight(1f),
                 )
                 StepperButton(
@@ -1079,16 +1115,6 @@ private fun ItemCardEditor(
     }
 }
 
-/** 数量反号：正→负、负→正、0 或空→-1（退货行快捷入口）。 */
-private fun flipQtySign(text: String): String {
-    val value = text.toDoubleOrNull() ?: 0.0
-    return when {
-        value > 0 -> "-$text"
-        value < 0 -> text.removePrefix("-")
-        else -> "-1"
-    }
-}
-
 /** 数量步进圆形按钮：surface 底 + primary 前景，与卡片背景形成相对层次；symbol 非空时显示文字符号。 */
 @Composable
 private fun StepperButton(
@@ -1099,6 +1125,7 @@ private fun StepperButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     val tint = if (enabled) AppThemeColors.primary else AppThemeColors.onSurfaceVariant
+    val description = contentDescription
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = AppThemeColors.surface,
@@ -1114,6 +1141,8 @@ private fun StepperButton(
                     text = symbol,
                     style = AppThemeTypography.titleMedium,
                     color = tint,
+                    // 文字符号按钮补上无障碍描述，读屏与测试都能识别“数量减一”
+                    modifier = Modifier.semantics { this.contentDescription = description },
                 )
             } else if (icon != null) {
                 Icon(

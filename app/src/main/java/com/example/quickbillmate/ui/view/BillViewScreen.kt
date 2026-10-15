@@ -317,8 +317,10 @@ fun BillViewScreen(
                         val total = s.items.sumOf {
                             Money.round2(it.qty * it.price)
                         }
-                        // 退货单应收为负：不设 0 兜底，负数即“应退金额”
+                        // 退货单应收为负：不设 0 兜底，负数即“应退金额”；
+                        // 展示时取绝对值——“应退”已表达负号，再写负号就读不通了
                         val receivable = Money.round2(total - bill.discount)
+                        val receivableAbs = abs(receivable)
                         Text(
                             "合计：${Money.format(total)}",
                             style = AppThemeTypography.bodyMedium,
@@ -331,7 +333,7 @@ fun BillViewScreen(
                             )
                         }
                         Text(
-                            "${if (receivable < 0) "应退" else "应收"}：${Money.format(receivable)}（${Money.toChineseAmount(receivable)}）",
+                            "${if (receivable < 0) "应退" else "应收"}：${Money.format(receivableAbs)}（${Money.toChineseAmount(receivableAbs)}）",
                             style = AppThemeTypography.titleSmall,
                             color = if (receivable < 0) AppThemeColors.error else AppThemeColors.primary,
                             modifier = Modifier.padding(top = 4.dp),

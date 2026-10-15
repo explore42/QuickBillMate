@@ -468,11 +468,20 @@ class QuickBillMateUiTest {
         val third = "拖拽丙$suffix"
         newBillWithItems(listOf(first, second, third))
 
-        // 按住第 1 行排序把手，向下拖过一整行卡片
+        // 轻轻一按就立刻滑走（未按满激活延迟）：不进入拖拽，顺序不变
         val cardHeight = composeRule.onAllNodesWithTag("editor_item_card")[0]
             .fetchSemanticsNode().boundsInRoot.height
         composeRule.onAllNodesWithTag("editor_item_drag_handle")[0].performTouchInput {
             down(center)
+            moveBy(Offset(0f, cardHeight * 0.9f))
+            up()
+        }
+        assertTrue("短按把手不应改变顺序", itemTop(first) < itemTop(second))
+
+        // 长按把手超过激活延迟（250ms）后向下拖过一整行卡片
+        composeRule.onAllNodesWithTag("editor_item_drag_handle")[0].performTouchInput {
+            down(center)
+            advanceEventTime(400)
             moveBy(Offset(0f, cardHeight * 0.6f))
             moveBy(Offset(0f, cardHeight * 0.8f))
             up()
@@ -491,20 +500,42 @@ class QuickBillMateUiTest {
         composeRule.onNodeWithText("客户名称").performTextInput(name)
         Espresso.closeSoftKeyboard()
 
-        // 单价 35，再用“±”把数量变成 -1
+        // 单价 35，数量直接输入 -1（退货行）：输入框已无“±”按钮，负号靠手输或步进跨 0
         val price = composeRule.onNodeWithText("单价")
         price.performScrollTo().performClick()
         price.performTextInput("35")
         Espresso.closeSoftKeyboard()
-        composeRule.onNodeWithTag("editor_qty_sign").performScrollTo().performClick()
+        val qty = composeRule.onNodeWithText("数量")
+        qty.performScrollTo().performClick()
+        qty.performTextReplacement("-1")
+        Espresso.closeSoftKeyboard()
 
         // 行金额为负
+        waitFor { composeRule.onAllNodesWithText("-35.00").fetchSemanticsNodes().isNotEmpty() }
+
+        // 步进按钮可跨过 0：-1 → -2 → 回到 -1
+        composeRule.onNodeWithContentDescription("数量减一").performScrollTo().performClick()
+        waitFor { composeRule.onAllNodesWithText("-70.00").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithContentDescription("数量加一").performScrollTo().performClick()
         waitFor { composeRule.onAllNodesWithText("-35.00").fetchSemanticsNodes().isNotEmpty() }
 
         // 保存后列表金额为负数（负号前置）
         composeRule.onNodeWithText("保存").performClick()
         waitHomeReady()
         waitFor { composeRule.onAllNodesWithText("-¥35.00").fetchSemanticsNodes().isNotEmpty() }
+
+        // 详情页：应退金额按绝对值显示，中文大写不写“负”
+        composeRule.onAllNodesWithText(name)[0].performClick()
+        waitFor { composeRule.onAllNodesWithTag("view_preview").fetchSemanticsNodes().isNotEmpty() }
+        waitFor {
+            composeRule.onAllNodesWithText("应退：35.00（叁拾伍元整）")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(
+            "应退金额不应再出现负号",
+            composeRule.onAllNodesWithText("-35.00（", substring = true)
+                .fetchSemanticsNodes().isEmpty(),
+        )
     }
 
     @Test

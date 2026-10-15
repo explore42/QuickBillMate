@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.toIntSize
 import androidx.core.graphics.toColorInt
 import com.example.quickbillmate.util.Money
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.abs
 
 data class RenderItem(
     val name: String = "",
@@ -178,8 +179,11 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
     val borderColor = parseColor(params.tableBorderColor)
     val borderWidth = params.tableBorderWidthPx.dp
     val columns = remember(params) { effectiveColumns(params) }
-    // 退货单（应收为负）改用“应退金额”，避免负号被读成折扣
-    val receivableLabel = if (invoice.receivable() < 0) "应退金额" else "应收金额"
+    // 退货单（应收为负）改用“应退金额”，避免负号被读成折扣；数值与大写都按绝对值显示
+    // （“应退”已表达负号含义，再写负号反而读不通）
+    val receivableValue = invoice.receivable()
+    val receivableLabel = if (receivableValue < 0) "应退金额" else "应收金额"
+    val receivableAbs = abs(receivableValue)
 
     Column(
         modifier = Modifier
@@ -365,7 +369,7 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
 
         // ---------- 页脚：应收金额 ----------
         Text(
-            text = "${receivableLabel}：${Money.format(invoice.receivable())}（${Money.toChineseAmount(invoice.receivable())}）",
+            text = "${receivableLabel}：${Money.format(receivableAbs)}（${Money.toChineseAmount(receivableAbs)}）",
             fontSize = params.footerTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,

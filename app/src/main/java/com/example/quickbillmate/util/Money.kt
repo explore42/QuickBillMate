@@ -3,6 +3,7 @@ package com.example.quickbillmate.util
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.Locale
+import kotlin.math.abs
 
 object Money {
     private const val DIGITS = "零壹贰叁肆伍陆柒捌玖"
@@ -33,12 +34,13 @@ object Money {
     }
 
     /**
-     * 中文大写金额，与 DEMO toChineseAmount() 逻辑一致；退货单等负数金额前缀「负」，
-     * 按绝对值取数，保证负数不会走进位数表越界。
+     * 中文大写金额，与 DEMO toChineseAmount() 逻辑一致。
+     *
+     * 按绝对值取数：退货单的负号由「应退」标签表达，大写里不再写「负」
+     * （同时保证负数不会走进位数表越界）。
      */
     fun toChineseAmount(amount: Double): String {
-        if (amount < 0) return "负" + toChineseAmount(-amount)
-        val rounded = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP)
+        val rounded = BigDecimal.valueOf(abs(amount)).setScale(2, RoundingMode.HALF_UP)
         val intPart = rounded.toBigInteger().toString()
         val cents = rounded.movePointRight(2).remainder(BigDecimal(100)).abs().toInt()
         val jiao = cents / 10

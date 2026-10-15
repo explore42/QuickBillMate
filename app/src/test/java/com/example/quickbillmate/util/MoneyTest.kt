@@ -63,10 +63,11 @@ class MoneyTest {
     }
 
     @Test
-    fun `负数大写金额前缀负且不越界`() {
-        assertEquals("负壹佰贰拾元整", Money.toChineseAmount(-120.0))
-        assertEquals("负伍角", Money.toChineseAmount(-0.5))
-        assertEquals("负壹仟贰佰叁拾肆元伍角陆分", Money.toChineseAmount(-1234.56))
+    fun `负数大写金额按绝对值且不写负也不越界`() {
+        // 退货单的负号由“应退金额”标签表达，大写里不再写“负”
+        assertEquals("壹佰贰拾元整", Money.toChineseAmount(-120.0))
+        assertEquals("伍角", Money.toChineseAmount(-0.5))
+        assertEquals("壹仟贰佰叁拾肆元伍角陆分", Money.toChineseAmount(-1234.56))
         assertEquals("零元整", Money.toChineseAmount(-0.0))
     }
 
