@@ -370,7 +370,8 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
                 borderColor = borderColor,
                 borderWidth = borderWidth,
                 bg = parseColor(params.totalRowBgColor),
-                textColor = Color.Black,
+                // 合计为负（整单退货）时与退货行同色，优惠行仍保持黑色
+                textColor = if (invoice.total() < 0) RefundRed else Color.Black,
                 drawBottomDivider = invoice.discount != 0.0,
             )
             if (invoice.discount != 0.0) {
