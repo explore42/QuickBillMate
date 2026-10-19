@@ -168,8 +168,14 @@ internal fun StyleParams.dropRetiredColumns(): StyleParams {
     return copy(columnOrder = order, columnWeights = weights)
 }
 
+/** 退货相关文字统一使用的深红（单据图片为白底，固定色不随深浅主题变化）。 */
+private val RefundRed = Color(0xFFD32F2F)
+
+/** 退货分区标题行文案。 */
+private const val REFUND_SECTION_LABEL = "退货"
+
 /**
- * 单据文档：白底黑字，版式完全由 Compose 布局引擎计算，避免手绘错位。
+ * 单据文档：白底为主、退货行标红，版式完全由 Compose 布局引擎计算，避免手绘错位。
  * 预览与导出共用同一组件，保证输出完全一致。
  */
 @Composable
@@ -310,33 +316,50 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
                 textColor = parseColor(params.headerTextColor),
                 drawBottomDivider = true,
             )
-            invoice.items.forEachIndexed { index, item ->
-                TableRow(
-                    columns = columns,
-                    cells = columns.map { spec ->
-                        when (spec.id) {
-                            0 -> (index + 1).toString()
-                            1 -> item.name
-                            2 -> item.spec
-                            3 -> item.unit
-                            4 -> item.qty.toLong().toString()
-                            5 -> Money.format(item.price)
-                            7 -> item.note
-                            8 -> Money.format(item.amount())
-                            else -> ""
-                        }
-                    },
-                    aligns = columns.map { it.dataAlign },
-                    fontSize = bodySize,
-                    bold = false,
-                    fontFamily = fontFamily,
-                    borderColor = borderColor,
-                    borderWidth = borderWidth,
-                    bg = null,
-                    textColor = Color.Black,
-                    drawBottomDivider = true,
-                    amountBold = params.amountBold,
-                )
+            // 正常行在上、退货行在下，中间插「退货」标题行；序号按打印顺序连续编号
+            InvoiceTableLayout.printRows(invoice.items).forEach { row ->
+                when (row) {
+                    is PrintRow.RefundTitle -> SectionRow(
+                        label = REFUND_SECTION_LABEL,
+                        fontSize = bodySize,
+                        fontFamily = fontFamily,
+                        borderColor = borderColor,
+                        borderWidth = borderWidth,
+                        bg = parseColor(params.totalRowBgColor),
+                    )
+
+                    is PrintRow.Item -> {
+                        val item = invoice.items[row.index]
+                        val refund = item.qty < 0.0
+                        TableRow(
+                            columns = columns,
+                            cells = columns.map { spec ->
+                                when (spec.id) {
+                                    0 -> row.serial.toString()
+                                    1 -> item.name
+                                    2 -> item.spec
+                                    3 -> item.unit
+                                    4 -> item.qty.toLong().toString()
+                                    5 -> Money.format(item.price)
+                                    7 -> item.note
+                                    8 -> Money.format(item.amount())
+                                    else -> ""
+                                }
+                            },
+                            aligns = columns.map { it.dataAlign },
+                            fontSize = bodySize,
+                            bold = false,
+                            fontFamily = fontFamily,
+                            borderColor = borderColor,
+                            borderWidth = borderWidth,
+                            bg = null,
+                            // 退货行整行标红，方便一眼看出哪些是退货
+                            textColor = if (refund) RefundRed else Color.Black,
+                            drawBottomDivider = true,
+                            amountBold = params.amountBold,
+                        )
+                    }
+                }
             }
             TotalRow(
                 columns = columns,
@@ -372,7 +395,8 @@ internal fun InvoiceDocument(invoice: RenderInvoice, params: StyleParams) {
             text = "${receivableLabel}：${Money.format(receivableAbs)}（${Money.toChineseAmount(receivableAbs)}）",
             fontSize = params.footerTextSizeSp.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            // 应退金额（负数）整行标红：数值与中文大写都用红色
+            color = if (receivableValue < 0) RefundRed else Color.Black,
             fontFamily = fontFamily,
         )
         if (invoice.showRemark && invoice.remark.isNotBlank()) {
@@ -531,6 +555,51 @@ private fun TableRow(
                 textColor = textColor,
                 drawLeftDivider = index > 0,
                 drawBottomDivider = drawBottomDivider,
+            )
+        }
+    }
+}
+
+/**
+ * 分区标题行：整行合并为一个单元格（不画内部竖线），用于把「退货」行与正常销售行分开。
+ */
+@Composable
+private fun SectionRow(
+    label: String,
+    fontSize: TextUnit,
+    fontFamily: FontFamily,
+    borderColor: Color,
+    borderWidth: Dp,
+    bg: Color?,
+) {
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .heightIn(min = 30.dp)
+                .then(if (bg != null) Modifier.background(bg) else Modifier)
+                .drawWithContent {
+                    drawContent()
+                    if (borderWidth > 0.dp) {
+                        drawLine(
+                            borderColor,
+                            Offset(0f, size.height),
+                            Offset(size.width, size.height),
+                            strokeWidth = borderWidth.toPx(),
+                        )
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                fontFamily = fontFamily,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             )
         }
     }

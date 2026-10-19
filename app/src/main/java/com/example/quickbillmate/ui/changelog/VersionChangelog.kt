@@ -17,6 +17,19 @@ object VersionChangelog {
     /** 全部已发布版本说明，按 versionCode 升序维护。 */
     val entries: List<VersionChange> = listOf(
         VersionChange(
+            versionCode = 8,
+            versionName = "1.2.3",
+            title = "v1.2.3 主要更新",
+            important = listOf(
+                "新增：单据图片里的退货商品单独分区——表尾一行「退货」标题把退货和正常销售分开，退货行整行红字",
+                "优化：单据图片的「应退金额」用红字显示，数值与中文大写都按应退金额给出",
+            ),
+            others = listOf(
+                "优化：预置单位的「代」改为「袋」；以前自建的「袋」并入内置单位，下拉不再重复",
+                "优化：商品库与历史单据里的单位「代」自动订正为「袋」",
+            ),
+        ),
+        VersionChange(
             versionCode = 7,
             versionName = "1.2.2",
             title = "v1.2.2 主要更新",

@@ -424,6 +424,7 @@ private fun UnitField(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("product_unit")
                 .onSizeChanged { fieldWidth = it.width }
                 .onFocusChanged { focused -> expanded = focused.isFocused },
             trailingIcon = {

@@ -20,7 +20,19 @@ object Migrations {
         }
     }
 
+    /**
+     * v3：预置单位「代」改为「袋」，历史商品与单据行里的单位文本一并订正。
+     * 仅修数据，不改表结构。
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("UPDATE products SET unit = '袋' WHERE unit = '代'")
+            db.execSQL("UPDATE bill_items SET unit = '袋' WHERE unit = '代'")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2,
+        MIGRATION_2_3,
     )
 }

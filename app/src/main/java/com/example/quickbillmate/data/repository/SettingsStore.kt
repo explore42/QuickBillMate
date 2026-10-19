@@ -96,10 +96,17 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_CONTACT_PHONE, true)
         set(value) = prefs.edit { putBoolean(KEY_SHOW_CONTACT_PHONE, value) }
 
-    /** 商品单位预设的自定义部分（逗号分隔存储；内置预设见 [BUILTIN_UNITS]）。 */
+    /**
+     * 商品单位预设的自定义部分（逗号分隔存储；内置预设见 [BUILTIN_UNITS]）。
+     *
+     * 读写都经过 [normalizeCustomUnits]：与内置单位重复的项（例如用户以前自建的「袋」）会并入内置，
+     * 不再在自定义列表与商品单位下拉里重复出现。
+     */
     var customUnits: List<String>
-        get() = prefs.getString(KEY_CUSTOM_UNITS, "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-        set(value) = prefs.edit { putString(KEY_CUSTOM_UNITS, value.joinToString(",")) }
+        get() = normalizeCustomUnits(prefs.getString(KEY_CUSTOM_UNITS, "").orEmpty().split(","))
+        set(value) = prefs.edit {
+            putString(KEY_CUSTOM_UNITS, normalizeCustomUnits(value).joinToString(","))
+        }
 
     /** 首次安装引导页是否已完成（老用户升级不显示引导）。 */
     var onboardingCompleted: Boolean
@@ -155,7 +162,19 @@ class SettingsStore(context: Context) {
         const val THEME_DARK = "dark"
 
         /** 商品单位内置预设，与自定义预设合并后供新增商品下拉选择。 */
-        val BUILTIN_UNITS = listOf("桶", "筒", "代", "张", "卷", "支", "把")
+        val BUILTIN_UNITS = listOf("桶", "筒", "袋", "张", "卷", "支", "把")
+
+        /**
+         * 自定义单位规范化：去首尾空白、丢弃空串与内置单位（含「袋」，已并入内置）、按原顺序去重。
+         */
+        fun normalizeCustomUnits(raw: List<String>): List<String> {
+            val result = LinkedHashSet<String>(raw.size)
+            raw.forEach { unit ->
+                val trimmed = unit.trim()
+                if (trimmed.isNotEmpty() && trimmed !in BUILTIN_UNITS) result.add(trimmed)
+            }
+            return result.toList()
+        }
 
         private const val KEY_THEME = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "theme_dynamic_color"

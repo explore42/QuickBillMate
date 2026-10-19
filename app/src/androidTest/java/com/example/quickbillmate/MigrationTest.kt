@@ -81,4 +81,68 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun migrateV2ToV3RenamesDaiUnitToBag() {
+        // v2 → v3：商品与单据行的单位「代」统一订正为「袋」，其它单位与字段保持原样
+        helper.createDatabase(testDb, 2).apply {
+            execSQL(
+                "INSERT INTO bills " +
+                    "(customerName, customerPhone, companyName, contactPhone, salesManager, docCode, docSerial, " +
+                    "docDate, discount, remark, titleSuffix, adText, showManager, showRemark, showAd, " +
+                    "showWatermark, watermarkText, showMultiPhones, showCustomerPhone, showContactPhone, " +
+                    "favorite, presetKey, createdAt, updatedAt) " +
+                    "VALUES ('单位迁移客户', '', '', '', '', 'PH', '001', '2026-01-01', 0.0, '', " +
+                    "'单据', '', 1, 1, 0, 0, '', 1, 1, 1, 0, 'classic', 1, 1)"
+            )
+            execSQL(
+                "INSERT INTO products " +
+                    "(name, spec, unit, price, pack, note, favorite, pinyinInitial, pinyin, createdAt) " +
+                    "VALUES ('旧单位商品', '', '代', 35.0, '', '', 0, '#', '', 1)"
+            )
+            execSQL(
+                "INSERT INTO products " +
+                    "(name, spec, unit, price, pack, note, favorite, pinyinInitial, pinyin, createdAt) " +
+                    "VALUES ('普通单位商品', '', '桶', 12.5, '', '', 0, '#', '', 1)"
+            )
+            execSQL(
+                "INSERT INTO bill_items (billId, sortOrder, name, spec, unit, qty, price, pack, note) " +
+                    "VALUES (1, 0, '旧单位行', '', '代', 2.0, 35.0, '', '')"
+            )
+            execSQL(
+                "INSERT INTO bill_items (billId, sortOrder, name, spec, unit, qty, price, pack, note) " +
+                    "VALUES (1, 1, '普通单位行', '', '桶', 1.0, 12.5, '', '')"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(testDb, 3, true, *Migrations.ALL)
+        db.query("SELECT unit, price FROM products WHERE name = '旧单位商品'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("袋", it.getString(0))
+            assertEquals(35.0, it.getDouble(1), 0.001)
+        }
+        db.query("SELECT unit FROM products WHERE name = '普通单位商品'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("桶", it.getString(0))
+        }
+        db.query("SELECT unit, qty FROM bill_items WHERE name = '旧单位行'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("袋", it.getString(0))
+            assertEquals(2.0, it.getDouble(1), 0.001)
+        }
+        db.query("SELECT unit FROM bill_items WHERE name = '普通单位行'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("桶", it.getString(0))
+        }
+        db.query("SELECT COUNT(*) FROM products WHERE unit = '代'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals(0, it.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM bill_items WHERE unit = '代'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals(0, it.getInt(0))
+        }
+        db.close()
+    }
 }
